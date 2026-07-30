@@ -1,0 +1,15 @@
+[submodule "_repos/tree-hole"]
+	path = _repos/tree-hole
+	url = git@github.com:acaciachan/tree-hole.git
+[submodule "_repos/Discovering-Minecraft"]
+	path = _repos/Discovering-Minecraft
+	url = git@github.com:lovexyn0827/Discovering-Minecraft.git
+[submodule "_repos/gtmc-articles"]
+	path = _repos/gtmc-articles
+	url = git@github.com:techmc-wiki/articles.git
+[submodule "_repos/techmc-glossary"]
+	path = _repos/techmc-glossary
+	url = git@github.com:TechMC-Glossary/TechMC-Glossary.git
+[submodule "_repos/ArticlesAndDevNotes"]
+	path = _repos/ArticlesAndDevNotes
+	url = git@github.com:Youmiel/ArticlesAndDevNotes.git
