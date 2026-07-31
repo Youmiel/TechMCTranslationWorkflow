@@ -1,6 +1,10 @@
 # 忽略缓存目录
 .cache/
 
+# 翻译工作目录
+_input/
+_output/
+
 # Python
 __pycache__/
 *.pyc

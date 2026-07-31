@@ -17,6 +17,9 @@
 ## 目录结构
 
 ```
+├── _input/                     # 待翻译字幕（SRT、transcript），Git 忽略
+├── _output/                    # 翻译输出，Git 忽略
+├── ref_translations/          # 参考译例，供 Agent 模仿风格
 ├── .vscode/
 │   ├── mcp.json                # MCP 配置（生效中，非 uv 直调）
 │   ├── mcp.template.json       # MCP 配置模板（非 uv）
