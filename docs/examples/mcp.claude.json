@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "minecraft-wiki-mcp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory", "/path/to/Minecraft-Wiki-MCP",
+        "run", "minecraft-wiki-mcp"
+      ],
+      "env": {
+        "MINECRAFT_WIKI_API_URL": "https://zh.minecraft.wiki/api.php",
+        "MINECRAFT_WIKI_TRANSPORT": "stdio"
+      }
+    },
+    "mc-wiki-fetch-mcp": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mc-wiki-fetch-mcp"],
+      "env": {
+        "MC_WIKI_API_BASE_URL": "https://mcwiki.rice-awa.top"
+      }
+    }
+  }
+}

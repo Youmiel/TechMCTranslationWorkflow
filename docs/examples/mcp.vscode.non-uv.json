@@ -1,0 +1,20 @@
+{
+  "servers": {
+    "minecraft-wiki-mcp": {
+      "type": "stdio",
+      "command": "/path/to/venv/minecraft-wiki-mcp.exe",
+      "args": [],
+      "cwd": "/path/to/Minecraft-Wiki-MCP",
+      "env": {
+        "MINECRAFT_WIKI_TRANSPORT": "stdio"
+      }
+    },
+    "mc-wiki-fetch-mcp": {
+      "type": "stdio",
+      "command": "/path/to/venv/mc-wiki-fetch-mcp.exe",
+      "args": [],
+      "cwd": "/path/to/mc-wiki-mcp-pypi",
+      "env": {}
+    }
+  }
+}

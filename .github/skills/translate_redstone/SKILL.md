@@ -225,10 +225,10 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 本 Skill 在阶段一的"集中补齐"步骤中使用：
 
 - **Wiki 页面获取**（按优先级降级）：
-  1. `Minecraft-Wiki-MCP` → `get_page(pageName)` / `search_wiki(q)`（MediaWiki 直连，当前唯一可用）
-  2. `python scripts/fetch_wiki.py "页面名" ["页面名" ...]`（纯 urllib，零依赖兜底）
+  1. `minecraft-wiki-mcp` → `minecraft_wiki_search(q)` / `minecraft_wiki_get_page(pageName)`（MediaWiki 直连）
+  2. `mc-wiki-fetch-mcp` → `search_wiki(q)` / `get_page(pageName)`（自定义 API 代理，备用）
+  3. `python scripts/fetch_wiki.py "页面名" ["页面名" ...]`（纯 urllib，零依赖兜底）
      - 批量调用 MediaWiki API（`titles=A|B|C` 管道符）
      - 结果写入 `.cache/wiki/`，返回 JSON 摘要供 Agent 解析
-  3. `mc-wiki-fetch-mcp` → `get_page(pageName)` / `search_wiki(q)`（自定义 API 代理，当前已禁用）
   4. 浏览器访问 `https://zh.minecraft.wiki/` → 站内搜索 → 阅读页面内容（终极兜底，所有 API 都不可用时）
 - **社区资料**：非 Wiki 来源（博客、深度分析）优先查 `indexes/repos/` 定位本地仓库文件，不通过网络抓取

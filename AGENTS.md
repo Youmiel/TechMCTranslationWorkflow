@@ -29,8 +29,8 @@
 
 本项目配置了两个 MCP Wiki 工具，配置见 `.vscode/mcp.json`，部署指南见 `docs/MCP_DEPLOYMENT.md`。
 
-- **minecraft-wiki**（当前可用）：通过 `L3-N0X/Minecraft-Wiki-MCP` 直连 MediaWiki API
-- **mc-wiki**（已禁用）：`rice-awa/mc-wiki-mcp-pypi` 自定义 API 代理，`"disabled": true`
+- **minecraft-wiki-mcp**（可用）：通过 `L3-N0X/Minecraft-Wiki-MCP` 直连 MediaWiki API（工具 `minecraft_wiki_search` / `minecraft_wiki_get_page` 等）
+- **mc-wiki-fetch-mcp**（可用）：`rice-awa/mc-wiki-mcp-pypi` 自定义 API 代理（工具 `search_wiki` / `get_page` 等）
 
 ### 兜底策略
 
