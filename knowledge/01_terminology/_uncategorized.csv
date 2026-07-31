@@ -1,13 +1,3 @@
-﻿term_en,short_form,definition,notes,term_zh,term_ja
-World Tick Update,WTU,游戏刻阶段之一，世界时间计数器+1，标志新游戏刻开始,[通用] 来源：gtmc-articles MicroTiming,世界时间更新,
-Chunk Tick,CT,游戏刻阶段之一，处理雷暴、结冰、随机刻等区块级事件,[通用] 来源：gtmc-articles MicroTiming,区块刻,
-Entity Update,EU,游戏刻阶段之一，实体执行自身行为逻辑（生物移动、TNT爆炸等）,[通用] 来源：gtmc-articles MicroTiming,实体运算,
-Async Task; Network Update,AT;NU,游戏刻阶段之一，处理玩家放置/破坏方块、触发压力板等异步事件,[通用] 来源：gtmc-articles MicroTiming,异步事件,
-Random Tick,,区块刻阶段中随机选中区块内方块执行生长、蔓延等随机事件的机制,[通用] 来源：gtmc-articles MicroTiming,随机刻,
-Scaffoldstone,,利用脚手架的distance属性变化传递红石信号的技术,[通用] 来源：gtmc-articles 树电与脚电,脚电,
-Redstone Gate; Redstone Diode,,中继器和比较器的统称（源码中继承自AbstractRedstoneGateBlock）,[通用] 来源：gtmc-articles 计划刻与计划刻元件,红石门;红石二极管,
-yaw,,实体的水平旋转角度，取值范围(-180~180]，正南为0，顺时针为正,[通用] 来源：Discovering-Minecraft 实体运动,偏航角,
-pitch,,实体的垂直旋转角度，取值范围[-90~90]，水平为0，向上为负,[通用] 来源：Discovering-Minecraft 实体运动,俯仰角,
-Strong Power; Strongly Powered,,方块被中继器/比较器/红石火把等元件直接充能的状态，可激活周围6方向红石粉,[通用] 来源：gtmc-articles 刻与刻间时序,强充能,
-Weak Power; Weakly Powered,,方块被红石粉指向充能的状态，仅能激活面向该方块的红石二极管,[通用] 来源：gtmc-articles 刻与刻间时序,弱充能,
-Fluid Acceleration,,实体在与流体接触时受到的加速作用（区别于空气阻力），与流体种类和浸入深度有关。Discovering-Minecraft 运动符号体系中简称为 F，与 G/D/C/Dc/Pu 配套,[通用] 来源：Discovering-Minecraft 实体运动,流体加速,
+term_en,short_form,definition,notes,term_zh,term_ja
+Louvain method;Louvain algorithm,,"一种基于模块度（modularity）优化的贪心启发式社区发现算法，通过“局部移动节点最大化模块度 + 将社区聚合为新节点”两阶段反复迭代，在大规模网络中快速提取非重叠社区结构。2008 年由鲁汶大学（UCLouvain）的 Blondel 等人提出。","[待审核] 来源：Blondel et al. 2008 / 维基百科；亦译“鲁汶方法”；其改进版为 Leiden 算法",鲁汶算法,
+

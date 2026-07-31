@@ -1,0 +1,8 @@
+﻿term_en,short_form,definition,notes,term_zh,term_ja
+Copper Golem,,一种帮助玩家将铜箱子物品分类到普通箱子的友好生物,[存储] 来源：Minecraft Wiki,铜傀儡,
+Copper Chest,,铜块在生成铜傀儡后转变而成的箱子,[存储] 来源：Mojang Waxed Copper Chest=涂蜡的铜箱子,铜箱子,
+Impulse Style Item Filter,,使用比较器持续读取容器信号强度的标准物品分类器设计,[存储] 来源：cubicmetre视频,脉冲式物品分类器,
+Dustless Filter,,不含红石粉的物品分类器，利用切换状态检测容器变化,[存储] 来源：cubicmetre视频,无粉物品分类器,
+Item-Shulker Splitter,,用于将物品实体和潜影盒实体分离到不同输出的装置,[存储] 来源：cubicmetre视频,物品-潜影盒分离器,
+Vertical Integration,,确保系统中每个环节处理速度一致以避免瓶颈的优化策略,[存储] 来源：cubicmetre视频,垂直整合,
+Container Threshold,,物品分类器中可变的容器填充度检测阈值，解决单片间信号溢出问题,[存储] 来源：cubicmetre视频,可变容器阈值,

@@ -1,6 +1,6 @@
 # 第一类术语知识索引
 
-> 生成时间：2026-07-31
+> 生成时间：2026-07-31（重建，与磁盘实际状态对齐）
 > 对应目录：`knowledge/01_terminology/`
 
 ## CSV 术语表
@@ -9,26 +9,44 @@
   - 列：`term_en,short_form,definition,notes,term_zh,term_ja`
   - 关键词：模板, 表头, CSV, 规范
 
-- **`_uncategorized.csv`** — 待分拣术语暂存区 [通用]
-  - Agent 自动登记新术语的唯一写入目标，人工定期分拣
-  - 当前条目：12 条（2026-07-31 首次从 _repos/ 提取）
-  - 关键词：待分拣, 新术语, Agent写入, 暂存
+- **`_uncategorized.csv`** — 待分拣术语暂存区，Agent 自动登记新术语的唯一写入目标 [通用]
+  - 当前条目：? 条
+  - 关键词：待分拣, 新术语, Agent写入, 社区发现
+
+- **`common.csv`** — 通用基础术语（当前为空，仅表头）[通用]
+  - 当前条目：0 条
+  - 关键词：通用, 基础
+
+- **`game_system.csv`** — 游戏机制/系统术语 [通用]
+  - 当前条目：10 条
+  - 内容：游戏刻阶段（WTU 世界时间更新 / CT 区块刻 / EU 实体运算 / AT 异步事件 / 随机刻）、实体运动（yaw 偏航角 / pitch 俯仰角 / 流体加速）、物品组件（1.20.5+）、游戏刻加速（Tick Warping）
+  - 关键词：游戏刻, 游戏阶段, 随机刻, 实体运动, 偏航角, 俯仰角, 物品组件, Tick Warping
+  - 来源：gtmc-articles MicroTiming、Discovering-Minecraft 实体运动、cubicmetre 视频
+
+- **`proper_nouns.csv`** — 专有名词：人物 / 组织 / 模组 [通用]
+  - 当前条目：9 条
+  - 内容：人物（cubicmetre、Red Nomster、Mumbo Jumbo）、组织（Hermitcraft、Wavetech）、模组（Item Scroller、Axiom、Carpet 模组）、scarpet 脚本语言
+  - 关键词：人物, 组织, 模组, YouTuber, SMP, Hermitcraft, scarpet, Carpet
+
+- **`redstone_concepts.csv`** — 红石核心概念 [通用]
+  - 当前条目：5 条
+  - 内容：切换状态（Toggle State）、强/弱充能（Strong/Weak Power）、红石门（Redstone Gate，中继器/比较器统称）、脚手架信号（Scaffoldstone 脚电）
+  - 关键词：红石, 充能, 强充能, 弱充能, 二极管, 中继器, 比较器, 脚电, 切换状态
+
+- **`storage.csv`** — 存储技术术语 [存储]
+  - 当前条目：7 条
+  - 内容：铜傀儡/铜箱子（快照新特性）、脉冲式物品分类器、无粉分类器、物品-潜影盒分离器、垂直整合、可变容器阈值
+  - 关键词：存储, 物品分类器, 无粉, 铜傀儡, 铜箱子, 潜影盒, 垂直整合, 容器阈值
 
 ## 子目录
 
-- **`organizations/`** — 组织/团队名录
-  - 当前状态：空
-  - 关键词：组织, 团队, 社区
-
-- **`people/`** — 人物名录
-  - 当前状态：空
-  - 关键词：人物, 作者, 译者
+- 当前 `knowledge/01_terminology/` 下无子目录；人物/组织暂存于 `proper_nouns.csv`，待量增后再分拆
 
 ## 参考缓存
 
-以下缓存文件由脚本自动生成（`.cache/`），翻译时作为术语参考：
+以下缓存文件由脚本自动生成（`.cache/`，Git 忽略），翻译时作为术语参考，不属于第一类知识：
 
-### Mojang 官方词汇（`scripts/fetch_mojang_glossary.py`）
+### Mojang 官方词汇（`scripts/fetch_mojang_glossary.py` → `.cache/mojang/`）
 
 | 文件 | 内容 |
 |------|------|
@@ -39,7 +57,7 @@
 | `misc.csv` | 杂项（生物群系、状态效果等） |
 | `MC_version.txt` | 数据对应的游戏版本 |
 
-### 社区术语表（`scripts/split_glossary.py`）
+### 社区术语表（`scripts/split_glossary.py` → `.cache/glossary/`）
 
 从 `_repos/techmc-glossary/` 拆分，按类别独立：
 

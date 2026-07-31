@@ -1,0 +1,6 @@
+﻿term_en,short_form,definition,notes,term_zh,term_ja
+Toggle State,,类似T触发器的双稳态电路状态，仅在输入变化时翻转,[红石] 来源：cubicmetre视频,切换状态,
+Strong Power; Strongly Powered,,方块被中继器/比较器/红石火把等元件直接充能的状态，可激活周围6方向红石粉,[通用] 来源：gtmc-articles 刻与刻间时序,强充能,
+Weak Power; Weakly Powered,,方块被红石粉指向充能的状态，仅能激活面向该方块的红石二极管,[通用] 来源：gtmc-articles 刻与刻间时序,弱充能,
+Redstone Gate; Redstone Diode,,中继器和比较器的统称（源码中继承自AbstractRedstoneGateBlock）,[通用] 来源：gtmc-articles 计划刻与计划刻元件,红石门;红石二极管,
+Scaffoldstone,,利用脚手架的distance属性变化传递红石信号的技术,[通用] 来源：gtmc-articles 树电与脚电,脚电,
