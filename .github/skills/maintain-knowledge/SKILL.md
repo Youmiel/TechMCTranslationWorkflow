@@ -47,8 +47,9 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 
 ### 触发条件
 
-文章中出现以下情况时，登记到 `_uncategorized.csv`：
+以下情况登记到 `_uncategorized.csv`：
 
+- **翻译工作流**（最常见）：`translate_redstone` Skill 的阶段一确认术语清单后，自动将已确认术语入库（详见该 Skill §1.5）
 - 文中明确给出 `英文术语 → 中文译名` 映射
 - 用户要求登记
 
@@ -87,6 +88,9 @@ term_en,short_form,definition,notes,term_zh,term_ja
 > **CSV 写入注意**：`definition` 和 `notes` 列常包含逗号。Agent 写入时必须用 Python `csv.writer` 
 > 或手动将含逗号的字段用双引号包裹（如 `"指比较器在接收到方块或库存更新时改变信号"`），
 > 否则后续解析会分列出错。
+>
+> **CSV 编码注意**：读取 `knowledge/` 下 CSV 用 `utf-8-sig`（带 BOM），写入用 `utf-8`。
+> 复杂 Python 一律写脚本文件执行，勿用 `python -c` 内联。
 
 ### 版本标注
 

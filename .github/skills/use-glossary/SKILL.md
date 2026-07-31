@@ -89,6 +89,7 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 
 - 术语表的 `definition`、`description` 等列常包含逗号（如"指一种比较器，当接收到方块或库存更新时会改变其信号"），**必须用 Python `csv` 模块解析**，不可用 `split(',')` 或 `grep_search` 按逗号分列
 - 读取 CSV 时始终使用 `csv.DictReader`，它会正确处理引号内的逗号
+- **编码**：读取 `.cache/glossary/` 和 `knowledge/` 下 CSV 用 `utf-8-sig`（可能带 BOM）
 - Agent 用 `grep_search` 查找术语时可以模糊匹配内容，但提取译名时务必读取完整行通过 `csv` 模块解析
 
 ## 注意事项

@@ -13,3 +13,6 @@
 [submodule "_repos/ArticlesAndDevNotes"]
 	path = _repos/ArticlesAndDevNotes
 	url = git@github.com:Youmiel/ArticlesAndDevNotes.git
+[submodule ".github/skills/humanizer-zh"]
+	path = .github/skills/humanizer-zh
+	url = git@github.com:op7418/Humanizer-zh.git

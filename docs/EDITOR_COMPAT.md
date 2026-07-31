@@ -29,14 +29,19 @@ python scripts/setup_editors.py --force
 │   ├── translate_redstone/
 │   ├── use-glossary/
 │   ├── maintain-knowledge/
-│   └── index-repos/
+│   ├── index-repos/
+│   └── humanizer-zh/        # 外部 submodule（去翻译腔，op7418/Humanizer-zh）
 └── experience/              # Agent 经验数据
     ├── coverage_log.md
     └── glossary_categories.yaml
 
-.claude/skills/  ──(symlink)──→ .github/skills/     # 自动同步
+.claude/skills/  ──(symlink)──→ .github/skills/     # 自动同步（含 humanizer-zh）
 CLAUDE.md        ──(生成)────→ AGENTS.md              # 运行 setup 同步
 ```
+
+> `humanizer-zh` 是 Git submodule（`git@github.com:op7418/Humanizer-zh.git`），
+> 直接位于 `.github/skills/humanizer-zh/`，因此 VS Code 原生发现、Claude Code 经 junction 自动同步，无需额外适配。
+> 更新：`git submodule update --remote .github/skills/humanizer-zh`
 
 - `.claude/skills/` 使用**符号链接**（Windows 降级为 Junction 或复制），修改 `.github/skills/` 即刻生效
 - `CLAUDE.md` 由脚本从 `AGENTS.md` 生成，在文件头注明来源，避免手动编辑

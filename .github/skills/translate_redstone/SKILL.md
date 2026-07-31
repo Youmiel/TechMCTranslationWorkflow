@@ -38,6 +38,31 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 - **术语偏好**（特定译法约定）
 - **注释风格**（加不加译者注、注什么）
 
+## 已验证规则（实测沉淀）
+
+以下规则来自真实翻译反馈，必须遵守：
+
+### 环境
+- 本机**无 venv**，直接使用 `python`。若 `venv\Scripts\Activate.ps1` 存在才激活，否则不激活。
+
+### 行宽
+- 中文行宽按**视觉宽度**判断：CJK 字符=1、拉丁单词≈1.5~2 字、数字串≈1~2 字
+- **禁止用 Python `len()`** 检查行宽（会虚高拉丁行，把视觉 15 字的行误判超长）
+- 目标 15-20 字/行，允许自然含义块略超
+
+### 时间戳
+- 输出 SRT 的所有时间边界**必须 ⊆ 原字幕边界集合**
+- 每次分句/合并后立即校验，写临时 Python 脚本自动检查，不要最后抽查
+
+### CSV 编码
+- 读取 knowledge/ 下的 CSV 用 `utf-8-sig`（带 BOM）
+- 写入用 `utf-8`
+- 复杂 Python 一律写脚本文件执行，勿用 `python -c` 内联（引号/中文易出错）
+
+### ASR 误识别
+- 原字幕若来自 YouTube 自动生成，英文原文**可能不可靠**，先解码 ASR 错误再翻译
+- 解码查 `.github/experience/asr_fixes.md`
+
 ## 固定工作流指令
 
 本工作流包含四个阶段 + 一个人工审核循环。
@@ -59,6 +84,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 5. **若无分类命中 ≥2 次**：列出候选词请用户确认分类，确认后将新关键词写入 `.github/experience/glossary_categories.yaml`
 6. 加载各分区 `_index.md`，建立知识地图
 7. 读 `docs/SOURCE_COVERAGE.md`，了解各数据源擅长/不擅长的知识类型
+8. 读 `.github/experience/asr_fixes.md`，准备解码 ASR 误识别（若字幕来自 YouTube 自动生成）
 
 ---
 
@@ -71,6 +97,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 #### 1.2 逐句扫描
 - 遍历输入文本的每一句原文，识别所有红石术语、机制概念、专有名词
+- **先解码 ASR 误识别**：遇到词典/术语表找不到的怪词，先查 `.github/experience/asr_fixes.md`；未命中但形似已知实体名时按 `[ASR 推测]` 处理并登记
 - 对每个术语执行四级查找：
   - **L1（热数据）**：查 `knowledge/` 术语 CSV + `.cache/mojang/redstone.csv` → 命中则记录
   - **L1.5（Mojang 非红石）**：若 L1 未命中且术语像物品/方块名 → 用文件搜索（grep_search）查 `.cache/mojang/blocks.csv`、`items.csv`、`entities.csv`、`misc.csv` → 命中则记录 Mojang 官方译名
@@ -99,19 +126,33 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 7. 经过上下文推断仍无法获取的术语，最终标记为 `[待审核：原词]`
 
 #### 1.4 术语确认
-输出术语清单供用户确认：
+输出术语清单供用户确认，**ASR 误识别单独一栏**集中批注：
 
 ```
-| 原文 | 译名 | 来源 |
-|------|------|------|
-| Comparator | 比较器 | knowledge/ |
-| BUD | 方块更新检测器 | .cache/glossary/ |
-| piston phase offset | 活塞相位偏移 | [推断：视频上下文] |
-| Sub-tick | [待审核：Sub-tick] | 未找到 |
+| 原文 | 译名 | 来源 | ASR 修正 |
+|------|------|------|----------|
+| Comparator | 比较器 | knowledge/ | — |
+| BUD | 方块更新检测器 | .cache/glossary/ | — |
+| sorder | 分类器 | [ASR 推测] | sorter |
+| part eating | 烧车 | [ASR 推测] | cart yeeting |
+| piston phase offset | 活塞相位偏移 | [推断：视频上下文] | — |
+| Sub-tick | [待审核：Sub-tick] | 未找到 | — |
 ```
 
 - `[推断]` 标记的术语：Agent 从视频对白中推测的译名，用户需特别关注是否正确
 - `[待审核]` 标记的术语：完全无法确定，需用户提供译名
+- `ASR 修正` 列：列出原始误识别词，用户可一次确认或纠正全部 ASR 推测
+
+#### 1.5 术语入库
+
+用户确认术语清单后、开始翻译前，将已确认的术语写入知识库：
+
+1. 筛选：排除 `[待审核]` 标记的术语，只保留已确认译名的条目
+2. 读 `knowledge/01_terminology/_example.csv` 获取表头
+3. 读 `knowledge/01_terminology/_uncategorized.csv`，检查 `term_en` 是否已存在
+4. 用 Python `csv.DictWriter` 追加新行（`term_en`、`term_zh`、`definition` 从阶段一映射表获取，其余字段留空或填来源注释），或手动将含逗号的字段用双引号包裹（如 `"指比较器在接收到方块或库存更新时改变信号"`）
+5. 已存在的条目跳过，不覆盖
+6. **ASR 映射登记**：用户确认的 `[ASR 推测]` 条目，同步追加到 `.github/experience/asr_fixes.md` 的"已验证映射"表（去重后）
 
 ---
 
@@ -125,6 +166,22 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 - 禁止直译红石术语（Comparator 必须为"比较器"）
 - 禁止使用未在阶段一确认的译名
 - 结论附上来源（`knowledge/` 或 `.cache/` 中的引用路径）
+
+---
+
+### 阶段二+：去翻译腔（可选）
+
+初步翻译完成后，用 `humanizer-zh` Skill 检查并消除字幕中的"翻译腔"和 AI 味：
+
+1. 加载 `humanizer-zh` Skill（`.github/skills/humanizer-zh/SKILL.md`），按其 24 种 AI 写作模式清单扫描译文
+2. 重点关注字幕场景常见的：
+   - **AI 词汇**：此外、至关重要、深入探讨、增强等
+   - **三段式法则**："无缝、直观、强大"类堆叠
+   - **否定式排比**："不仅是……更是……"
+   - **系动词回避 / 刻意换词**
+   - **通用积极结论**：空洞的收尾句
+3. 改写原则：**保留字幕口语感和节奏**，不过度书面化；红石术语译名不受影响
+4. 仅当用户明确要求"去除翻译腔"或译文 AI 味明显时才执行；字幕本身偏口语时可跳过
 
 ---
 
