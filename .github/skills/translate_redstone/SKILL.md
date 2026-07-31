@@ -11,11 +11,6 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 - **纯文本翻译**，不依赖视频画面或音频（成本/渠道限制）
 - 输入以 SRT 为主，YouTube transcript（无时间码纯文本）为次
 
-## 环境要求
-
-- 运行 Python 脚本前，必须先激活项目虚拟环境：`venv\Scripts\Activate.ps1`（Windows PowerShell）
-- 如遇执行策略限制：`Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`
-
 ## 输入格式
 
 用户将待翻译文件放入 `_input/` 目录。Agent 自动检测：
