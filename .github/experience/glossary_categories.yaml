@@ -1,0 +1,54 @@
+# 术语表分类预判规则
+#
+# Agent 通过视频标题/简介 + SRT 前 20 句的关键词密度判断技术领域。
+# 命中任一关键词 ≥2 次即加载对应分类的术语表。
+#
+# 维护方式：Agent 协助维护（不可删除/改结构，只能追加 keywords）
+#   1. 阶段〇预判时，若无分类命中 ≥2 次 → Agent 列出候选词请用户确认分类
+#   2. 用户确认后 → Agent 将新关键词追加到对应分类的 keywords 列表
+#   3. 用户也可手动编辑此文件
+#
+# 用法：
+#   - .cache/glossary/<category>.csv — 上游术语缓存
+#   - knowledge/01_terminology/<category>.csv — 项目术语库（如有同名文件）
+
+categories:
+  mechanical:
+    label: "红石元件、信号、更新机制"
+    keywords: []
+  slimestone:
+    label: "绿萌、飞行器、粘液块技术"
+    keywords: []
+  tree_farm:
+    label: "树场相关"
+    keywords: []
+  mob_farm:
+    label: "刷怪塔、生物农场"
+    keywords: []
+  storage:
+    label: "存储技术、物品分类"
+    keywords: []
+  computational:
+    label: "红石计算"
+    keywords: []
+  contraptions:
+    label: "实用装置"
+    keywords: []
+  glitch:
+    label: "游戏机制漏洞/特性"
+    keywords: []
+  coding:
+    label: "命令方块、数据包编程"
+    keywords: []
+  "1.12.2_magic":
+    label: "1.12.2 版本特有机制"
+    keywords: []
+
+# 始终加载的默认分类
+always_load:
+  - general
+
+# 无法判断时的兜底组合
+fallback:
+  - general
+  - mechanical
