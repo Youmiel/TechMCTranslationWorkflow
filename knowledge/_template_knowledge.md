@@ -1,5 +1,7 @@
 # 通用知识卡模板
 
+> 本模板文件属于**公共领域（CC0 1.0）**，可自由复制、修改与再分发，无需署名。
+
 > 用途：记录一条**词汇/概念/机制**的知识要点——定义、语境用法、翻译注意事项等。
 > 每词/每概念一卡，文件命名 `<英文术语>.md`，按主题放对应分目录（`01_terminology/` 只存放术语表，不要添加知识卡）；
 > 创建后同步更新 `indexes/knowledge/` 下对应索引。
@@ -14,6 +16,7 @@ category: <分类，与 glossary_categories.yaml 一致>
 source: <来源：视频标题 / 文档 / 人工审核>
 version: [<适用版本>]
 status: 待审核
+license: <内容来源协议：CC0 / CC BY-SA / CC BY-NC-SA / MIT / 原创等>
 ---
 
 # <术语名>
@@ -38,6 +41,7 @@ status: 待审核
 | `source` | 来源：视频标题 / 文档 / 人工审核 |
 | `version` | 适用版本，遵循 `indexing-rules` 版本标注（`[通用]`/`[1.21+]` 等） |
 | `status` | `待审核`；用户确认后改 `已确认` |
+| `license` | 卡片内容的来源协议（如 **社区通用** / CC0 / CC BY-SA / CC BY-NC-SA / MIT）；原创或人工整理填 `原创` |
 
 ## 示例
 
@@ -49,6 +53,7 @@ category: storage
 source: Solving Minecraft's Storage Problem (cubicmetre)
 version: [通用]
 status: 已确认
+license: 社区通用
 ---
 
 # Main Storage（全物品仓库）
