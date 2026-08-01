@@ -1,10 +1,10 @@
 # 忽略缓存目录
 .cache/
 
-# 翻译工作目录
-_input/
-_output/
-_work/
+# 翻译工作目录，依靠文件夹内 .gitignore 忽略内容
+# _input/
+# _output/
+# _work/
 
 # Python
 __pycache__/
