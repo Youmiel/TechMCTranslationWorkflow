@@ -5,9 +5,9 @@
 存放于 .cache/glossary/（Git 忽略）。拆分后丢弃 Category 列（文件名即类别）。
 
 用法：
-    python scripts/split_glossary.py          # 执行拆分
-    python scripts/split_glossary.py --check  # 仅检查是否需要拆分（退出码 1=需要）
-    python scripts/split_glossary.py --help   # 显示此帮助
+    python scripts/glossary_split.py          # 执行拆分
+    python scripts/glossary_split.py --check  # 仅检查是否需要拆分（退出码 1=需要）
+    python scripts/glossary_split.py --help   # 显示此帮助
 
 工作流程：
     1. 读取 _repos/techmc-glossary/TechMC Glossary.csv

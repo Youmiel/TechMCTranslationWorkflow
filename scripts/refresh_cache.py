@@ -28,7 +28,7 @@ GLOSSARY_DIR = CACHE_DIR / "glossary"
 def check_mojang() -> tuple[str, bool]:
     """检查 Mojang 词汇表是否需要更新。返回 (消息, 需要更新)。"""
     result = subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "scripts" / "fetch_mojang_glossary.py"), "--check"],
+        [sys.executable, str(PROJECT_ROOT / "scripts" / "glossary_fetch_mojang.py"), "--check"],
         capture_output=True, text=True, cwd=str(PROJECT_ROOT)
     )
     needs_update = result.returncode == 1
@@ -38,7 +38,7 @@ def check_mojang() -> tuple[str, bool]:
 def check_glossary() -> tuple[str, bool]:
     """检查 TechMC 拆分术语表是否需要更新。返回 (消息, 需要更新)。"""
     result = subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "scripts" / "split_glossary.py"), "--check"],
+        [sys.executable, str(PROJECT_ROOT / "scripts" / "glossary_split.py"), "--check"],
         capture_output=True, text=True, cwd=str(PROJECT_ROOT)
     )
     needs_update = result.returncode == 1
@@ -61,8 +61,8 @@ def check_wiki(ttl_days: int) -> list[str]:
         mtime = datetime.fromtimestamp(md_file.stat().st_mtime, tz=timezone.utc)
         age = (now - mtime).total_seconds()
         if age > ttl_seconds:
-            # 文件名即 Wiki 页面名（去掉 .md 后缀，恢复空格）
-            page_name = md_file.stem.replace("_", " ")
+            # 文件名即规范 Wiki 页面名（中文规范名，见 docs/WIKI_CACHE_FORMAT.md）
+            page_name = md_file.stem
             expired.append(page_name)
 
     return expired
@@ -71,7 +71,7 @@ def check_wiki(ttl_days: int) -> list[str]:
 def refresh_mojang() -> str:
     """运行 Mojang 词汇表更新。"""
     result = subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "scripts" / "fetch_mojang_glossary.py")],
+        [sys.executable, str(PROJECT_ROOT / "scripts" / "glossary_fetch_mojang.py")],
         capture_output=True, text=True, cwd=str(PROJECT_ROOT)
     )
     return result.stdout.strip()
@@ -80,7 +80,7 @@ def refresh_mojang() -> str:
 def refresh_glossary() -> str:
     """运行 TechMC 术语表拆分。"""
     result = subprocess.run(
-        [sys.executable, str(PROJECT_ROOT / "scripts" / "split_glossary.py")],
+        [sys.executable, str(PROJECT_ROOT / "scripts" / "glossary_split.py")],
         capture_output=True, text=True, cwd=str(PROJECT_ROOT)
     )
     return result.stdout.strip()
@@ -115,8 +115,8 @@ def main():
     # 3. 检查 Wiki 页面缓存
     wiki_expired = check_wiki(args.ttl)
     if args.force:
-        # 强制模式下所有 Wiki 页面都视为过期
-        all_pages = [f.stem.replace("_", " ") for f in WIKI_DIR.glob("*.md")] if WIKI_DIR.exists() else []
+        # 强制模式下所有 Wiki 页面都视为过期（文件名即规范名）
+        all_pages = [f.stem for f in WIKI_DIR.glob("*.md")] if WIKI_DIR.exists() else []
         wiki_expired = all_pages
 
     if wiki_expired:

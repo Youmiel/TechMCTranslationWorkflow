@@ -4,8 +4,8 @@ Mojang 官方翻译词汇表获取（便捷入口）
 直接调用即可，路径由 mojang_glossary 内部自动推导。
 
 用法：
-    python scripts/fetch_mojang_glossary.py          # 下载/更新
-    python scripts/fetch_mojang_glossary.py --check  # 仅检查新版本（退出码 1=有新版本）
+    python scripts/glossary_fetch_mojang.py          # 下载/更新
+    python scripts/glossary_fetch_mojang.py --check  # 仅检查新版本（退出码 1=有新版本）
 """
 
 import sys
