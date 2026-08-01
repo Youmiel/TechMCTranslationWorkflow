@@ -19,13 +19,11 @@ description: 维护项目第一类知识（knowledge/）和索引（indexes/）�
 
 ## 术语体系（防混淆）
 
-项目中有三个不同的"词汇表"，必须区分：
+三个"词汇表"的区分表见 `use-glossary` Skill 开头（项目术语库 / 拆分术语缓存 / 上游术语表），此处不重复。
 
-| 名称 | 位置 | 性质 |
-|------|------|------|
-| **项目术语库** | `knowledge/01_terminology/` | 本项目的译名标准、人物/组织名录（第一类，人工维护） |
-| **拆分术语缓存** | `.cache/glossary/` | 从上游自动拆分的独立 CSV（第二类，脚本生成） |
-| **上游术语表** | `_repos/techmc-glossary/` | 社区维护的合并 CSV（第三类，只读） |
+维护视角：
+- Agent **只写入** `knowledge/01_terminology/_uncategorized.csv`，不触碰 `.cache/glossary/`（脚本生成）与 `_repos/`（只读）
+- 具体的术语文件清单见 `indexes/knowledge/`
 
 ## knowledge/01_terminology/ 结构
 
@@ -45,20 +43,7 @@ knowledge/01_terminology/
 
 Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到对应类别的 CSV。
 
-### 触发条件
-
-以下情况登记到 `_uncategorized.csv`：
-
-- **翻译工作流**（最常见）：`translate_redstone` Skill 的阶段一确认术语清单后，自动将已确认术语入库（详见该 Skill §1.5）
-- 文中明确给出 `英文术语 → 中文译名` 映射
-- 用户要求登记
-
-### 同步步骤
-
-1. 识别文中所有 `英文术语 → 中文译名` 映射
-2. 在 `_uncategorized.csv` 中查 `term_en` 是否已存在
-3. 不存在则追加新行，存在则跳过
-4. 更新 `indexes/knowledge/`
+登记流程（触发条件、同步步骤、ASR 映射登记）统一按 `term-registration` Skill 执行。
 
 ### 文件格式
 
@@ -85,40 +70,26 @@ term_en,short_form,definition,notes,term_zh,term_ja
 | `term_zh` | 中文标准译名 | `方块更新检测器` |
 | `term_ja` | 日文术语 | `BUD` |
 
-> **CSV 写入注意**：`definition` 和 `notes` 列常包含逗号。Agent 写入时必须用 Python `csv.writer` 
-> 或手动将含逗号的字段用双引号包裹（如 `"指比较器在接收到方块或库存更新时改变信号"`），
-> 否则后续解析会分列出错。
->
-> **CSV 编码注意**：读取 `knowledge/` 下 CSV 用 `utf-8-sig`（带 BOM），写入用 `utf-8`。
-> 复杂 Python 一律写脚本文件执行，勿用 `python -c` 内联。
+> **CSV 读写**：编码、解析、写入统一按 `csv-rules` Skill 执行。
 
 ### 版本标注
 
-Minecraft 机制随版本变化，知识条目必须标注适用版本：
-- `[通用]` — 基础机制，跨版本稳定
-- `[1.21+]` — 1.21 起新增的机制
-- `[1.16-1.20]` — 仅在该版本范围内有效
-- `[旧]` — 已过时，保留仅供参考
+索引/知识条目的版本标注统一按 `indexing-rules` Skill 执行（`[通用]` / `[版本+]` / `[起-止]` / `[旧]` 等）。
 
 ## 更新索引
 
-内容变更后，更新 `indexes/knowledge/` 下对应索引文件。索引条目格式：
-
-```markdown
-- **<文件路径>** — 一句话概要 [版本]
-  - 关键词：tag1, tag2, tag3
-```
+内容变更后，更新 `indexes/knowledge/` 下对应索引文件。条目格式与版本标注按 `indexing-rules` Skill 执行。
 
 ## 运行脚本
 
 | 操作 | 命令 |
 |------|------|
-| 拆分术语表 | `python scripts/split_glossary.py` |
-| 检查术语表 | `python scripts/split_glossary.py --check` |
+| 拆分术语表 | `python scripts/glossary_split.py` |
+| 检查术语表 | `python scripts/glossary_split.py --check` |
 | 同步 submodule | `git submodule update --remote` |
 
 ## 安全规则
 
-- **禁止删除任何文件**。需要清理时提示用户手动操作。
+- 删除规则见 `AGENTS.md` 核心原则 #6（禁止自动删除，需清理时提示用户手动操作）。
 - 只写入 `knowledge/`、`indexes/`、`.cache/`（脚本生成），不触碰 `_repos/`（只读）。
 - 修改 `knowledge/` 前确认版本信息准确。

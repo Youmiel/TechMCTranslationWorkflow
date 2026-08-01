@@ -7,7 +7,7 @@
 
 ## Mojang 官方词汇表（`.cache/mojang/redstone.csv`）
 
-> **来源**：Mojang 官方 API → `scripts/fetch_mojang_glossary.py` 自动下载。
+> **来源**：Mojang 官方 API → `scripts/glossary_fetch_mojang.py` 自动下载。
 > **权威性**：最高——这是 Minecraft 中文版的官方译名，不可覆盖。
 
 适用范围：
@@ -17,7 +17,7 @@
 使用规则：
 - 若 Mojang 有译名 → **必须使用**，不得自创
 - 若 Mojang 无译名（如社区术语 "BUD"）→ 查 TechMC Glossary 或 Wiki
-- 运行 `python scripts/fetch_mojang_glossary.py` 检查并获取最新版本
+- 运行 `python scripts/glossary_fetch_mojang.py` 检查并获取最新版本
 
 ## Wiki（MCP: `get_page` / `search_wiki`）
 

@@ -26,7 +26,7 @@ python scripts/setup_editors.py --force
 ```
 .github/                     # 源（所有编辑器共享）
 ├── skills/                  # Skill 定义
-│   ├── translate_redstone/
+│   ├── translate-redstone/
 │   ├── use-glossary/
 │   ├── maintain-knowledge/
 │   ├── index-repos/

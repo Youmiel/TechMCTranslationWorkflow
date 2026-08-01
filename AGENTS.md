@@ -18,7 +18,7 @@
 翻译红石技术内容时，Agent 应：
 
 1. 加载术语源（按优先级）：
-   - `.cache/glossary/<相关类别>.csv`（拆分缓存，使用前运行 `python scripts/split_glossary.py --check`）
+   - `.cache/glossary/<相关类别>.csv`（拆分缓存，使用前运行 `python scripts/glossary_split.py --check`）
    - `knowledge/01_terminology/`（项目术语库，含译名标准、人物、组织）
 2. 按三级路由检索知识：`knowledge/` → `.cache/` → MCP Wiki 工具
 3. 严谨翻译红石术语，禁止自创译名
@@ -34,11 +34,7 @@
 
 ### 兜底策略
 
-当 MCP 工具不可用时，降级使用：
-
-1. `python scripts/fetch_wiki.py "页面名" ["页面名" ...]` — 零依赖，批量查 MediaWiki API
-2. 浏览器访问 `https://zh.minecraft.wiki/`，阅读人类页面，使用站内搜索定位词条——终极兜底
-   
+当 MCP 工具不可用时，完整降级链与缓存保真阶梯见 `translate-redstone` Skill §「MCP 工具与兜底」（权威）。要点：`python scripts/fetch_wiki.py "页面名"` → 浏览器访问 `https://zh.minecraft.wiki/`（终极兜底）。
 
 ### 抓取注意事项
 

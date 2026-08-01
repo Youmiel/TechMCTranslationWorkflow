@@ -15,9 +15,11 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 
 **Agent 翻译时使用的术语来自拆分缓存 + 项目术语库，不是上游源文件。**
 
+> 此表为"三个词汇表"区分的唯一权威来源，其他 Skill（如 `maintain-knowledge`）引用此处。
+
 ## 安全规则
 
-- **禁止删除任何文件**。`.cache/glossary/` 需要清理时，提示用户手动执行。
+- 删除规则见 `AGENTS.md` 核心原则 #6（禁止自动删除，`.cache/glossary/` 需清理时提示用户手动执行）。
 - 拆分脚本只写入 `.cache/glossary/`（Git 忽略），不触碰项目其他目录。
 
 ## 核心规则
@@ -31,8 +33,8 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 ### 翻译/检索前
 
 ```
-1. 运行 python scripts/split_glossary.py --check
-2. 若退出码 = 1（需要拆分）：运行 python scripts/split_glossary.py
+1. 运行 python scripts/glossary_split.py --check
+2. 若退出码 = 1（需要拆分）：运行 python scripts/glossary_split.py
 3. 按下方"类别预判"规则确定领域 → 加载 .cache/glossary/<相关类别>.csv
 ```
 
@@ -67,6 +69,14 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 3. 然后按确认的分类加载术语表，继续翻译流程
 4. **注意**：Agent 只能追加关键词，不能修改分类结构或删除已有关键词
 
+### 陷阱词清单（看似普通、实为科技术语）
+
+部分术语是**拼写正常的普通英文单词**（如 `filter`、`main storage`），按"看着像术语"的直觉扫描会漏过、不触发查词。此类词按分类沉淀在 `.github/experience/trap_words.md`：
+
+- **加载**：类别预判命中某分类时，同时加载该分类的陷阱词清单
+- **扫描**：遍历字幕时，对清单中的词（含词形变体）**强制走 L1/L2 术语查找**，即使它们看起来是普通英文
+- **维护**：每次识破新陷阱词后追加到 `.github/experience/trap_words.md`（只追加，不删改既有条目，分类与 `glossary_categories.yaml` 一致）
+
 ### 翻译日志 vs 配置文件自维护
 
 两个机制各司其职，不可混淆：
@@ -87,10 +97,8 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 
 ### CSV 解析注意事项
 
-- 术语表的 `definition`、`description` 等列常包含逗号（如"指一种比较器，当接收到方块或库存更新时会改变其信号"），**必须用 Python `csv` 模块解析**，不可用 `split(',')` 或 `grep_search` 按逗号分列
-- 读取 CSV 时始终使用 `csv.DictReader`，它会正确处理引号内的逗号
-- **编码**：读取 `.cache/glossary/` 和 `knowledge/` 下 CSV 用 `utf-8-sig`（可能带 BOM）
-- Agent 用 `grep_search` 查找术语时可以模糊匹配内容，但提取译名时务必读取完整行通过 `csv` 模块解析
+- 编码、解析、写入统一按 `csv-rules` Skill 执行（`utf-8-sig` 读 / `utf-8` 写、`csv` 模块解析）
+- 一句话要点：`definition`/`description`/`notes` 列常含逗号，**禁止** `split(',')` 或 `grep_search` 按逗号分列，提取译名务必读取完整行用 `csv.DictReader` 解析
 
 ## 注意事项
 
