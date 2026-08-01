@@ -4,3 +4,6 @@ Strong Power; Strongly Powered,,方块被中继器/比较器/红石火把等元�
 Weak Power; Weakly Powered,,方块被红石粉指向充能的状态，仅能激活面向该方块的红石二极管,[通用] 来源：gtmc-articles 刻与刻间时序,弱充能,
 Redstone Gate; Redstone Diode,,中继器和比较器的统称（源码中继承自AbstractRedstoneGateBlock）,[通用] 来源：gtmc-articles 计划刻与计划刻元件,红石门;红石二极管,
 Scaffoldstone,,利用脚手架的distance属性变化传递红石信号的技术,[通用] 来源：gtmc-articles 树电与脚电,脚电,
+three-wide tileable,,宽度为 3 的可堆叠（tileable）设计，相邻单元可无间隔拼接,[存储] 来源：cubicmetre 视频；TechMC 词表 {count}-Wide Tileable={count}宽堆叠；2026-08-01 用户确认,三宽可堆叠,
+hopper locking,,通过红石信号锁定漏斗使其无法传输物品的机制,[存储] 来源：cubicmetre 视频；2026-08-01 用户确认直译,漏斗锁定,
+hopper counter,,使用漏斗（配合比较器/锁存）统计物品流过数量的装置,[存储] 来源：cubicmetre 视频；Carpet Mod 计数器功能；2026-08-01 用户确认,漏斗计数器,

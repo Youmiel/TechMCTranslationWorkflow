@@ -27,7 +27,7 @@ categories:
     keywords: []
   storage:
     label: "存储技术、物品分类"
-    keywords: []
+    keywords: [sorter, sorting, storage, hopper, shulker, partition, unstackable, filter]
   computational:
     label: "红石计算"
     keywords: []

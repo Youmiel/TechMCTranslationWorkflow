@@ -25,19 +25,36 @@
 
 同一条多个变体合并为一行（`/` 分隔）。
 
+> **时间戳不入库**：字幕时间戳是逐视频的反馈定位信息，仅在向用户反馈（`translate-redstone` §1.4 / 阶段二½）时附带，**不写入本表**——本表跨视频累积，不绑定具体视频。
+
 
 ## 已验证映射
 
 | 误识别（ASR） | 正确 | 说明 |
 |---------------|------|------|
-| Red Knobs / Red Noms | Red Nomster | 人名 |
+| Red Knobs / Red Noms / Knobs / Noms | Red Nomster | 人名 |
 | scraped / scarpad | scarpet | Carpet 模组的脚本语言 |
 | part eating | cart yeeting（烧车） | 存储科技 Cart Yeet 技术 |
-| sorder | sorter | 分类器 |
+| sorder / sortter / sortters | sorter | 分类器 |
 | idol | ideal | — |
 | MPT | MSPT | 毫秒每刻 |
 | shocker box | shulker box（潜影盒） | — |
 | copper counters | hopper counters（漏斗计数器） | — |
 | DOSless | dustless（无粉） | — |
+| cup golems | copper golems（铜傀儡） | 快照新生物 |
+| multi-to solder | multi-item sorter | 多物品分类器 |
+| layer snapshot | latest snapshot | 最新快照 |
+| wavet's | Wavetech's | 服务器名 |
+| costic | caustic | 难缠的（形容物品集） |
+| resto | redstone | 红石（装置） |
+| levane | Louvain | 鲁汶（图聚类算法） |
+| design snapshot | design in snapshot | ASR 漏介词 in |
+| Cubic meter | Cubicmetre | 人名（频道名） |
+| me old mate | my old mate | 口语语法 |
+| are multi-item | a multi-item | 冠词误识别 |
+| higherend | higher-end | — |
+| sort be | sort bee | 蜂巢（bee nests） |
+| item sort of breaks | item sorter breaks | ASR 漏词 |
+| free wide tilable | three-wide tileable | 三宽可堆叠 |
 
 

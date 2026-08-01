@@ -1,3 +1,5 @@
 term_en,short_form,definition,notes,term_zh,term_ja
-Louvain method;Louvain algorithm,,"一种基于模块度（modularity）优化的贪心启发式社区发现算法，通过“局部移动节点最大化模块度 + 将社区聚合为新节点”两阶段反复迭代，在大规模网络中快速提取非重叠社区结构。2008 年由鲁汶大学（UCLouvain）的 Blondel 等人提出。","[待审核] 来源：Blondel et al. 2008 / 维基百科；亦译“鲁汶方法”；其改进版为 Leiden 算法",鲁汶算法,
-
+Louvain method;Louvain algorithm,,一种基于模块度（modularity）优化的贪心启发式社区发现算法，通过“局部移动节点最大化模块度 + 将社区聚合为新节点”两阶段反复迭代，在大规模网络中快速提取非重叠社区结构。2008 年由鲁汶大学（UCLouvain）的 Blondel 等人提出。,来源：Blondel et al. 2008 / 维基百科；2026-08-01 用户确认；亦译“鲁汶方法”；其改进版为 Leiden 算法,鲁汶聚类,
+Copper Golem Sorter,,使用铜傀儡搬运物品、按多物品分区分类的存储装置,[存储] 来源：cubicmetre 视频；2026-08-01 用户确认,铜傀儡分类器,
+storage tech aid program,,"cubicmetre 自制的 scarpet 程序，用于存储技术辅助（最早出现在其""How to Build the Ultimate Storage""视频中）",[存储] 来源：cubicmetre 视频；2026-08-01 用户确认直译,存储技术辅助程序,
+sediment slice,,"存储系统中专门存放泥土、沙子等""沉积物""类物品的分区（slice）","[存储] 来源：cubicmetre 视频；2026-08-01 用户确认：社区把储存泥土/沙子类的存储类别叫""沉积物""",沉积物切片,
