@@ -3,3 +3,4 @@ Louvain method;Louvain algorithm,,一种基于模块度（modularity）优化的
 Copper Golem Sorter,,使用铜傀儡搬运物品、按多物品分区分类的存储装置,[存储] 来源：cubicmetre 视频；2026-08-01 用户确认,铜傀儡分类器,
 storage tech aid program,,"cubicmetre 自制的 scarpet 程序，用于存储技术辅助（最早出现在其""How to Build the Ultimate Storage""视频中）",[存储] 来源：cubicmetre 视频；2026-08-01 用户确认直译,存储技术辅助程序,
 sediment slice,,"存储系统中专门存放泥土、沙子等""沉积物""类物品的分区（slice）","[存储] 来源：cubicmetre 视频；2026-08-01 用户确认：社区把储存泥土/沙子类的存储类别叫""沉积物""",沉积物切片,
+block breaking progression saving,,世界边界相关的技术 bug（MC-54587）：方块破坏进度保存在被推出边界外的方块（如远古残骸）上，可使挖掘速度提升约 10%。,[通用] 来源：TechMCDocs 文章 GameMechanics/WorldBorder（FX）；2026-08-01 用户确认直译；关联 MC-54587,方块破坏进度保存,

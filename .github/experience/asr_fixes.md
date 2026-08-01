@@ -56,5 +56,13 @@
 | sort be | sort bee | 蜂巢（bee nests） |
 | item sort of breaks | item sorter breaks | ASR 漏词 |
 | free wide tilable | three-wide tileable | 三宽可堆叠 |
+| river skulls | wither skulls（凋灵之首） | 世界边界相关实体 |
+| slash tv | /tp | 命令（/teleport） |
+| coarse fruit | chorus fruit（紫颂果） | 末地植物 |
+| number block | another block | ASR 误识别（B36 语境） |
+| oral border | world border（世界边界） | ASR 漏音节 |
+| whirl border | world border（世界边界） | ASR 误识别 |
+| will the b36 is on the set of oral border | while the B36 is on the other side of the world border | 整句误识别（B36 语境） |
+| her speed | the speed | 冠词/代词误识别（挖掘速度语境） |
 
 
