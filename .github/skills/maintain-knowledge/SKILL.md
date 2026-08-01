@@ -1,6 +1,6 @@
 ---
 name: maintain-knowledge
-description: 维护项目第一类知识（knowledge/）和索引（indexes/）。包括术语登记、CSV 格式规范、版本标注、索引更新。修改 knowledge/ 或登记新术语时参考。
+description: 维护项目第一类知识（knowledge/）和索引（indexes/）。包括术语登记、通用知识卡维护、CSV 格式规范、版本标注、索引更新。修改 knowledge/、登记新术语或新建知识卡时参考。
 ---
 
 # 知识库维护
@@ -30,11 +30,17 @@ description: 维护项目第一类知识（knowledge/）和索引（indexes/）�
 此目录不仅包含游戏术语，还包含翻译所需的各类参考信息：
 
 ```
+knowledge/
+├── _template_knowledge.md      # 通用知识卡模板（唯一权威，位于 knowledge/ 根）
+├── 01_terminology/             # 术语表 CSV
+└── 02_mechanic/                # 机制知识卡
+
 knowledge/01_terminology/
-├── _example.csv           # 表头模板（所有 CSV 共享同一表头）
-├── _uncategorized.csv     # Agent 自动登记的新术语（待人工分拣）
-├── *.csv                  # 人工分拣后的各类术语表（redstone.csv、people.csv 等）
-└── ...                    # 按需扩展
+├── _example.csv            # 表头模板（所有 CSV 共享同一表头）
+├── _uncategorized.csv      # Agent 自动登记的新术语（待人工分拣）
+├── *.csv                   # 人工分拣后的各类术语表（redstone.csv、people.csv 等）
+├── *.md                    # 术语知识卡（<英文术语>.md）
+└── ...                     # 按需扩展
 ```
 
 所有 CSV 共用 `_example.csv` 中的表头。Agent 只写入 `_uncategorized.csv`，不创建其他 CSV。具体的术语文件清单见 `indexes/knowledge/`。
@@ -75,6 +81,37 @@ term_en,short_form,definition,notes,term_zh,term_ja
 ### 版本标注
 
 索引/知识条目的版本标注统一按 `indexing-rules` Skill 执行（`[通用]` / `[版本+]` / `[起-止]` / `[旧]` 等）。
+
+## 通用知识卡
+
+记录一条**词汇/概念/机制**的知识要点——定义、语境用法、翻译注意事项等（通用术语 CSV 未覆盖的部分）。
+
+### 模板
+
+- 唯一权威模板：`knowledge/_template_knowledge.md`
+- 每词/每概念一卡，文件命名 `<英文术语>.md`；术语类卡片放 `knowledge/01_terminology/`，机制类卡片放 `knowledge/02_mechanic/`
+- 卡片结构：YAML frontmatter（`term`/`aliases`/`category`/`source`/`version`/`status`）+ 3 分区（`要点`/`翻译注意事项`/`备注`）
+
+### 创建时机
+
+以下情况创建或更新知识卡：
+
+- 翻译中发现某词/概念有值得记录的语境用法、特殊指代或翻译注意事项（如 `main storage` 在本视频指 Wavetech 全物品仓库）
+- 用户明确要求登记某词条/概念
+
+### 维护规则
+
+- `status`：新建为 `待审核`；用户确认后改 `已确认`。`待审核` 卡片**不作为标准译名依据**（与 `[待审核]` 术语同理）
+- 版本标注遵循 `indexing-rules`（`[通用]`/`[1.21+]` 等）
+- 卡片创建/内容变更后，同步更新 `indexes/knowledge/` 下对应索引
+
+### 与相关机制的区分
+
+| 机制 | 记录什么 | 落点 |
+|------|----------|------|
+| 术语登记（`term-registration`） | 标准译名（英→中） | `_uncategorized.csv` |
+| 通用知识卡（本节） | 词汇/概念的知识要点、语境用法、翻译注意事项 | `<术语>.md` 知识卡 |
+| 陷阱词（`use-glossary`） | 看似普通实为术语的查词触发词 | `trap_words.md` |
 
 ## 更新索引
 
