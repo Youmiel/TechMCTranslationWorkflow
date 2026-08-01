@@ -7,3 +7,4 @@
 | [gtmc-articles.md](gtmc-articles.md) | gtmc-articles | CC BY-NC-SA 4.0 | ~55 | 12 |
 | [techmc-glossary.md](techmc-glossary.md) | techmc-glossary | MIT | 1 (CSV) | 1 |
 | [ArticlesAndDevNotes.md](ArticlesAndDevNotes.md) | ArticlesAndDevNotes | CC BY-SA 4.0 | ~20 | 3 |
+| [TechMCDocs.md](TechMCDocs.md) | TechMCDocs | —（仓库未标明 LICENSE） | ~27 | 8 |

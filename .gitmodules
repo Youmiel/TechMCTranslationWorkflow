@@ -16,3 +16,6 @@
 [submodule ".github/skills/humanizer-zh"]
 	path = .github/skills/humanizer-zh
 	url = git@github.com:op7418/Humanizer-zh.git
+[submodule "_repos/pages"]
+	path = _repos/TechMCDocs
+	url = git@github.com:TechMCDocs/pages.git

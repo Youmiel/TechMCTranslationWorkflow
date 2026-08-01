@@ -6,4 +6,5 @@
 - [lovexyn0827/Discovering-Minecraft](https://github.com/lovexyn0827/Discovering-Minecraft) 
 - [techmc-wiki/articles](https://github.com/techmc-wiki/articles) 
 - [TechMC-Glossary/TechMC-Glossary](https://github.com/TechMC-Glossary/TechMC-Glossary)
+- [TechMCDocs/pages](https://github.com/TechMCDocs/pages)（Technical Minecraft Wiki 页面源）
 - [Youmiel/ArticlesAndDevNotes](https://github.com/Youmiel/ArticlesAndDevNotes)
