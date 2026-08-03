@@ -163,7 +163,7 @@ def make_matcher(index):
 
 
 def parse_srt(path):
-    """解析 SRT → [(idx, start, end, [body...]), ...]（与 chunk_subtitles.py 同款）。"""
+    """解析 SRT → [(idx, start, end, [body...]), ...]（与 srt_chunk.py 同款）。"""
     with open(path, "r", encoding="utf-8-sig") as fh:
         text = fh.read()
     units = []

@@ -17,7 +17,8 @@
 | 脚本 | 用途 | 用法 |
 |------|------|------|
 | `srt_check_width.py` | 检查 SRT 中文行视觉宽度（translate-redstone 行宽规则；`--order` 指定双语语言顺序） | `python scripts/srt_check_width.py <draft.srt> [--warn 24] [--order en-zh|zh-en]` |
-| `chunk_subtitles.py` | 长视频按「N 负责 + M 上下文」分块（segment-subtitles Skill 用） | `python scripts/chunk_subtitles.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]` |
+| `srt_check_segments.py` | 校验分段/成稿时间约束：相邻段时间不重叠、时间边界 ⊆ 原边界集、段序不逆序、cue 覆盖完整（segment-subtitles Skill 用；`03_segments.md` 的 `~`=估算切分点） | `python scripts/srt_check_segments.py <目标> --orig <原字幕.srt> [--allow-estimated]` |
+| `srt_chunk.py` | 长视频按「N 负责 + M 上下文」分块（segment-subtitles Skill 用） | `python scripts/srt_chunk.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]` |
 | `srt_verify.py` | 核对并重编号修正 SRT（块数/时间码对齐）；**ASR 修正差异工具，非双语翻译稿校验器** | `python scripts/srt_verify.py <orig.srt> <fixed.srt>` |
 | `srt_diff.py` | 逐块对比两个 SRT（ts/正文差异） | `python scripts/srt_diff.py <a.srt> <b.srt>` |
 

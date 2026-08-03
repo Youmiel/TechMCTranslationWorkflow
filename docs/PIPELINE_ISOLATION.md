@@ -2,7 +2,7 @@
 
 > 目标：把"一个持续会话跑完整个翻译工作流"改造成**产物传递的管道**，隔离各步骤上下文、节省窗口、抵抗压缩丢细节。
 > 状态：方法与准则说明文档，供后续落地与改造参考；**不记录实施进度**（进度/改动以仓库提交历史为准）。
-> 相关实现：`scripts/chunk_subtitles.py`、`.github/skills/segment-subtitles`、`.github/skills/subagent-dispatch`。
+> 相关实现：`scripts/srt_chunk.py`、`.github/skills/segment-subtitles`、`.github/skills/subagent-dispatch`。
 
 ## 1. 为什么需要
 
@@ -66,7 +66,7 @@
 
 ## 7. 可落地的方向
 
-- 基础件：`chunk_subtitles.py`、`segment-subtitles`、`subagent-dispatch`
+- 基础件：`srt_chunk.py`、`segment-subtitles`、`subagent-dispatch`
 - 术语扫描分块（`translate-redstone` §1.1）
 - 去翻译腔独立化（`translate-redstone` 阶段二+）
 - 阶段〇 / 阶段三 顺手隔离（低优先级）
@@ -74,7 +74,7 @@
 
 ## 8. 相关资产
 
-- `scripts/chunk_subtitles.py` — N 负责 + M 上下文分块（OWNED/CONTEXT 分区）
+- `scripts/srt_chunk.py` — N 负责 + M 上下文分块（OWNED/CONTEXT 分区）
 - `.github/skills/segment-subtitles` — 断句/对白/结转/分块规则
 - `.github/skills/subagent-dispatch` — 派发模板 + 任务变体 + 纪律
 - `.github/skills/translate-redstone` — 主工作流（已引用本管道）

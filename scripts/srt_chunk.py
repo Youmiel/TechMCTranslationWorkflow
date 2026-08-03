@@ -8,7 +8,7 @@
   每块只负责产出 start cue 落在 OWNED 区的完整句；跨块未完成句由下一块在 CONTEXT 中看到开头后完成。
 
 用法:
-  python scripts/chunk_subtitles.py <input.srt> --out <dir> --owned 100 --ctx 6 [--order en-zh|zh-en]
+  python scripts/srt_chunk.py <input.srt> --out <dir> --owned 100 --ctx 6 [--order en-zh|zh-en]
 
 输入:
   merge 阶段     : 01_subtitle_asr_fixed.srt（单语英文 cue 流）

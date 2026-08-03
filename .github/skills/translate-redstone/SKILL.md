@@ -131,7 +131,8 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 ### 时间戳
 - 输出 SRT 的所有时间边界**必须 ⊆ 原字幕边界集合**（不允许新造时间点）
 - 合并/断句后每段时间码 = 该段覆盖的原字幕片段**首段 start → 末段 end**
-- 每次分句/合并后立即校验，写临时 Python 脚本自动检查，不要最后抽查
+- **相邻段时间不得重叠**：`end_i ≤ start_{i+1}`（允许相接不允许交叉）。共享 cue 的整条归属与中间断句估算切分见 [segment-subtitles#共享 cue 与整条归属（时间不重叠）](../segment-subtitles/SKILL.md#共享-cue与整条归属时间不重叠)
+- 每次分句/合并后立即校验，**不要最后抽查**：时间/重叠/逆序用 `python scripts/srt_check_segments.py <目标> --orig <01_subtitle_asr_fixed.srt>`，行宽用 `srt_check_width.py`（见 [segment-subtitles#输出与校验](../segment-subtitles/SKILL.md#输出与校验)）
 
 ### 断句（合并与分割）
 
@@ -150,7 +151,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 > 超长上下文任务（术语扫描、合并/断句、翻译、去翻译腔、批量校验等）都可用本机制控制上下文，**不限于断句**。凡 cue/段数超出单次上下文，必须先分块再逐块交给 subagent。
 
-- **工具**：`python scripts/chunk_subtitles.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]`（默认 N=100、M=6；输出 OWNED=本块负责 / CONTEXT=前后只读衔接 两分区；边界不切开任何 cue）
+- **工具**：`python scripts/srt_chunk.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]`（默认 N=100、M=6；输出 OWNED=本块负责 / CONTEXT=前后只读衔接 两分区；边界不切开任何 cue）
 - **输入**：merge 阶段用 `01_subtitle_asr_fixed.srt`（单语 cue 流）；translate 阶段用合并后的段 SRT（双语，附带知识卡）
 - **每块 prompt**：见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)
 - **跨块未完成句（结转规则）**：每块只产出语义完整句且其 start cue 落在 OWNED 区；负责区末尾句在可见上下文（OWNED+CONTEXT）内仍不完整则标记 `CARRY: c<起始idx>` 结转、不产出；下一块在 CONTEXT 看到该句开头则正常产出（start 落 CONTEXT 的结转句允许产出）；主 Agent 组装时对结转句只采用 start 最早的版本

@@ -12,7 +12,7 @@ description: 派发 subagent 处理长视频分块任务的模板与纪律。约
 ## 派发前主 Agent 准备
 
 1. 生成/读取该视频的**知识卡**（`02_terms.md`：已确认术语 + 陷阱词命中项 + ASR 修正映射）
-2. 用 `scripts/chunk_subtitles.py` 分块（见 [segment-subtitles](../segment-subtitles/SKILL.md)）
+2. 用 `scripts/srt_chunk.py` 分块（见 [segment-subtitles](../segment-subtitles/SKILL.md)）
 3. 为每块组装 prompt（模板见下），一次派发一批
 
 ## 每块 prompt 模板
