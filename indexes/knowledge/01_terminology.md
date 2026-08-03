@@ -1,6 +1,6 @@
 # 第一类术语知识索引
 
-> 生成时间：2026-08-01（更新：CSV 新增 B36/方块破坏进度保存/服务端碰撞箱 3 条术语；B36/服务端碰撞箱的视频特定机制细节拆至 `knowledge/02_mechanic/` 知识卡）
+> 生成时间：2026-08-01（更新：2026-08-03 清理与 L2/L1.5 缓存重复的词条——B36/Block 36/Moving Piston、Chunk Tick、Entity Update、Copper Golem、Copper Chest 已删，标准译名由 `.cache/glossary/`、`.cache/mojang/` 覆盖；B36/服务端碰撞箱机制细节在 `knowledge/02_mechanic/` 知识卡）
 > 时间戳 = **刷新判断依据**：仅在**非 `_uncategorized`** 内容实质变更时更新（`_uncategorized.csv` 词条变动不更新索引，见 `indexing-rules`「索引时间戳与更新策略」）
 > 对应目录：`knowledge/01_terminology/`
 
@@ -18,7 +18,7 @@
   - 关键词：通用, 基础
 
 - **`game_system.csv`** — 游戏机制/系统术语 [通用]
-  - 内容：游戏刻阶段（WTU 世界时间更新 / CT 区块刻 / EU 实体运算 / AT 异步事件 / 随机刻）、实体运动（yaw 偏航角 / pitch 俯仰角 / 流体加速）、物品组件（1.20.5+）、游戏刻加速（Tick Warping）
+  - 内容：游戏刻阶段（WTU 世界时间更新 / AT 异步事件 / 随机刻；CT 区块刻、EU 实体运算已并入 `.cache/glossary/`，2026-08-03 清理）、实体运动（yaw 偏航角 / pitch 俯仰角 / 流体加速）、物品组件（1.20.5+）、游戏刻加速（Tick Warping）
   - 关键词：游戏刻, 游戏阶段, 随机刻, 实体运动, 偏航角, 俯仰角, 物品组件, Tick Warping
   - 来源：gtmc-articles MicroTiming、Discovering-Minecraft 实体运动、cubicmetre 视频
 
@@ -31,8 +31,8 @@
   - 关键词：红石, 充能, 强充能, 弱充能, 二极管, 中继器, 比较器, 脚电, 切换状态, 三宽可堆叠, 漏斗锁定, 漏斗计数器
 
 - **`storage.csv`** — 存储技术术语 [存储]
-  - 内容：铜傀儡/铜箱子（快照新特性）、脉冲式物品分类器、无粉分类器、物品-潜影盒分离器、垂直整合、可变容器阈值、全物品仓库（Main Storage，本视频指 Wavetech）
-  - 关键词：存储, 物品分类器, 无粉, 铜傀儡, 铜箱子, 潜影盒, 垂直整合, 容器阈值, 全物品仓库
+  - 内容：脉冲式物品分类器、无粉分类器、物品-潜影盒分离器、垂直整合、可变容器阈值、全物品仓库（Main Storage，本视频指 Wavetech；铜傀儡/铜箱子已由 `.cache/mojang/` 覆盖，2026-08-03 清理）
+  - 关键词：存储, 物品分类器, 无粉, 潜影盒, 垂直整合, 容器阈值, 全物品仓库
 
 ## 子目录
 
