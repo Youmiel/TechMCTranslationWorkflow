@@ -1,6 +1,7 @@
 ﻿# Discovering-Minecraft 内容索引
 
 > 生成时间：2026-07-30
+> 上游 commit：969f5cdbc7f0f4a08d450577f12e9fc69e2a8994
 > 仓库：https://github.com/lovexyn0827/Discovering-Minecraft
 
 ## 实体运动研究与应用

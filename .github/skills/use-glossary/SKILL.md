@@ -27,15 +27,27 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 1. **禁止直接使用 `_repos/techmc-glossary/TechMC Glossary.csv`**（源文件是合并格式，且可能过时）
 2. **必须使用 `.cache/glossary/` 下的拆分文件**（按类别独立，Agent 按需加载）
 3. **使用前检查是否需要更新**
+4. **查词用 `python scripts/glossary_lookup.py <term> [<term>...]`**（只读，自动 L1→L1.5→L2；手工 grep 仅作兜底）
+
+## 四级查找（位置与执行）
+
+| 级 | 定位 | 查找位置 | 执行 |
+|----|------|----------|------|
+| **L1** | 热数据 | `knowledge/01_terminology/*.csv`、`.cache/mojang/redstone.csv` | `glossary_lookup.py` 自动 |
+| **L1.5** | Mojang 非红石 | `.cache/mojang/*.csv` | `glossary_lookup.py` 自动；grep 兜底 |
+| **L2** | 温数据 | `.cache/glossary/*.csv`（社区拆分） | `glossary_lookup.py` 自动 |
+| **L3** | 未命中 | — | 入"待查列表" → translate-redstone §1.3 集中补齐 |
+
+- **执行建议**：首选 `python scripts/glossary_lookup.py <term> [<term>...]`（只读，自动按 L1→L1.5→L2 批量查询，命中输出来源）；工具不覆盖时用 grep_search 按上表位置兜底
+- **新增词汇表源**：按上表「查找位置」判断归属级（新增 Mojang 表→L1.5；新增社区分类→L2；新增项目库 CSV→L1），更新位置即可，Agent 据表快速识别
 
 ## 工作流程
 
 ### 翻译/检索前
 
 ```
-1. 运行 python scripts/glossary_split.py --check
-2. 若退出码 = 1（需要拆分）：运行 python scripts/glossary_split.py
-3. 按下方"类别预判"规则确定领域 → 加载 .cache/glossary/<相关类别>.csv
+1. 运行 python scripts/refresh_cache.py（统一检查/刷新三类缓存；或按需单独 glossary_split.py --check）
+2. 按下方"类别预判"规则确定领域 → 加载 .cache/glossary/<相关类别>.csv
 ```
 
 ### 类别预判（翻译前确定领域）

@@ -1,6 +1,7 @@
 # gtmc-articles 内容索引
 
 > 生成时间：2026-07-30
+> 上游 commit：d8ea519b0862a0f03386853944548626b9e19bc6
 > 仓库：https://github.com/techmc-wiki/articles
 > 在线阅读：https://techmc.wiki
 

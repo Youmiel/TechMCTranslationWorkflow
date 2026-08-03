@@ -1,6 +1,7 @@
 # techmc-glossary 内容索引
 
 > 生成时间：2026-07-30
+> 上游 commit：1f4da98548598cdd5d1c9c72818195cdab3bd6f5
 > 仓库：https://github.com/TechMC-Glossary/TechMC-Glossary
 > 在线浏览：http://beta.techmc.wiki/glossary
 

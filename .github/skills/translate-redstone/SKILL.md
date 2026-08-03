@@ -5,6 +5,19 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 # 红石技术字幕翻译官
 
+## 扩展 Skill 地图（细节住在各扩展 Skill，本流程只留指针）
+
+| 话题 | 权威 Skill |
+|------|-----------|
+| 断句/合并/分块/行宽 | `segment-subtitles` |
+| subagent 派发 | `subagent-dispatch` |
+| 术语表加载/四级查找 | `use-glossary` |
+| 术语登记 | `term-registration` |
+| CSV 读写/表头 | `csv-rules` |
+| Wiki 抓取/兜底 | `wiki-tools` |
+| 去翻译腔 | `humanizer-zh` |
+| 知识/索引维护 | `maintain-knowledge` |
+
 ## 适用范围
 
 - **一次一个视频**，精细翻译，不批量处理
@@ -26,9 +39,37 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 | 选项 | 说明 |
 |------|------|
-| `bilingual`（默认） | 原文一行，中文一行，保留时间码 |
+| `bilingual`（默认） | 英文行在前、中文行在后（en-zh），保留时间码 |
 | `zh-only` | 仅中文，保留时间码 |
 | `annotated` | 双语 + 术语来源注释 |
+
+> **语言顺序固定为 `en-zh`（先英文后中文）**：Agent 输出、构建脚本、校验脚本一律遵守，不得产出后再手动重排。双语相关脚本统一用 `--order en-zh|zh-en` 显式指定语言顺序（默认 en-zh）。
+
+## 目录约定（_input / _output / _work）
+
+本项目三个工作目录各司其职，**只读写与当前视频相关的部分**：
+
+| 目录 | 角色 | 读写 |
+|------|------|------|
+| `_input/` | 待翻译字幕入口（用户放置 SRT/transcript） | 只读输入 |
+| `_output/` | 最终交付输出（默认双语 en-zh） | 写最终产物 |
+| `_work/<视频名>/` | 当前视频的中间产物 + 断点恢复 + 一次性脚本 | 只读写**当前视频**子目录 |
+
+### 禁止参考其他视频的历史文件
+
+`_work/`、`_output/` 下**其它视频**（非当前处理对象）的文件一律**不得**作为：
+
+- **格式/模板参考**（SRT 结构、双语顺序、标注方式）
+- **术语/译名来源**（其它视频的 `02_terms.md`、登记过的译名不是权威）
+- **翻译风格来源**（其它视频的译文不代表 `ref_translations/` 的风格约定）
+
+它们是别的工作的历史产物，可能过时、分段顺序不同、术语口径不同。参考来源只能使用：
+
+- `ref_translations/`（项目维护的参考译例，阶段二模仿其风格）
+- `knowledge/`、`.cache/`（权威知识/术语）
+- 当前视频自身 `_work/<当前视频名>/` 的中间产物（断点恢复）
+
+> 每次视频启动先确认「当前视频名」，所有读写限定在 `_work/<当前视频名>/`；发现自己正在翻看其它视频的文件时立即停止并切回。
 
 ## 中间产物与断点恢复
 
@@ -92,19 +133,9 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 断句（合并与分割）
 
-断句 = **合并** ASR 碎片成完整句 + **分割**超长句为多段独立字幕。**两遍式**：翻译前只能靠英文语音做初步分组；"中文为主导"发生在译成中文之后。
+断句与分块规则**全部见 [segment-subtitles](../segment-subtitles/SKILL.md)（权威）**——语义合并判据（不以标点为准）、英文预整理（游离单词归位）、两遍式、对白拆分、分割超长句、语义锚点、行宽、长视频分块与跨块结转，均以该 Skill 为准，本段不再重复。
 
-**英文预整理（先于第 1 遍）**：ASR 按 cue 切分常把句子的**首尾单词甩到行外**（如 `...a design. My` 的 `My` 属下一句、`...wrong. In` 的 `In` 属下一句）。分组前先把这类**游离单词归位到所属句子**，整理出干净的英文句子流；归位只在既有 cue 内重分布文本，**不改动时间码**。
-
-- **第 1 遍（英文侧，初步分组）**：翻译前仅有英文，以**整理后**的英文句的 `.?!` 为语音边界，把碎片拼成句级单元，只保证语音/语义连续
-- **第 2 遍（中文侧，最终定段）**：逐单元译成中文后，以**中文为主导**做最终合并与分割：
-  - 中文读着零碎/别扭的片段 → **合并**成语义完整单元（中文怎么顺就怎么分）
-  - **合并判据是"语义完整性"，不是行宽下限**：语义独立且完整的短句保持独立成行，不强凑 15-20 字（如 `启动测试。`、`物品流来了。` 各自成行）
-  - 中文行超宽的整句 → **分割**成几段独立字幕，每段独立序号与时间码，语义相对连续、完整，不硬切残句
-  - 禁止段内多行（同一时间码内把一行中文拆成两行）
-  - 禁止把超宽整句一字不动留成一段
-- **语音锚点**：英文行始终锚定原 ASR `.?!` 语音边界，中文段与英文句一一配对
-- **行宽**：中文行按视觉宽度判断——CJK=1、拉丁词≈1.5~2、数字串≈1~2；目标 15-20、警告阈值 >24；**禁止用 Python `len()`** 判断（会虚高拉丁行）。15-20 是**上限方向的目标，不是下限**——不因行过短而强行合并
+> **必须使用工具**：合并/断句一律按 [segment-subtitles](../segment-subtitles/SKILL.md) 执行；长视频（cue 数超出单次上下文）**必须先分块**：`python scripts/chunk_subtitles.py <srt> --out <dir> --owned N --ctx M`，再逐块交给 subagent（派发模板见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)），禁止整条字幕一次性合并/翻译。
 
 ### CSV 读写
 - 统一按 `csv-rules` Skill 执行（`utf-8-sig` 读 / `utf-8` 写、`csv` 模块解析、脚本文件勿 `python -c` 内联）
@@ -136,21 +167,25 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 ### 阶段一：术语扫描与知识补齐
 
 #### 1.1 加载本地知识
-- 运行 `python scripts/glossary_split.py --check`，若需要则拆分上游术语表
-- 运行 `python scripts/glossary_fetch_mojang.py`，获取 Mojang 官方最新译名（若已是最新则跳过）
+- 运行 `python scripts/refresh_cache.py`（统一入口：检查并刷新三类本地缓存 mojang / 拆分术语表 / wiki；或按需单独跑 `glossary_split.py --check`、`glossary_fetch_mojang.py`）
 - 加载阶段〇确定的分类术语文件，建立术语映射表
 
-#### 1.2 逐句扫描
-- 遍历输入文本的每一句原文，识别所有红石术语、机制概念、专有名词
+#### 1.2 术语扫描（分块隔离）
+> 原隐含在主会话"逐句全量扫描"，现按 `docs/PIPELINE_ISOLATION.md` 隔离为「分块独立扫描 + 主会话汇总」，以控制上下文。
+
+1. **ASR 修正落盘**：先完成 ASR 解码与句子边界整理，写 `01_subtitle_asr_fixed.srt`（无强制归属，Agent 视上下文余量决定在主会话或独立上下文执行）
+2. **分块**：`python scripts/chunk_subtitles.py <01_subtitle_asr_fixed.srt> --out <dir> --owned N --ctx M`（与断句阶段同款；默认 N=100、M=6）
+3. **块级扫描**：每块交给一个 subagent，按 [subagent-dispatch#任务变体](../subagent-dispatch/SKILL.md#任务变体) 的「术语扫描」执行：识别红石术语/机制/专有名词、陷阱词强制查词、先解码 ASR 误识别、四级查找，输出**块级术语清单**
+4. **主会话汇总**：合并各块清单，按 `term_en` 去重；`[ASR 推测]`/`[推断]`/`[待审核]` 决策行保留**首次出现时间戳**；跨块去重所有 L3 未命中术语，进入 §1.3 集中补齐
+
+每块 subagent 均须遵守以下扫描规则：
 - **陷阱词强制查词**：对 `use-glossary` 加载的「陷阱词清单」（`.github/experience/trap_words.md`）中的词——即使拼写是普通英文——也强制走 L1/L2 查找（如 `filter`、`main storage`、`Hermits`）
 - **先解码 ASR 误识别**：遇到词典/术语表找不到的怪词，先查 `.github/experience/asr_fixes.md`；未命中但形似已知实体名时按 `[ASR 推测]` 处理并登记，**同时记录该词首次出现的字幕时间戳**（供 §1.4 反馈定位）
-- 对每个术语执行四级查找：
+- **四级查找**：
   - **L1（热数据）**：查 `knowledge/` 术语 CSV + `.cache/mojang/redstone.csv` → 命中则记录
   - **L1.5（Mojang 非红石）**：若 L1 未命中且术语像物品/方块名 → 用文件搜索（grep_search）查 `.cache/mojang/blocks.csv`、`items.csv`、`entities.csv`、`misc.csv` → 命中则记录 Mojang 官方译名
   - **L2（温数据）**：查 `.cache/glossary/`（社区技术术语）→ 命中则记录
   - **L3（未命中）**：加入"待查列表"
-- 汇总所有 L3 未命中的术语，去重
-- **落盘**：ASR 解码完成后写 `01_subtitle_asr_fixed.srt`（详见「中间产物与断点恢复」）
 
 #### 1.3 集中补齐（翻译前一次性完成所有网络请求）
 
@@ -158,19 +193,14 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 2. 对每个术语判断应查询的数据源（参考 `docs/SOURCE_COVERAGE.md`）：
    - Wiki 擅长类型（基础定义、合成配方）→ 调 `mc-wiki-fetch-mcp` 的 `get_page`（wikitext，无损）逐页面抓取，不可用时按可靠度降级（fetch_wiki.py → minecraft-wiki-mcp）
    - 社区资料擅长类型（高端技术、经验总结）→ 查 `indexes/repos/` 索引定位
-3. **请求频率控制**：
-   - 每次 `get_page` 调用之间间隔至少 2 秒
-   - 遇到 429/403 错误时指数退避重试（2s → 4s → 8s，最多 3 次）
-   - 一个视频的 Wiki 查询通常在 5-15 次，总耗时约 10-30 秒，在合理范围内
-   - 参考 `docs/SOURCE_COVERAGE.md` 中"Wiki"节的反爬说明
-4. Wiki 结果按 `docs/WIKI_CACHE_FORMAT.md` 模板写入 `.cache/wiki/<规范中文页面名>.md`；获取内容后**顺手提取要点 + 格式化**（`fidelity: refined`），保留关键数据表/数值，数值逐字不改。文件名用**解析后的中文规范标题**，禁止再用英文查询词命名（避免中英文重复缓存）
-5. 从返回内容和社区资料中提取术语译名，补充到内存映射表
-6. **上下文推断（降级策略）**：对仍无法从任何外部数据源获取的术语——
+3. **抓取细节**：降级链、请求频率控制、保真阶梯、缓存命名、缓存写入模板见 [wiki-tools#抓取注意事项](../wiki-tools/SKILL.md#抓取注意事项)（权威）
+4. 从返回内容和社区资料中提取术语译名，补充到内存映射表
+5. **上下文推断（降级策略）**：对仍无法从任何外部数据源获取的术语——
    - 回到原始字幕中，搜索该术语首次出现的前后 3-5 句
    - 判断原文是否已经解释或定义了该术语（技术视频常有"今天我要介绍一个新技术，叫做……"的模式）
    - 若有可推断的上下文 → 提取推断译名，标记为 `[推断：原词 — 基于视频上下文]`
    - 若上下文也不足以推断 → 仍给出**候选译名 + 推断依据**（按词形/相关术语/语境最佳猜测），标记为 `[待审核：原词 → 候选译名（依据）]`
-7. 经上述流程仍无法确定译名的术语，最终标记为 `[待审核：原词 → 候选译名（依据）]`——**不得只保留原文**，必须带候选供用户确认或否决
+6. 经上述流程仍无法确定译名的术语，最终标记为 `[待审核：原词 → 候选译名（依据）]`——**不得只保留原文**，必须带候选供用户确认或否决
 
 #### 1.4 术语确认
 输出术语清单供用户确认，**ASR 误识别单独一栏**集中批注。**所有需要决策的行（`[ASR 推测]`/`[推断]`/`[待审核]`）必须附带字幕时间戳**，便于用户定位上下文；普通行同样填写：
@@ -194,7 +224,12 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 #### 1.5 术语入库
 
-用户确认术语清单后、开始翻译前，将已确认的术语写入知识库。按 `term-registration` Skill 执行：筛选已确认条目 → 写 `_uncategorized.csv`（查重、不覆盖）→ 更新 `indexes/knowledge/` → ASR 映射登记 `asr_fixes.md`。
+用户确认术语清单后、开始翻译前，将已确认的术语写入知识库。按 [term-registration#同步步骤](../term-registration/SKILL.md#同步步骤) 执行，数字步骤：
+1. 筛选已确认条目（排除 `[待审核]`）
+2. 写 `_uncategorized.csv`（查重、不覆盖）
+3. ASR 映射登记 `asr_fixes.md`
+
+> `_uncategorized.csv` 词条变动**不更新** `indexes/knowledge/`（索引为纯静态，见 `indexing-rules`）
 
 ---
 
@@ -203,7 +238,10 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 所有术语译名已就绪，零网络等待。**先定段落，再逐句翻译**。
 
 #### 合并与断句（翻译前先定段落）
-- 按「已验证规则 → 断句（合并与分割）」的两遍式执行：先英文侧初步分组，译成中文后以中文为准最终定段（规则不在此重复）
+- 合并/断句规则 -> [segment-subtitles#工作流程](../segment-subtitles/SKILL.md#工作流程处理顺序)，按数字步骤执行：
+  1. 英文预整理（游离单词归位）-> [segment-subtitles#英文预整理](../segment-subtitles/SKILL.md#英文预整理游离单词归位)
+  2. 第 1 遍英文侧初步分组 -> [segment-subtitles#合并判据](../segment-subtitles/SKILL.md#合并判据语义完整性不以标点为准)
+  3. 第 2 遍中文侧最终定段 -> [segment-subtitles#分割超长句](../segment-subtitles/SKILL.md#分割超长句)
 - **落盘**：断句定稿后写 `03_segments.md` 再交用户审核（详见「中间产物与断点恢复」）
 - **分段方案先交用户审核**（阶段二½），确认后再定稿翻译
 
@@ -219,9 +257,11 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ---
 
-### 阶段二+：去翻译腔（可选）
+### 阶段二+：去翻译腔（可选，独立上下文）
 
-初步翻译完成后，用 `humanizer-zh` Skill 检查并消除字幕中的"翻译腔"和 AI 味：
+初步翻译完成后，用 [humanizer-zh](../humanizer-zh/SKILL.md) 检查并消除译文中的"翻译腔"和 AI 味。
+
+> **独立上下文执行**（原隐含在主会话顺带做，现按 `docs/PIPELINE_ISOLATION.md` 隔离）：本步骤作为**独立一遍**运行——只读 `04_translation_draft.srt` 全稿 + `humanizer-zh` 规则，独立窗口产出修订稿，不在翻译会话里顺带改。全稿超长时可先分块、各块独立跑（块间用同一规则模板约束，保持风格一致）。
 
 1. 加载 `humanizer-zh` Skill（`.github/skills/humanizer-zh/SKILL.md`），按其 24 种 AI 写作模式清单扫描译文
 2. 重点关注字幕场景常见的：
@@ -277,28 +317,11 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 目的：逐步建立"哪个数据源擅长哪类知识"的经验地图，供后续 Agent 在阶段〇参考。
 
-## MCP 工具与兜底
+## Wiki 抓取与兜底
 
-本 Skill 在阶段一的"集中补齐"步骤中使用。
-
-### Wiki 页面获取（按数据源可靠度降级，优先保真度高的源）
-
-1. `mc-wiki-fetch-mcp` → `search_wiki(q)` / `get_page(pageName)`（wikitext，**唯一无损源**，ID 表/色值/历史/隐藏注释全保留，查精确数据/术语定义最可靠）
-2. `python scripts/fetch_wiki.py "页面名" ["页面名" ...]`（纯 urllib，正文+版别+数值可读，但**表格被剥离**）
-   - 批量调用 MediaWiki API（`titles=A|B|C` 管道符）
-   - 结果写入 `.cache/wiki/`，返回 JSON 摘要供 Agent 解析
-3. `minecraft-wiki-mcp` → `minecraft_wiki_search(q)` / `minecraft_wiki_get_page(pageName)`（markdown，模板占位/乱码/数值丢，仅快速浏览正文）
-4. 浏览器访问 `https://zh.minecraft.wiki/` → 站内搜索 → 阅读页面内容（终极兜底，所有 API 都不可用时）
-   - **读取后同样按模板写入 `.cache/wiki/`**（`via: browser`），不得跳过落盘
-
-### 缓存写入保真阶梯（与获取优先级一致，按内容质量选源）
-
-- `mc-wiki-fetch-mcp`（wikitext）→ `fidelity: lossless`，唯一无损源（ID 表/颜色表/历史/隐藏注释全保留），查**精确数据/术语定义**用它最可靠
-- Agent 获取后顺手提取要点 + 格式化 → `fidelity: refined`（默认推荐）
-- `fetch_wiki.py`（纯文本）→ `fidelity: plain`，正文+版别+数值可读，但**表格被剥离**，查 ID/色值/历史不能信它
-- `minecraft-wiki-mcp`（markdown）→ `fidelity: degraded`，三源中最差（模板占位/乱码/数值丢），只适合快速浏览正文
-- 读缓存时按 `fidelity` 判断是否回源补精确数据；规范见 `docs/WIKI_CACHE_FORMAT.md`
-
-### 社区资料
-
-非 Wiki 来源（博客、深度分析）优先查 `indexes/repos/` 定位本地仓库文件，不通过网络抓取。
+Wiki 页面获取降级链、缓存保真阶梯、抓取注意事项、社区资料检索**见 [wiki-tools#抓取注意事项](../wiki-tools/SKILL.md#抓取注意事项)（权威）**。要点（按优先级降级）：
+1. `mc-wiki-fetch-mcp`（无损）
+2. `python scripts/fetch_wiki.py`
+3. `minecraft-wiki-mcp`
+4. 浏览器访问 `https://zh.minecraft.wiki/`（终极兜底）
+MCP 配置见 `.vscode/mcp.json`，部署见 `docs/MCP_DEPLOYMENT.md`。

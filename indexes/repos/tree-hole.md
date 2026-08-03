@@ -1,6 +1,7 @@
 ﻿# tree-hole 内容索引
 
 > 生成时间：2026-07-30
+> 上游 commit：b70c8a19575d7dbbbde4090c4745d5310fb61f9c
 > 仓库：https://github.com/acaciachan/tree-hole
 
 ## 方块机制

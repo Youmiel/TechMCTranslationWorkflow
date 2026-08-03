@@ -1,6 +1,6 @@
 ---
 name: maintain-knowledge
-description: 维护项目第一类知识（knowledge/）和索引（indexes/）。包括术语登记、通用知识卡维护、CSV 格式规范、版本标注、索引更新。修改 knowledge/、登记新术语或新建知识卡时参考。
+description: 维护项目第一类知识（knowledge/）与索引（indexes/）的总入口：目录速查、维护任务路由（细节在各扩展 Skill）、通用知识卡维护、运行脚本、安全规则。修改 knowledge/、新建知识卡、或需决定"用哪个维护 Skill"时参考。
 ---
 
 # 知识库维护
@@ -16,6 +16,18 @@ description: 维护项目第一类知识（knowledge/）和索引（indexes/）�
 | `_repos/` | 第三类，Submodule | 上游维护，只读引用 |
 | `indexes/` | 索引，Git 追踪 | 内容变更后同步更新 |
 | `scripts/` | 工具脚本 | 按需修改 |
+
+## 维护任务决策（用哪个 Skill）
+
+| 任务 | 用哪个 Skill |
+|------|-------------|
+| 术语登记（英→中） | `term-registration` |
+| CSV 读写/表头列含义 | `csv-rules` |
+| 索引格式/版本/时间戳 | `indexing-rules` |
+| 外部仓库索引生成/更新判断 | `index-repos`（`scripts/check_index_stale.py`） |
+| 术语表加载/四级查找 | `use-glossary` |
+| Wiki 抓取/兜底 | `wiki-tools` |
+| 通用知识卡 | 本 Skill [#通用知识卡](#通用知识卡) 节 |
 
 ## 术语体系（防混淆）
 
@@ -51,36 +63,13 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 
 登记流程（触发条件、同步步骤、ASR 映射登记）统一按 `term-registration` Skill 执行。
 
-### 文件格式
+### 文件格式与规范（指针）
 
 - 长篇机制说明：`knowledge/<分类>/<词条>.md`（含 YAML frontmatter）
-- 术语/人物/组织：CSV，共享 `_example.csv` 中的表头
-- 所有术语 CSV 表头统一，Agent 新建术语只能写入 `_uncategorized.csv`
-
-### CSV 表头（见 `_example.csv`）
-
-```csv
-term_en,short_form,definition,notes,term_zh,term_ja
-```
-
-- `term_en` 为首列（英→中翻译场景的自然查找方向），分号分隔同义词
-- 语言列放在末尾，可随意向右扩展（`term_ko` `term_ru` 等）
-- `category` 由文件名表达，无需在表中
-
-| 列 | 说明 | 示例 |
-|----|------|------|
-| `term_en` | 英文标准术语，分号分隔同义词 | `BUD;Block Update Detector` |
-| `short_form` | 缩写 | `BUD` |
-| `definition` | 中文释义 | `能检测相邻方块更新并输出信号的元件` |
-| `notes` | 备注（版本、来源、审核状态等） | `[1.16+]`、`待审核` |
-| `term_zh` | 中文标准译名 | `方块更新检测器` |
-| `term_ja` | 日文术语 | `BUD` |
-
-> **CSV 读写**：编码、解析、写入统一按 `csv-rules` Skill 执行。
-
-### 版本标注
-
-索引/知识条目的版本标注统一按 `indexing-rules` Skill 执行（`[通用]` / `[版本+]` / `[起-止]` / `[旧]` 等）。
+- 术语/人物/组织：CSV，共享 `_example.csv` 表头；Agent 新建术语只能写入 `_uncategorized.csv`
+- **CSV 表头列含义**：`csv-rules` Skill（唯一权威）
+- **CSV 读写规范**：`csv-rules` Skill（编码/解析/写入）
+- **版本标注**：`indexing-rules` Skill
 
 ## 通用知识卡
 
@@ -116,6 +105,7 @@ term_en,short_form,definition,notes,term_zh,term_ja
 ## 更新索引
 
 内容变更后，更新 `indexes/knowledge/` 下对应索引文件。条目格式与版本标注按 `indexing-rules` Skill 执行。
+- **时间戳**：索引文件的「生成时间/最近更新」是刷新判断依据，内容实质变更时同步更新；`_uncategorized.csv` 这类高频变动区只保留静态占位，其词条变动不触发索引更新、不更新时间戳（见 `indexing-rules`「索引时间戳与更新策略」）
 
 ## 运行脚本
 
@@ -124,6 +114,7 @@ term_en,short_form,definition,notes,term_zh,term_ja
 | 拆分术语表 | `python scripts/glossary_split.py` |
 | 检查术语表 | `python scripts/glossary_split.py --check` |
 | 同步 submodule | `git submodule update --remote` |
+| 检查索引是否过期 | `python scripts/check_index_stale.py` |
 
 ## 安全规则
 

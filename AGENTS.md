@@ -13,12 +13,18 @@
 5. **术语一致** — 严格遵循 `knowledge/01_terminology/` 中的标准译名
 6. **禁止自动删除** — 任何删除文件/目录的操作必须由用户明确发起，Agent 不得主动执行删除。需要清理时，提示用户自行操作。
 
+## 组织路由
+
+- 翻译工作流 → `translate-redstone` Skill（细节在各扩展 Skill，见其「扩展 Skill 地图」）
+- 知识/索引维护 → `maintain-knowledge` Skill（决策路由见其「维护任务决策」）
+- Wiki 抓取/兜底 → `wiki-tools` Skill
+
 ## 工作流程
 
 翻译红石技术内容时，Agent 应：
 
 1. 加载术语源（按优先级）：
-   - `.cache/glossary/<相关类别>.csv`（拆分缓存，使用前运行 `python scripts/glossary_split.py --check`）
+   - `.cache/glossary/<相关类别>.csv`（拆分缓存，使用前运行 `python scripts/refresh_cache.py` 统一检查/刷新）
    - `knowledge/01_terminology/`（项目术语库，含译名标准、人物、组织）
 2. 按三级路由检索知识：`knowledge/` → `.cache/` → MCP Wiki 工具
 3. 严谨翻译红石术语，禁止自创译名
@@ -34,12 +40,11 @@
 
 ### 兜底策略
 
-当 MCP 工具不可用时，完整降级链与缓存保真阶梯见 `translate-redstone` Skill §「MCP 工具与兜底」（权威）。要点：`python scripts/fetch_wiki.py "页面名"` → 浏览器访问 `https://zh.minecraft.wiki/`（终极兜底）。
+当 MCP 工具不可用时，完整降级链与缓存保真阶梯见 `wiki-tools` Skill（权威）。要点：`python scripts/fetch_wiki.py "页面名"` → 浏览器访问 `https://zh.minecraft.wiki/`（终极兜底）。
 
 ### 抓取注意事项
 
-- **中文搜索用英文关键词**：`srsearch=redstone` 正常，`srsearch=红石` 会失败
-- **parse 接口正常**：`page=红石` 中文页面名在 path 中无问题
+抓取降级链、请求频率控制、缓存保真阶梯、抓取注意事项（中文搜英文关键词等）见 `wiki-tools` Skill（权威）。
 
 ## 参考哲学
 

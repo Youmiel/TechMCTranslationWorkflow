@@ -10,12 +10,15 @@
 | `glossary_fetch_mojang.py` | 从 Mojang 官方 API 下载最新翻译词汇表 | `python scripts/glossary_fetch_mojang.py [--check]` |
 | `glossary_lookup.py` | 按 L1→L1.5→L2 查术语中文译名（只读） | `python scripts/glossary_lookup.py <term> [<term> ...]` |
 
+> `mojang_glossary/` 是 `glossary_fetch_mojang.py` 的实现包（内部逻辑），**非独立工具，勿直接调用**；`__init__.py`、`LICENSE` 非工具。
+
 ## 字幕流水线工具（`srt_*`，`translate-redstone` Skill 用）
 
 | 脚本 | 用途 | 用法 |
 |------|------|------|
-| `srt_check_width.py` | 检查 SRT 中文行视觉宽度（skill 行宽规则） | `python scripts/srt_check_width.py <draft.srt> [--warn 24]` |
-| `srt_verify.py` | 核对并重编号修正 SRT（块数/时间码对齐） | `python scripts/srt_verify.py <orig.srt> <fixed.srt>` |
+| `srt_check_width.py` | 检查 SRT 中文行视觉宽度（translate-redstone 行宽规则；`--order` 指定双语语言顺序） | `python scripts/srt_check_width.py <draft.srt> [--warn 24] [--order en-zh|zh-en]` |
+| `chunk_subtitles.py` | 长视频按「N 负责 + M 上下文」分块（segment-subtitles Skill 用） | `python scripts/chunk_subtitles.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]` |
+| `srt_verify.py` | 核对并重编号修正 SRT（块数/时间码对齐）；**ASR 修正差异工具，非双语翻译稿校验器** | `python scripts/srt_verify.py <orig.srt> <fixed.srt>` |
 | `srt_diff.py` | 逐块对比两个 SRT（ts/正文差异） | `python scripts/srt_diff.py <a.srt> <b.srt>` |
 
 ## 独立工具
@@ -24,6 +27,7 @@
 |------|------|------|
 | `fetch_wiki.py` | MediaWiki API 直连（兜底，MCP 不可用时） | `python scripts/fetch_wiki.py "页面名" ["页面名" ...]` |
 | `refresh_cache.py` | 统一入口，检查并刷新三类本地缓存 | `python scripts/refresh_cache.py [--force\|--dry-run\|--ttl N]` |
+| `check_index_stale.py` | 对比 submodule 当前 commit 与索引记录 commit，报告哪些索引需更新 | `python scripts/check_index_stale.py [--only <repo>]` |
 | `setup_editors.py` | 编辑器适配初始化（跨平台，创建 Claude Code 等所需的 symlink） | `python scripts/setup_editors.py [--force]` |
 
 每个脚本的详细说明见 `python <script>.py --help`。

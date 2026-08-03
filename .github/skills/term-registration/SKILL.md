@@ -26,7 +26,7 @@ description: 将已确认的英文术语→中文译名登记到 knowledge/01_te
 3. **查重**：读 `knowledge/01_terminology/_uncategorized.csv`，检查 `term_en` 是否已存在
 4. **追加**：不存在则用 Python `csv.DictWriter` 追加新行（`term_en`、`term_zh`、`definition` 从映射表获取，其余字段留空或填来源注释）；存在则跳过、不覆盖
    - **来源格式**：`notes`/`definition` 中的来源必须写**具体缓存文件路径**——`.cache/glossary/<分类>.csv`、`.cache/mojang/<文件>.csv`、`knowledge/01_terminology/<分类>.csv`；**禁止**写笼统的 "TechMC Glossary" / "knowledge/"（呼应 `use-glossary`"用拆分缓存、不用源文件"规则）
-5. **更新索引**：更新 `indexes/knowledge/` 下对应索引文件
+5. **索引**：`_uncategorized.csv` 词条变动**不更新** `indexes/knowledge/` 的具体词条（该条目只保留静态占位描述）；仅当新增**非 `_uncategorized`** 的稳定条目或类别描述实质变化时才更新索引，并同步更新索引文件的「最近更新/生成时间」时间戳（刷新判断依据，见 `indexing-rules`「索引时间戳与更新策略」）
 
 ## ASR 映射登记（翻译工作流专用）
 
@@ -35,4 +35,4 @@ description: 将已确认的英文术语→中文译名登记到 knowledge/01_te
 ## 相关规范
 
 - CSV 编码/解析/写入细节见 `csv-rules` Skill
-- 表头列含义见 `maintain-knowledge` Skill 的"CSV 表头"节
+- 表头列含义见 `csv-rules` Skill「表头列含义」（唯一权威）
