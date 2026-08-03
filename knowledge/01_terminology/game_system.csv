@@ -1,7 +1,5 @@
 ﻿term_en,short_form,definition,notes,term_zh,term_ja
 World Tick Update,WTU,游戏刻阶段之一，世界时间计数器+1，标志新游戏刻开始,[通用] 来源：gtmc-articles MicroTiming,世界时间更新,
-Chunk Tick,CT,游戏刻阶段之一，处理雷暴、结冰、随机刻等区块级事件,[通用] 来源：gtmc-articles MicroTiming,区块刻,
-Entity Update,EU,游戏刻阶段之一，实体执行自身行为逻辑（生物移动、TNT爆炸等）,[通用] 来源：gtmc-articles MicroTiming,实体运算,
 Async Task; Network Update,AT;NU,游戏刻阶段之一，处理玩家放置/破坏方块、触发压力板等异步事件,[通用] 来源：gtmc-articles MicroTiming,异步事件,
 Random Tick,,区块刻阶段中随机选中区块内方块执行生长、蔓延等随机事件的机制,[通用] 来源：gtmc-articles MicroTiming,随机刻,
 yaw,,实体的水平旋转角度，取值范围(-180~180]，正南为0，顺时针为正,[通用] 来源：Discovering-Minecraft 实体运动,偏航角,
@@ -10,4 +8,3 @@ Fluid Acceleration,,实体在与流体接触时受到的加速作用（区别于
 Item Components,,Minecraft 1.20.5+中取代NBT的物品数据系统，定义物品的属性、行为等,[通用] 来源：cubicmetre视频,物品组件,
 Tick Warping,,利用技术手段加速游戏刻执行速度以进行快速测试,[通用] 来源：cubicmetre视频,游戏刻加速,
 server-sided hitbox,,服务端维护的实体碰撞箱，与客户端（client）相对。,[通用] 来源：TechMCDocs 文章 GameMechanics/WorldBorder（FX）；2026-08-01 用户确认直译；世界边界场景机制细节见 knowledge/02_mechanic/server-sided-hitbox.md,服务端碰撞箱,
-B36;Block 36;Moving Piston,B36,活塞推动/拉回路径上的方块被转换为的移动中方块实体；不导电、不可见但有碰撞箱。,[通用] 来源：.cache/glossary/general.csv（B36→36号方块、Moving Piston→移动中的方块）；2026-08-01 FX 视频确认；世界边界机制细节与翻译约定见 knowledge/02_mechanic/B36.md,36号方块（移动中的方块）,

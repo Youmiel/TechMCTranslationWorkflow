@@ -25,7 +25,7 @@
 
 同一条多个变体合并为一行（`/` 分隔）。
 
-> **时间戳不入库**：字幕时间戳是逐视频的反馈定位信息，仅在向用户反馈（`translate-redstone` §1.4 / 阶段二½）时附带，**不写入本表**——本表跨视频累积，不绑定具体视频。
+> **时间戳不入库**：字幕时间戳是逐视频的反馈定位信息，仅在向用户反馈（`translate-redstone` §1.3 / 阶段二½）时附带，**不写入本表**——本表跨视频累积，不绑定具体视频。
 
 
 ## 已验证映射
@@ -58,11 +58,5 @@
 | free wide tilable | three-wide tileable | 三宽可堆叠 |
 | river skulls | wither skulls（凋灵之首） | 世界边界相关实体 |
 | slash tv | /tp | 命令（/teleport） |
-| coarse fruit | chorus fruit（紫颂果） | 末地植物 |
-| number block | another block | ASR 误识别（B36 语境） |
-| oral border | world border（世界边界） | ASR 漏音节 |
-| whirl border | world border（世界边界） | ASR 误识别 |
-| will the b36 is on the set of oral border | while the B36 is on the other side of the world border | 整句误识别（B36 语境） |
-| her speed | the speed | 冠词/代词误识别（挖掘速度语境） |
 
 

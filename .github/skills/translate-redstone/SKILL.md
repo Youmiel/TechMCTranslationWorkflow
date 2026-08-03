@@ -9,9 +9,11 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 | 话题 | 权威 Skill |
 |------|-----------|
-| 断句/合并/分块/行宽 | `segment-subtitles` |
+| 断句/合并/行宽 | `segment-subtitles` |
+| 长视频分块（通用机制） | 本 Skill「长视频分块」 |
 | subagent 派发 | `subagent-dispatch` |
 | 术语表加载/四级查找 | `use-glossary` |
+| 术语扫描机制（ASR 解码/scan 覆盖网） | `term-scan` |
 | 术语登记 | `term-registration` |
 | CSV 读写/表头 | `csv-rules` |
 | Wiki 抓取/兜底 | `wiki-tools` |
@@ -81,8 +83,8 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 | 产物 | 文件名 | 生成时机 | 内容 | 恢复价值 |
 |------|--------|----------|------|----------|
-| **ASR 修正后字幕** | `01_subtitle_asr_fixed.srt` | §1.2 扫描解码后 | 已解码 ASR 误识别 + **句子边界整理**（游离单词归位）的英文字幕（保留原时间码，修正处可加注释） | 避免重复 ASR 解码与断句 |
-| **术语映射表** | `02_terms.md` | §1.4 用户确认后 | 确认后的术语表（时间戳/原文/译名/来源/ASR 修正，同 §1.4 格式） | 阶段二译名唯一依据，跳过整个阶段一 |
+| **ASR 修正后字幕** | `01_subtitle_asr_fixed.srt` | §1.1 第一次遍历后 | 已解码 ASR 误识别 + 游离单词归位的英文字幕（保留原时间码，修正处可加注释） | 避免重复 ASR 解码 |
+| **术语映射表** | `02_terms.md` | §1.3 用户确认后 | 确认后的术语表（时间戳/原文/译名/来源/ASR 修正，同 §1.3 格式） | 阶段二译名唯一依据，跳过整个阶段一 |
 | **合并/断句方案** | `03_segments.md` | 阶段二断句定稿后 | 两遍式断句后的分段单元（含最终时间码） | 分段方案审核底稿，从翻译继续 |
 | **翻译中间稿** | `04_translation_draft.srt` | 阶段二逐段产出 | 已译段落（双语/中文），保留原序号与时间码 | 从未完成段继续，不重译已确认段 |
 
@@ -90,12 +92,12 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 各阶段结束**立即落盘**，不等全流程完成：
 
-- §1.2 解码完成 → 写 `01_subtitle_asr_fixed.srt`
-- §1.4 用户确认术语后（§1.5 入库前）→ 写 `02_terms.md`
+- §1.1 第一次遍历完成 → 写 `01_subtitle_asr_fixed.srt`
+- §1.3 用户确认术语后（§1.4 入库前）→ 写 `02_terms.md`
 - 阶段二 断句定稿 → 写 `03_segments.md`（交用户审核前）
 - 阶段二 每译完一段 → 追加/更新 `04_translation_draft.srt`
 
-> 阶段一网络补齐（§1.3）的中断恢复由 `.cache/wiki/` 逐页即时落盘保证（见 §1.3-4），无需额外产物。
+> 阶段一网络补齐（§1.2）的中断恢复由 `.cache/wiki/` 逐页即时落盘保证（见 §1.2-3），无需额外产物。
 
 ### 断点恢复流程
 
@@ -106,7 +108,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 | `04_translation_draft.srt` | 从最后未译段继续翻译 |
 | `03_segments.md`（无草稿） | 分段方案已定，直接开始翻译 |
 | `02_terms.md` | 阶段一已完成，跳过阶段〇/一，直接进阶段二 |
-| 仅 `01_subtitle_asr_fixed.srt` | 术语扫描中断，基于修正后字幕继续 §1.2 |
+| 仅 `01_subtitle_asr_fixed.srt` | 术语扫描中断，基于修正后字幕继续 §1.1 |
 | 无任何产物 | 从头开始 |
 
 > 中间产物是工作底稿，**禁止自动删除**（清理遵循 `AGENTS.md` 核心原则 #6，提示用户手动执行）。视频完成并定稿后可保留供核对，或由用户自行清理 `_work/<视频名>/`。
@@ -133,9 +135,9 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 断句（合并与分割）
 
-断句与分块规则**全部见 [segment-subtitles](../segment-subtitles/SKILL.md)（权威）**——语义合并判据（不以标点为准）、英文预整理（游离单词归位）、两遍式、对白拆分、分割超长句、语义锚点、行宽、长视频分块与跨块结转，均以该 Skill 为准，本段不再重复。
+断句规则**全部见 [segment-subtitles](../segment-subtitles/SKILL.md)（权威）**——语义合并判据（不以标点为准）、英文预整理（游离单词归位）、两遍式、对白拆分、分割超长句、语义锚点、行宽，均以该 Skill 为准，本段不再重复。分块是通用机制，见 [长视频分块](#长视频分块全流程通用机制)。
 
-> **必须使用工具**：合并/断句一律按 [segment-subtitles](../segment-subtitles/SKILL.md) 执行；长视频（cue 数超出单次上下文）**必须先分块**：`python scripts/chunk_subtitles.py <srt> --out <dir> --owned N --ctx M`，再逐块交给 subagent（派发模板见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)），禁止整条字幕一次性合并/翻译。
+> **必须使用工具**：合并/断句一律按 [segment-subtitles](../segment-subtitles/SKILL.md) 执行；长视频（cue 数超出单次上下文）**必须先分块**（见 [长视频分块](#长视频分块全流程通用机制)），禁止整条字幕一次性合并/翻译。
 
 ### CSV 读写
 - 统一按 `csv-rules` Skill 执行（`utf-8-sig` 读 / `utf-8` 写、`csv` 模块解析、脚本文件勿 `python -c` 内联）
@@ -144,50 +146,59 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 - 原字幕若来自 YouTube 自动生成，英文原文**可能不可靠**，先解码 ASR 错误再翻译
 - 解码查 `.github/experience/asr_fixes.md`
 
+## 长视频分块（全流程通用机制）
+
+> 超长上下文任务（术语扫描、合并/断句、翻译、去翻译腔、批量校验等）都可用本机制控制上下文，**不限于断句**。凡 cue/段数超出单次上下文，必须先分块再逐块交给 subagent。
+
+- **工具**：`python scripts/chunk_subtitles.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]`（默认 N=100、M=6；输出 OWNED=本块负责 / CONTEXT=前后只读衔接 两分区；边界不切开任何 cue）
+- **输入**：merge 阶段用 `01_subtitle_asr_fixed.srt`（单语 cue 流）；translate 阶段用合并后的段 SRT（双语，附带知识卡）
+- **每块 prompt**：见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)
+- **跨块未完成句（结转规则）**：每块只产出语义完整句且其 start cue 落在 OWNED 区；负责区末尾句在可见上下文（OWNED+CONTEXT）内仍不完整则标记 `CARRY: c<起始idx>` 结转、不产出；下一块在 CONTEXT 看到该句开头则正常产出（start 落 CONTEXT 的结转句允许产出）；主 Agent 组装时对结转句只采用 start 最早的版本
+- **落地位置**：§1.1 术语扫描（术语识别）、阶段二 合并/翻译、阶段二+ 去翻译腔
+
 ## 固定工作流指令
 
 本工作流包含四个阶段 + 一个人工审核循环。
 
 ---
 
-### 阶段〇：领域预判（翻译前，轻量扫描）
+### 阶段〇：领域预判与准备（翻译前，轻量扫描）
 
-目标：确定视频的技术领域，以便**按需加载术语分类**，避免浪费上下文。
+目标：确定视频的技术领域并刷新数据源，以便进入阶段一时**按需加载术语分类**，避免浪费上下文。
 
-1. **类别预判**：按 `use-glossary` Skill 的「类别预判 + 无法判断」流程执行——读 `.github/experience/glossary_categories.yaml`，扫描视频标题/简介 + 输入前 ~20 句统计关键词命中，命中 ≥2 次即加载对应分类术语文件；无法判断时列出候选词请用户确认分类
-2. **红石专属补充加载**（`use-glossary` 未覆盖项）：
+1. **刷新本地知识（准备）**：运行 `python scripts/refresh_cache.py`（统一入口：检查并刷新三类本地缓存 mojang / 拆分术语表 / wiki；或按需单独跑 `glossary_split.py --check`、`glossary_fetch_mojang.py`）——保证进入阶段一前数据源最新
+2. **类别预判**：按 `use-glossary` Skill 的「类别预判 + 无法判断」流程执行——读 `.github/experience/glossary_categories.yaml`，扫描视频标题/简介 + 输入前 ~20 句统计关键词命中，命中 ≥2 次即加载对应分类术语文件；无法判断时列出候选词请用户确认分类
+3. **红石专属补充加载**（`use-glossary` 未覆盖项）：
    - `.cache/mojang/redstone.csv`（Mojang 官方红石译名，~100 条，全量加载）
    - `.cache/mojang/<类别>.csv`（**非红石 Mojang 术语**，合计 ~1400 条不预加载，L1 未命中时用 grep_search 按需查）
-3. 加载各分区 `_index.md`，建立知识地图
-4. 读 `docs/SOURCE_COVERAGE.md`，了解各数据源擅长/不擅长的知识类型
-5. 读 `.github/experience/asr_fixes.md`，准备解码 ASR 误识别（若字幕来自 YouTube 自动生成）
+4. 加载各分区 `_index.md`，建立知识地图
+5. 读 `docs/SOURCE_COVERAGE.md`，了解各数据源擅长/不擅长的知识类型
+6. 读 `.github/experience/asr_fixes.md`，准备解码 ASR 误识别（若字幕来自 YouTube 自动生成）
 
 ---
 
 ### 阶段一：术语扫描与知识补齐
 
-#### 1.1 加载本地知识
-- 运行 `python scripts/refresh_cache.py`（统一入口：检查并刷新三类本地缓存 mojang / 拆分术语表 / wiki；或按需单独跑 `glossary_split.py --check`、`glossary_fetch_mojang.py`）
-- 加载阶段〇确定的分类术语文件，建立术语映射表
+#### 1.1 术语扫描
+> 机制细节（加载/第一次遍历/机械查找/术语识别）见 [term-scan](../term-scan/SKILL.md)（权威）；长视频分块见 [本 Skill「长视频分块」](#长视频分块全流程通用机制)。本段只编排。
 
-#### 1.2 术语扫描（分块隔离）
-> 原隐含在主会话"逐句全量扫描"，现按 `docs/PIPELINE_ISOLATION.md` 隔离为「分块独立扫描 + 主会话汇总」，以控制上下文。
+1. **加载领域知识**：加载阶段〇判定的分类术语文件（L2 按文件名、L1 全量），建立术语映射表（详见 [use-glossary#类别预判](../use-glossary/SKILL.md#类别预判翻译前确定领域)）
+2. **第一次遍历（英文侧轻量处理）**，完成后写 `01_subtitle_asr_fixed.srt`：
+   - ASR 修正（语义联想，注入 asr_fixes + 领域术语集）
+   - **游离单词归位**（防换行漏看）
+   - 规则见 [term-scan#ASR 语义解码](../term-scan/SKILL.md#asr-语义解码主流程)、[segment-subtitles#英文预整理](../segment-subtitles/SKILL.md#英文预整理游离单词归位)
+   - **跨行合并成整句/合并时间戳是阶段二断句的重活，此处不做**
+3. **机械查找（术语扫描的补充覆盖网）**：运行 `python scripts/glossary_lookup.py scan <01_subtitle_asr_fixed.srt> --categories <L2 集合，可多个> --levels L1,L2 --out scan_terms.txt`，产出命中清单（`cue|时间戳|词|译名|来源|层级`）；命中项无论像不像术语一律按登记译名处理（`filter`/`main storage`）。见 [term-scan#机械查找](../term-scan/SKILL.md#机械查找补充机制)
+4. **术语识别**：把字幕逐块交给 subagent——每块注入「本块命中项（按 cue 范围过滤）+ 术语/陷阱词知识卡」；subagent 对命中项强制查词确认、补词形变体、排除误报、识别真新词（L3），输出本块术语清单（派发模板见 [subagent-dispatch#任务变体](../subagent-dispatch/SKILL.md#任务变体)）
+5. **主会话汇总**：合并去重（按 `term_en`）；`[ASR 推测]`/`[推断]`/`[待审核]` 行保留**首次时间戳**；L3 未命中跨块去重后进 §1.2
 
-1. **ASR 修正落盘**：先完成 ASR 解码与句子边界整理，写 `01_subtitle_asr_fixed.srt`（无强制归属，Agent 视上下文余量决定在主会话或独立上下文执行）
-2. **分块**：`python scripts/chunk_subtitles.py <01_subtitle_asr_fixed.srt> --out <dir> --owned N --ctx M`（与断句阶段同款；默认 N=100、M=6）
-3. **块级扫描**：每块交给一个 subagent，按 [subagent-dispatch#任务变体](../subagent-dispatch/SKILL.md#任务变体) 的「术语扫描」执行：识别红石术语/机制/专有名词、陷阱词强制查词、先解码 ASR 误识别、四级查找，输出**块级术语清单**
-4. **主会话汇总**：合并各块清单，按 `term_en` 去重；`[ASR 推测]`/`[推断]`/`[待审核]` 决策行保留**首次出现时间戳**；跨块去重所有 L3 未命中术语，进入 §1.3 集中补齐
+每块 subagent 扫描规则：
+- **命中项强制查词**：对注入的 scan 命中项直接按登记译名/来源记录（已登记词无需判断"像不像术语"）；只补词形变体、排误报
+- **陷阱词强制查词**：trap_words 中的**未登记**陷阱词（`filter`/`main storage`/`Hermits`）强制走 L1/L2；已登记词由 scan 覆盖
+- **先解码 ASR 误识别**：怪词先查 asr_fixes；形似已知实体按 `[ASR 推测]` 处理并登记，**附首次时间戳**
+- **四级查找**：按 L1 `knowledge/`+Mojang redstone、L1.5 Mojang 其余（grep 按需）、L2 `.cache/glossary/`、L3 待查列表的顺序（详表见 `use-glossary`「四级查找」）
 
-每块 subagent 均须遵守以下扫描规则：
-- **陷阱词强制查词**：对 `use-glossary` 加载的「陷阱词清单」（`.github/experience/trap_words.md`）中的词——即使拼写是普通英文——也强制走 L1/L2 查找（如 `filter`、`main storage`、`Hermits`）
-- **先解码 ASR 误识别**：遇到词典/术语表找不到的怪词，先查 `.github/experience/asr_fixes.md`；未命中但形似已知实体名时按 `[ASR 推测]` 处理并登记，**同时记录该词首次出现的字幕时间戳**（供 §1.4 反馈定位）
-- **四级查找**：
-  - **L1（热数据）**：查 `knowledge/` 术语 CSV + `.cache/mojang/redstone.csv` → 命中则记录
-  - **L1.5（Mojang 非红石）**：若 L1 未命中且术语像物品/方块名 → 用文件搜索（grep_search）查 `.cache/mojang/blocks.csv`、`items.csv`、`entities.csv`、`misc.csv` → 命中则记录 Mojang 官方译名
-  - **L2（温数据）**：查 `.cache/glossary/`（社区技术术语）→ 命中则记录
-  - **L3（未命中）**：加入"待查列表"
-
-#### 1.3 集中补齐（翻译前一次性完成所有网络请求）
+#### 1.2 集中补齐（翻译前一次性完成所有网络请求）
 
 1. 将"待查列表"去重，按数据源分组
 2. 对每个术语判断应查询的数据源（参考 `docs/SOURCE_COVERAGE.md`）：
@@ -202,7 +213,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
    - 若上下文也不足以推断 → 仍给出**候选译名 + 推断依据**（按词形/相关术语/语境最佳猜测），标记为 `[待审核：原词 → 候选译名（依据）]`
 6. 经上述流程仍无法确定译名的术语，最终标记为 `[待审核：原词 → 候选译名（依据）]`——**不得只保留原文**，必须带候选供用户确认或否决
 
-#### 1.4 术语确认
+#### 1.3 术语确认
 输出术语清单供用户确认，**ASR 误识别单独一栏**集中批注。**所有需要决策的行（`[ASR 推测]`/`[推断]`/`[待审核]`）必须附带字幕时间戳**，便于用户定位上下文；普通行同样填写：
 
 ```
@@ -220,9 +231,9 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 - `[待审核]` 标记的术语：附**候选译名 + 推断依据**，用户确认或否决，不再默认保留原文
 - `ASR 修正` 列：列出原始误识别词，用户可一次确认或纠正全部 ASR 推测
 - **时间戳列**：取该词首次出现处的 SRT 时间码（`HH:MM:SS`），供用户跳转核对；决策行缺失时间戳视为不完整输出
-- **落盘**：用户确认后写 `02_terms.md`（§1.5 入库前；详见「中间产物与断点恢复」）
+- **落盘**：用户确认后写 `02_terms.md`（§1.4 入库前；详见「中间产物与断点恢复」）
 
-#### 1.5 术语入库
+#### 1.4 术语入库
 
 用户确认术语清单后、开始翻译前，将已确认的术语写入知识库。按 [term-registration#同步步骤](../term-registration/SKILL.md#同步步骤) 执行，数字步骤：
 1. 筛选已确认条目（排除 `[待审核]`）

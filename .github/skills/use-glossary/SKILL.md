@@ -27,7 +27,11 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 1. **禁止直接使用 `_repos/techmc-glossary/TechMC Glossary.csv`**（源文件是合并格式，且可能过时）
 2. **必须使用 `.cache/glossary/` 下的拆分文件**（按类别独立，Agent 按需加载）
 3. **使用前检查是否需要更新**
-4. **查词用 `python scripts/glossary_lookup.py <term> [<term>...]`**（只读，自动 L1→L1.5→L2；手工 grep 仅作兜底）
+4. **查词/扫描用 `glossary_lookup.py`**（只读，自动 L1→L1.5→L2；手工 grep 仅作兜底）
+   - 查单个词：`python scripts/glossary_lookup.py query <term> [<term>...]`
+   - **扫文本找已收录术语（数据驱动触发，取代"像不像术语"判断）**：`python scripts/glossary_lookup.py scan <srt|chunk> --categories <分类> --levels L1,L2`。`--categories` **只按文件名过滤 L2**（`.cache/glossary/<文件名>.csv`）；L2 文件名与 `glossary_categories.yaml` 分类**部分重叠但不对应**（L2 另有 `general/other/people`），勿假设完全对应；**L1 始终全量加载**（体量小，文件分类与 yaml 是另一套命名）；L1.5（Mojang，再一套命名）需显式 `--levels L1,L1.5,L2`
+
+> **语义联想为主，机械查找补漏**（2026-08-03 用户定调）：ASR 误识别修正、术语语义/语境理解、相关性判断靠 **Agent 自身的语义联想/推理**（注入领域术语集作上下文），**不用字符串相似度等算法**；"联想"=Agent 自己的语言理解，**非调用外部 LLM/API**。机械查找（`scan`）仅作**补充**——字面精确匹配把"已登记词确实出现"找全，治"已收录却漏翻"，不做任何理解/判定。
 
 ## 四级查找（位置与执行）
 
@@ -36,7 +40,7 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 | **L1** | 热数据 | `knowledge/01_terminology/*.csv`、`.cache/mojang/redstone.csv` | `glossary_lookup.py` 自动 |
 | **L1.5** | Mojang 非红石 | `.cache/mojang/*.csv` | `glossary_lookup.py` 自动；grep 兜底 |
 | **L2** | 温数据 | `.cache/glossary/*.csv`（社区拆分） | `glossary_lookup.py` 自动 |
-| **L3** | 未命中 | — | 入"待查列表" → translate-redstone §1.3 集中补齐 |
+| **L3** | 未命中 | — | 入"待查列表" → translate-redstone §1.2 集中补齐 |
 
 - **执行建议**：首选 `python scripts/glossary_lookup.py <term> [<term>...]`（只读，自动按 L1→L1.5→L2 批量查询，命中输出来源）；工具不覆盖时用 grep_search 按上表位置兜底
 - **新增词汇表源**：按上表「查找位置」判断归属级（新增 Mojang 表→L1.5；新增社区分类→L2；新增项目库 CSV→L1），更新位置即可，Agent 据表快速识别
@@ -59,9 +63,11 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 预判流程：
 1. 读 `.github/experience/glossary_categories.yaml`
 2. 扫描视频元数据 + SRT 前 20 句，统计每个 `category` 下 `keywords` 的命中次数
-3. 命中 ≥2 次的分类 → 加载对应 `.cache/glossary/<category>.csv` 和 `knowledge/01_terminology/<category>.csv`（如存在）
+3. 命中 ≥2 次的分类 → 作为**候选起点**，加载对应 `.cache/glossary/<category>.csv`（同名文件存在时）
 4. 始终加载 `always_load` 中列出的分类
 5. 若所有分类命中均 <2 次 → 进入"无法判断"流程
+
+> **语义扩展（非机械对应）**：关键词命中只是**提示起点**，识别出的类别**不是唯一输出**——一个视频往往横跨多个方面（存储视频也可能涉及机械/人名/通用）。Agent 应在命中基础上**按语义关系**判断还要加载哪些相关词汇表（`scan --categories` 传可多个的 L2 文件名）；`knowledge/01_terminology/`（L1）由 `scan` 始终全量加载，其文件名与 yaml 分类是两套命名，勿按同名机械对应。勿把"命中≥2"当成机械的 1:1 加载规则。
 
 ### 无法判断时的处理（配置文件自维护入口）
 
@@ -87,7 +93,7 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 
 - **加载**：类别预判命中某分类时，同时加载该分类的陷阱词清单
 - **扫描**：遍历字幕时，对清单中的词（含词形变体）**强制走 L1/L2 术语查找**，即使它们看起来是普通英文
-- **维护**：每次识破新陷阱词后追加到 `.github/experience/trap_words.md`（只追加，不删改既有条目，分类与 `glossary_categories.yaml` 一致）
+- **维护**：识破新陷阱词 → **先按 `term-registration` 登记入 `knowledge/01_terminology/_uncategorized.csv`**（入 L1 后自动被 `glossary_lookup.py scan` 覆盖，无需再入 trap_words）；`trap_words.md` 仅沉淀**尚未登记**的陷阱触发提示（只追加，不删改既有条目，分类与 `glossary_categories.yaml` 一致）
 
 ### 翻译日志 vs 配置文件自维护
 

@@ -23,10 +23,13 @@ description: 将已确认的英文术语→中文译名登记到 knowledge/01_te
 
 1. **筛选**：排除 `[待审核]` 标记的术语，只保留已确认译名的条目
 2. **读表头**：读 `knowledge/01_terminology/_example.csv` 获取表头
-3. **查重**：读 `knowledge/01_terminology/_uncategorized.csv`，检查 `term_en` 是否已存在
-4. **追加**：不存在则用 Python `csv.DictWriter` 追加新行（`term_en`、`term_zh`、`definition` 从映射表获取，其余字段留空或填来源注释）；存在则跳过、不覆盖
+3. **缓存命中拦截（不入库）**：若该词在四级查找中已由 **L1.5（`.cache/mojang/`）或 L2（`.cache/glossary/`）命中**——直接就地用缓存译名，**不写入 `knowledge/`**。缓存是"借来用"的；重复入库会让 L1 遮蔽刷新后的缓存、制造漂移，也污染项目库。只有两种情况允许入 `_uncategorized.csv`：
+   - **新词**：四级查找全部未命中（含 `scan` 未覆盖的新机制/专有名词）
+   - **差异化译名**：用户确认的、与缓存不同的项目标准（如 `main storage→全物品仓库`，缓存原译 `全物品/全物品分类仓库`）——此时 `notes` 必须写明「覆盖缓存译名：`.cache/glossary/storage.csv` 原译=…」
+4. **查重**：读 `knowledge/01_terminology/_uncategorized.csv`，检查 `term_en` 是否已存在
+5. **追加**：不存在则用 Python `csv.DictWriter` 追加新行（`term_en`、`term_zh`、`definition` 从映射表获取，其余字段留空或填来源注释）；存在则跳过、不覆盖
    - **来源格式**：`notes`/`definition` 中的来源必须写**具体缓存文件路径**——`.cache/glossary/<分类>.csv`、`.cache/mojang/<文件>.csv`、`knowledge/01_terminology/<分类>.csv`；**禁止**写笼统的 "TechMC Glossary" / "knowledge/"（呼应 `use-glossary`"用拆分缓存、不用源文件"规则）
-5. **索引**：`_uncategorized.csv` 词条变动**不更新** `indexes/knowledge/` 的具体词条（该条目只保留静态占位描述）；仅当新增**非 `_uncategorized`** 的稳定条目或类别描述实质变化时才更新索引，并同步更新索引文件的「最近更新/生成时间」时间戳（刷新判断依据，见 `indexing-rules`「索引时间戳与更新策略」）
+6. **索引**：`_uncategorized.csv` 词条变动**不更新** `indexes/knowledge/` 的具体词条（该条目只保留静态占位描述）；仅当新增**非 `_uncategorized`** 的稳定条目或类别描述实质变化时才更新索引，并同步更新索引文件的「最近更新/生成时间」时间戳（刷新判断依据，见 `indexing-rules`「索引时间戳与更新策略」）
 
 ## ASR 映射登记（翻译工作流专用）
 
