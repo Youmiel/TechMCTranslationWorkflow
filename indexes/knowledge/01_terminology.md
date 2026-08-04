@@ -1,6 +1,6 @@
 # 第一类术语知识索引
 
-> 生成时间：2026-08-01（更新：2026-08-03 清理与 L2/L1.5 缓存重复的词条——B36/Block 36/Moving Piston、Chunk Tick、Entity Update、Copper Golem、Copper Chest 已删，标准译名由 `.cache/glossary/`、`.cache/mojang/` 覆盖；B36/服务端碰撞箱机制细节在 `knowledge/02_mechanic/` 知识卡）
+> 生成时间：2026-08-04
 > 时间戳 = **刷新判断依据**：仅在**非 `_uncategorized`** 内容实质变更时更新（`_uncategorized.csv` 词条变动不更新索引，见 `indexing-rules`「索引时间戳与更新策略」）
 > 对应目录：`knowledge/01_terminology/`
 
@@ -17,10 +17,20 @@
 - **`common.csv`** — 通用基础术语（当前为空，仅表头）[通用]
   - 关键词：通用, 基础
 
+- **`contraptions.csv`** — 装置/机制术语（玩家制造的装置类设施）[通用]
+  - 内容：凋灵笼（wither cage）、闪电农场（lightning farm，1.12 黑科技）、铜傀儡分类器（Copper Golem Sorter，存储装置）
+  - 关键词：凋灵笼, 闪电农场, 铜傀儡分类器, 装置, 黑科技, 存储
+  - 来源：凋灵笼教程、6sPS4yqC72I 视频、cubicmetre 视频
+
 - **`game_system.csv`** — 游戏机制/系统术语 [通用]
   - 内容：游戏刻阶段（WTU 世界时间更新 / AT 异步事件 / 随机刻；CT 区块刻、EU 实体运算已并入 `.cache/glossary/`，2026-08-03 清理）、实体运动（yaw 偏航角 / pitch 俯仰角 / 流体加速）、物品组件（1.20.5+）、游戏刻加速（Tick Warping）
   - 关键词：游戏刻, 游戏阶段, 随机刻, 实体运动, 偏航角, 俯仰角, 物品组件, Tick Warping
   - 来源：gtmc-articles MicroTiming、Discovering-Minecraft 实体运动、cubicmetre 视频
+
+- **`glitches.csv`** — 漏洞/非法方块形态术语 [通用]
+  - 内容：切片下界传送门（sliced nether portal，更新抑制/跳过）、落沙下界传送门（falling nether portal，落沙非法形态）
+  - 关键词：下界传送门, 更新抑制, 更新跳过, 落沙, 非法方块, 切片传送门
+  - 来源：TechMCDocs BugsAndExploits/UpdateSuppression、6sPS4yqC72I 视频
 
 - **`proper_nouns.csv`** — 专有名词：人物 / 组织 / 模组 [通用]
   - 内容：人物（cubicmetre、Red Nomster、Mumbo Jumbo、Hermit 隐士）、组织（Hermitcraft、Wavetech）、模组（Item Scroller、Axiom、Carpet 模组）、scarpet 脚本语言

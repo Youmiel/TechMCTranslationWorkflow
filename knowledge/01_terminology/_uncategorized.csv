@@ -1,7 +1,11 @@
 term_en,short_form,definition,notes,term_zh,term_ja
 Louvain method;Louvain algorithm,,一种基于模块度（modularity）优化的贪心启发式社区发现算法，通过“局部移动节点最大化模块度 + 将社区聚合为新节点”两阶段反复迭代，在大规模网络中快速提取非重叠社区结构。2008 年由鲁汶大学（UCLouvain）的 Blondel 等人提出。,来源：Blondel et al. 2008 / 维基百科；2026-08-01 用户确认；亦译“鲁汶方法”；其改进版为 Leiden 算法,鲁汶聚类,
-Copper Golem Sorter,,使用铜傀儡搬运物品、按多物品分区分类的存储装置,[存储] 来源：cubicmetre 视频；2026-08-01 用户确认,铜傀儡分类器,
 storage tech aid program,,"cubicmetre 自制的 scarpet 程序，用于存储技术辅助（最早出现在其""How to Build the Ultimate Storage""视频中）",[存储] 来源：cubicmetre 视频；2026-08-01 用户确认直译,存储技术辅助程序,
 sediment slice,,"存储系统中专门存放泥土、沙子等""沉积物""类物品的分区（slice）","[存储] 来源：cubicmetre 视频；2026-08-01 用户确认：社区把储存泥土/沙子类的存储类别叫""沉积物""",沉积物切片,
 block breaking progression saving,,世界边界相关的技术 bug（MC-54587）：方块破坏进度保存在被推出边界外的方块（如远古残骸）上，可使挖掘速度提升约 10%。,[通用] 来源：TechMCDocs 文章 GameMechanics/WorldBorder（FX）；2026-08-01 用户确认直译；关联 MC-54587,方块破坏进度保存,
-sliced nether portal,,利用更新抑制/更新跳过技术快速制造的大尺寸下界传送门（部分传送门方块或其框架缺失的非法方块状态）。,来源：_repos/TechMCDocs/BugsAndExploits/UpdateSuppression.md「Portal Slicing」；Wavetech 恶魂农场采用,切片下界传送门,
+safe state,,1.12.2 技术术语：区块处于可安全保存/不受保存干扰的状态，用于支撑落沙、非法方块等操作。,来源：6sPS4yqC72I 视频 c216/c220/c969/c1236/c1313-1314；2026-08-04 用户确认,安全状态,
+global flag,,视频内部 jargon：指被操控的全局标志（如 power、falling 等），用于控制区块/落沙行为。,来源：6sPS4yqC72I 视频 c1213；2026-08-04 用户确认,全局标志,
+falling flag,,视频内部 jargon：落沙（重力方块下落）相关的标志位，通过装饰另一区块来关闭。,来源：6sPS4yqC72I 视频 c1234-1236；2026-08-04 用户确认,落沙标志,
+spawn tower,,服务器出生点附近的塔形地标/设施。,来源：6sPS4yqC72I 视频 c1374-1376；2026-08-04 用户确认,出生点塔,
+multiply by eight glitch,,利用下界↔主世界坐标 8:1 映射的传送漏洞（配合更新抑制与陷阱箱技巧远距离传送）。,来源：6sPS4yqC72I 视频 c1139-1141；Minecraft Wiki 下界页（8:1 坐标比）；2026-08-04 用户确认,乘八漏洞,
+server tour,,服务器游览：带领观众参观服务器设施的视频形式。,来源：6sPS4yqC72I 视频 c2/c1458；2026-08-04 用户确认,服务器游览,

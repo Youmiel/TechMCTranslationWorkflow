@@ -85,3 +85,23 @@
 - ✅ 本次登记 6 条新术语（end pillar→黑曜石柱、wither cage→凋灵笼、blue wither skull→蓝色凋灵之首、sliced nether portal→切片下界传送门、dragon respawn ritual→末影龙复活仪式、boss bar→Boss栏），`_uncategorized.csv` 现共 13 条；ASR 映射 22 处已登记 `.github/experience/asr_fixes.md`。
 - ❌ **上下文推断**承担了若干术语（Y0 platform、fortune pick、temporary bulk storage、torch farm、skull bucket button 口诀、portal tech），无直接数据源；`results of the year`、`brazil`、`even hon toons` 等 ASR 存疑项保留原词待用户审核，未注册。
 
+## SciCraft Getting Command Blocks In Survival — 2026-08-04 | 领域：1.12.2 黑科技/落沙/命令方块
+
+| 数据源 | 查询次数 | 命中 | 命中案例 | 缺失案例 |
+|--------|----------|------|----------|----------|
+| knowledge/01_terminology/ | 1（proper_nouns.csv + storage.csv） | 1 | Main Storage→全物品仓库（storage.csv）；人名库确认各人名保持原名 | 本视频核心黑科技术语（落沙、字撕裂、安全状态等）此前未收录，本次登记 |
+| .cache/glossary/ | 1（refresh_cache.py 统一刷新 + 按类加载） | ~8 | Chunk Population→区块装饰、Word Tear→字撕裂、Blockstate palettes→方块状态调色板（1.12.2_magic.csv）；Cobblestone Farm→刷石机、Sand Duping→刷沙/复制（contraptions.csv）；Game Tick→游戏刻（general.csv）；Instant→瞬时 | — |
+| .cache/mojang/ | 1（按类加载） | ~15 | End Portal Frame→末地传送门框架、Monster Spawner→刷怪笼、End Gateway→末地折跃门、Anvil→铁砧、Observer→侦测器、Barrier→屏障、Structure Void→结构空位、Grass Path→土径、Farmland→耕地（blocks.csv）；Enderman→末影人（entities.csv） | 1.12 独有黑科技概念（falling block 非法形态、字撕裂、safe state）非 Mojang 官方表收录 |
+| .cache/wiki/ | 0 | 0 | — | 预存缓存无 1.12 黑科技页面（活塞/草方块/黏液块等均为通用机制），未命中 |
+| MCP Wiki（本次新抓） | 1 | 1 | 下界（nether ceiling→下界天花板；下界↔主世界 8:1 坐标映射→乘八漏洞） | 要塞页未抓（stronghold 由用户确认 + 02_terms 既有登记） |
+| _repos/（索引定位） | 0 | 0 | — | 本视频术语已由术语表 + Wiki 覆盖；1.12 黑科技类文章（字撕裂等）在 TechMCDocs 中未见直接页面 |
+
+### 发现
+- ✅ 本次 **1.12.2_magic.csv**（TechMC Glossary 拆分缓存）是黑科技术语的主来源：字撕裂（Word Tear）、区块装饰（Chunk Population）、方块状态调色板（Blockstate palettes）均命中，证明「.cache/glossary/ 按主题拆分」策略对 1.12 黑科技领域有效。
+- ✅ 本次 **MCP Wiki「下界」页**一次抓取同时解决两项：nether ceiling（下界天花板）+ 8:1 坐标比（乘八漏洞依据），Wiki 适合补「机制性」术语。
+- ✅ **用户确认**承担大量视频内部 jargon：safe state（安全状态）、global flag（全局标志）、falling flag（落沙标志）、spawn tower（出生点塔）、half block（半砖）、fortress 口误判定——这类 SciCraft 服务器内部黑话无公开数据源，只能靠上下文 + 用户确认。
+- ✅ **ASR 映射 114 条**已登记 `.github/experience/asr_fixes.md`（本视频段落），为历次最多（人名/落沙/命令方块主题误识别密集）。
+- ✅ 本次登记 12 条新术语（nether ceiling→下界天花板、lightning farm→闪电农场、safe state→安全状态、global flag→全局标志、falling flag→落沙标志、spawn tower→出生点塔、half block→半砖、multiply by eight glitch→乘八漏洞、illegal blocks→非法方块、stronghold→要塞、server tour→服务器游览、falling nether portal→落沙下界传送门），`_uncategorized.csv` 现共 18 条。
+- ❌ **上下文推断**承担若干术语（block state corruption→方块状态损坏、registry palette→方块状态调色板、async thread→异步线程、multi-threading→多线程、initial generation→初始生成、command block bits→命令方块数据位），无直接数据源。
+- ❌ **c790 conversion contraption** 疑 ASR 误听，按「broken contraption for creating player heads」语境处理，未注册。
+
