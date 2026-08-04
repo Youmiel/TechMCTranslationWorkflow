@@ -21,6 +21,7 @@
 | `srt_chunk.py` | 长视频按「N 负责 + M 上下文」分块（segment-subtitles Skill 用） | `python scripts/srt_chunk.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]` |
 | `srt_verify.py` | 核对并重编号修正 SRT（块数/时间码对齐）；**ASR 修正差异工具，非双语翻译稿校验器** | `python scripts/srt_verify.py <orig.srt> <fixed.srt>` |
 | `srt_diff.py` | 逐块对比两个 SRT（ts/正文差异） | `python scripts/srt_diff.py <a.srt> <b.srt>` |
+| `split_subtitles.py` | 将双语/多语 SRT 按字段拆分成多个单语文件（`FIELDS` 常量配置行顺序，字段名即输出后缀，加新语言只需添名字） | `python scripts/split_subtitles.py <双语.srt> [-o 前缀] [-d 目录] [--out 字段=路径]` |
 
 ## 独立工具
 

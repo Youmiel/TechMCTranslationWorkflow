@@ -1,4 +1,4 @@
-# Minecraft 红石技术视频字幕翻译辅助系统
+# Minecraft 红石技术视频字幕翻译辅助工作流
 
 基于渐进式轻量级方案的红石技术视频字幕翻译辅助工作流，用于将英文 Minecraft 红石技术视频字幕高质量翻译为简体中文。
 
@@ -10,13 +10,13 @@
 ## 初始化
 
 ```bash
-# 2. 安装依赖
+# 安装依赖
 pip install -r requirements.txt
 
-# 3. 初始化 submodule（知识仓库 + humanizer-zh Skill）
+# 初始化 submodule（知识仓库 + humanizer-zh Skill）
 git submodule update --init --recursive
 
-# 4. 编辑器适配（为 Claude Code 等编辑器创建 Skill 链接）
+# 编辑器适配（为 Claude Code 等编辑器创建 Skill 链接）
 python scripts/setup_editors.py
 ```
 
@@ -73,26 +73,7 @@ python scripts/setup_editors.py
 
 ## 目录结构
 
-```
-Project_Main/
-# 翻译工作区
-├── _input/              # 待翻译字幕（SRT / transcript），Git 忽略
-├── _work/               # 翻译中间产物（断点续翻），Git 忽略
-├── _output/             # 翻译输出（默认双语对照），Git 忽略
-└── ref_translations/    # 参考译例，供 Agent 模仿翻译风格
-
-├── .cache/              # 脚本生成缓存：含官方词汇表、Wiki 等，Git 忽略
-├── _repos/              # 外部仓库（submodule）：只读引用
-├── knowledge/           # 人工维护知识：译名标准，Git 追踪
-└── indexes/             # 检索索引，Git 追踪
-
-├── .github/             # Skills 定义与 Agent 经验数据
-├── .vscode/             # 编辑器配置（MCP 等）
-├── scripts/             # 辅助脚本
-├── configs/             # 配置
-├── docs/                # 文档
-└── AGENTS.md            # 项目级 Agent 指令
-```
+各目录用途与产物归属约定见 [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md)。
 
 ## 引用与致谢
 
