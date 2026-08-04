@@ -58,5 +58,27 @@
 | free wide tilable | three-wide tileable | 三宽可堆叠 |
 | river skulls | wither skulls（凋灵之首） | 世界边界相关实体 |
 | slash tv | /tp | 命令（/teleport） |
+| gas | ghast | 恶魂 |
+| n pillar | end pillar | 末地黑曜石柱 |
+| wave tech 7 | wavetech | 服务器名 |
+| hearing / in creative | in creative | ASR 多词/漏词 |
+| farming creative | farm in creative | ASR 漏介词 |
+| comforted | convinced | 确信（"fully convinced"） |
+| obscene farm | obsidian farm | 黑曜石农场 |
+| shock boxes / shelter boxes | shulker box（潜影盒） | 合并 shocker box 变体 |
+| enemy dragon | ender dragon | 末影龙 |
+| start farm | end stone farm | 末地石农场 |
+| we bought | we built | 口语（"built an obsidian farm"） |
+| scared you my stuff up | scared you'll mess my stuff up | ASR 漏词 |
+| feel that wither | kill that wither | 击杀凋灵 |
+| cars / cards | carts | 矿车（minecart） |
+| phone | farm | 农场 |
+| rich / original | ritual | 仪式 |
+| spy glass | spyglass | 望远镜 |
+| skull bucket bucket button | skull bucket button | ASR 叠词 |
+| jkm | JKM | 人名（Wavetech 成员） |
+| even hon toons | Huntoon's | 人名（Wavetech 成员） |
+| [ __ ] it | bucket | 凋灵笼流程语境（"头颅、桶、按钮"口诀），ASR 误听成脏话 |
+| results of the year | results of the gear | 用户确认听感；语义存疑（"the gear"仍不明） |
 
 

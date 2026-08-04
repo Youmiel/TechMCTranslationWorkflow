@@ -67,3 +67,21 @@
 - ✅ 本次登记 3 条新术语（B36→36号方块/移动中的方块、block breaking progression saving→方块破坏进度保存、server-sided hitbox→服务端碰撞箱），`_uncategorized.csv` 现共 7 条；ASR 映射 8 处已登记 `.github/experience/asr_fixes.md`。
 - ❌ MCP Wiki 本次未使用——知识已由 Technical Minecraft Wiki 原文 + Mojang 官方术语表覆盖。
 
+## We Caged 52 Withers to Make This Farm — 2026-08-03 | 领域：凋灵笼/黑曜石农场（末地机制）
+
+| 数据源 | 查询次数 | 命中 | 命中案例 | 缺失案例 |
+|--------|----------|------|----------|----------|
+| knowledge/01_terminology/ | 2（proper_nouns.csv + storage.csv） | 3 | cubicmetre→cubicmetre、Wavetech→Wavetech（proper_nouns.csv）；Main Storage→全物品仓库（storage.csv） | — |
+| .cache/glossary/ | 1（refresh_cache.py 统一刷新） | 0 | — | 凋灵笼、切片下界传送门、Boss栏等本视频新术语均未收录（本次登记） |
+| .cache/mojang/ | 1（按类加载） | ~15 | Obsidian→黑曜石、Wither Skeleton Skull→凋灵骷髅头颅、Ice→冰、End Stone→末地石、Slab→台阶（blocks.csv）；End Crystal→末地水晶、Ghast→恶魂、Shulker Box→潜影盒、Boat/Minecart→船和矿车、Ender Dragon→末影龙（entities.csv）；Ghast Tear→恶魂之泪、Lava Bucket→熔岩桶、Spyglass→望远镜（items.csv）；Dispenser→发射器（redstone.csv）；End Portal/Ender Chest→末地传送门/末影箱 | — |
+| .cache/wiki/ | 0 | 0 | — | 本次 8 个相关页面全部为新抓，预存缓存未命中 |
+| MCP Wiki（本次新抓） | 8 | 8 | 黑曜石柱（end pillar/东侧黑曜石柱）、黑曜石农场（教程）（end pillar obsidian farm）、末影龙（ritual→末影龙复活仪式）、凋灵（block breaking attack→破坏方块攻击）、凋灵笼（教程）（suffocation damage→窒息伤害、blue skulls→蓝色凋灵之首、wither cage→凋灵笼）、凋灵骷髅头颅（wither skeleton farm→凋灵骷髅农场）、末地水晶、Boss栏 | — |
+| _repos/（索引定位） | 1 | 1 | TechMCDocs/BugsAndExploits/UpdateSuppression.md（sliced nether portals→切片下界传送门） | — |
+
+### 发现
+- ✅ 本次在 **MCP Wiki** 中确认：凋灵/凋灵笼机制术语（窒息伤害、蓝色凋灵之首、破坏方块攻击、凋灵笼）来自中文 Wiki 教程页，是「凋灵笼」主题术语的可靠来源；黑曜石柱（End Spike）译名取自中文 Wiki 页面，纠正 ASR 误识别 obscene farm。
+- ✅ 本次在 **_repos/TechMCDocs** 确认：切片下界传送门（sliced nether portal）为 TechMC 社区专有术语，源自 Update Suppression 相关技术文章，非 Wiki 页面收录。
+- ✅ **知识三级路由有效**：proper_nouns/storage 术语表直接覆盖人名与全物品仓库；Mojang 官方表覆盖方块/物品/实体；Wiki 补机制类术语；TechMCDocs 补社区专有技术。
+- ✅ 本次登记 6 条新术语（end pillar→黑曜石柱、wither cage→凋灵笼、blue wither skull→蓝色凋灵之首、sliced nether portal→切片下界传送门、dragon respawn ritual→末影龙复活仪式、boss bar→Boss栏），`_uncategorized.csv` 现共 13 条；ASR 映射 22 处已登记 `.github/experience/asr_fixes.md`。
+- ❌ **上下文推断**承担了若干术语（Y0 platform、fortune pick、temporary bulk storage、torch farm、skull bucket button 口诀、portal tech），无直接数据源；`results of the year`、`brazil`、`even hon toons` 等 ASR 存疑项保留原词待用户审核，未注册。
+

@@ -1,1 +1,5 @@
 ﻿term_en,short_form,definition,notes,term_zh,term_ja
+blue wither skull;blue skull,,凋灵主头小概率（0.1%）发射的威力巨大的凋灵之首弹射物，可破坏黑曜石；凋灵长期受伤害时也会随机发射。,来源：.cache/wiki/凋灵笼（教程）.md；区别于普通「黑色凋灵之首」；实体系译名见 .cache/mojang（entity.minecraft.wither_skull=凋灵之首）,蓝色凋灵之首,
+dragon respawn ritual;ritual,,在返回传送门边框放置末地水晶触发末影龙复活的流程；复活期间依次重置黑曜石柱，中途移除水晶可中止复活。,来源：.cache/wiki/末影龙.md；本视频利用该机制只重置单根柱子（cancelling the ritual）,末影龙复活仪式,
+boss bar;Bossbar,,HUD 正上方的 Boss 生命进度条指示器；Java 版最多同屏显示 9 个，凋灵/末影龙各有其 Boss栏（可重命名）。,来源：.cache/wiki/Boss栏.md；视频「52 个凋灵只显示 6 个名字、顺序随机」即 Boss栏机制,Boss栏,
+end pillar;End Spike,,末地中央岛屿的 10 根黑曜石高柱（环绕返回传送门半径 43 格，柱顶 Y=76-103），柱顶各承载 1 颗末地水晶；末影龙复活流程会依次重置柱子。,来源：.cache/wiki/黑曜石柱.md；Wiki 正式译名「黑曜石柱」，旧称「末地长钉」，ID end_spike,黑曜石柱（末地长钉）,

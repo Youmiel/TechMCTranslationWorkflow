@@ -24,10 +24,10 @@ categories:
     keywords: []
   mob_farm:
     label: "刷怪塔、生物农场"
-    keywords: []
+    keywords: [wither, ghast, end crystal, wither skeleton, mob farm, spawner, spawning rate]
   storage:
     label: "存储技术、物品分类"
-    keywords: [sorter, sorting, storage, hopper, shulker, partition, unstackable, filter]
+    keywords: [sorter, sorting, storage, hopper, shulker, partition, unstackable, filter, main storage, bulk storage, shulker box]
   computational:
     label: "红石计算"
     keywords: []
