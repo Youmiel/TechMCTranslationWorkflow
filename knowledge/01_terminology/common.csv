@@ -9,3 +9,5 @@ lava spring;lava pocket,,涌泉的一种，由单个熔岩源方块构成；在�
 half block,,口语指台阶（slab）；国内社区为区分楼梯与台阶常称「半砖」。,来源：6sPS4yqC72I 视频 c1454；2026-08-04 用户确认（口语指 slab）,半砖,
 nether ceiling,,下界顶部的基岩层及其上方空间；1.12 中玩家可在下界顶部基岩层上方放置方块、搭建设施。,来源：Minecraft Wiki 下界页；6sPS4yqC72I 视频 c268-269；2026-08-04 用户确认,下界天花板,
 illegal blocks;illegal items,,无法在生存模式正常获得的方块/物品（如命令方块、屏障等），是 1.12 服务器黑科技的核心产物。,来源：6sPS4yqC72I 视频 c5/c75/c360/c426/c512/c618/c664；2026-08-04 用户确认,非法方块;非法物品,
+end island,,末地中心的岛屿（末地主岛），末影龙战斗的主要场地。对照 Mojang 译法 Small End Islands→末地小型岛屿。,[推断：末地主岛] 来源：kxHpyV95rB0 视频 c317；对照 .cache/mojang/misc.csv；2026-08-05 用户确认,末地中心岛,
+overworld,,主世界：Minecraft 三大维度之一（默认出生维度）。,[通用译名] 来源：Minecraft 官方中文译名；.cache/mojang 未收录；2026-08-05 用户确认,主世界,
