@@ -3,7 +3,7 @@
 > 第二类知识 = 所有需要网络请求获取的内容（Wiki、社区网页等）或可脚本生成的缓存（Mojang 词汇表）。
 > Agent 无法在请求前预知数据源内容，本文档帮助判断"什么去哪个源找"。
 >
-> 经验积累：每次翻译任务后，Agent 在阶段三向 `.github/experience/coverage_log.md` 追加实际表现。
+> 经验积累：每次翻译任务后，Agent 在阶段三向 `.github/experience/coverage_log.md` 追加流水，并向 `.github/experience/source_experience.md` 提炼可复用结论。
 
 ## Mojang 官方词汇表（`.cache/mojang/redstone.csv`）
 

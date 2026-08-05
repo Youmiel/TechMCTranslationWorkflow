@@ -47,4 +47,4 @@ description: Minecraft Wiki 页面获取与缓存写入的规范（MCP 工具降
 ## 相关配置
 
 - MCP 配置：`.vscode/mcp.json`；部署指南：`docs/MCP_DEPLOYMENT.md`
-- 数据源擅长/不擅长类型：`docs/SOURCE_COVERAGE.md`，`.github\experience\coverage_log.md`
+- 数据源擅长/不擅长类型：`docs/SOURCE_COVERAGE.md`；经验沉淀：`.github/experience/source_experience.md`（流水见 `coverage_log.md`）

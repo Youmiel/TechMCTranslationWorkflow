@@ -47,7 +47,7 @@
 | 阶段二 翻译 | 宜隔离 | 分段分块 + 知识卡 | 块级译文 → `04_translation_draft.srt` | 每块一个 subagent | `translate-redstone` + `subagent-dispatch` | 隐式：逐段译 |
 | 阶段二½ 审核循环 | 需用户交互（宜主会话） | 04 + 决策点清单 | 定稿 | 主会话（需交互时） | — | 隐式：需用户审核 |
 | 阶段二+ 去翻译腔 | 宜隔离 | 04 全稿 + `humanizer-zh` 规则 | 修订稿 | 独立上下文一遍 | `humanizer-zh` | 隐式：主会话顺带改 |
-| 阶段三 总结 | 视情况 | 各阶段产物 | `coverage_log.md` 追加 | 视情况 | `translate-redstone` | 隐式：收尾追加 |
+| 阶段三 总结 | 视情况 | 各阶段产物 | `coverage_log.md` 流水 + `source_experience.md` 提炼 | 视情况 | `translate-redstone` | 隐式：收尾追加 |
 
 ## 5. 窗口节省原理
 

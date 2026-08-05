@@ -145,7 +145,8 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### ASR 误识别
 - 原字幕若来自 YouTube 自动生成，英文原文**可能不可靠**，先解码 ASR 错误再翻译
-- 解码查 `.github/experience/asr_fixes.md`
+- 解码查全局 `.github/experience/asr_fixes.md`（跨视频通用）→ 未命中查 `_work/<视频名>/asr_fixes.md`（本视频局部）
+- 登记分层：跨视频通用→全局表；视频专属→`_work/<视频名>/asr_fixes.md`（见 `term-registration`「ASR 映射登记」）
 
 ## 长视频分块（全流程通用机制）
 
@@ -172,9 +173,9 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 3. **红石专属补充加载**（`use-glossary` 未覆盖项）：
    - `.cache/mojang/redstone.csv`（Mojang 官方红石译名，~100 条，全量加载）
    - `.cache/mojang/<类别>.csv`（**非红石 Mojang 术语**，合计 ~1400 条不预加载，L1 未命中时用 grep_search 按需查）
-4. 加载各分区 `_index.md`，建立知识地图
+4. **加载知识地图（索引）**：读 `indexes/knowledge/` 与 `indexes/repos/_manifest.md` 下的索引文件，建立完整知识地图——除词汇表外，机制知识卡（`knowledge/02_mechanic/`）与外部仓库（`_repos/`，经 `indexes/repos/` 索引）也在此定位，供阶段一 §1.2 按需查阅
 5. 读 `docs/SOURCE_COVERAGE.md`，了解各数据源擅长/不擅长的知识类型
-6. 读 `.github/experience/asr_fixes.md`，准备解码 ASR 误识别（若字幕来自 YouTube 自动生成）
+6. 读全局 `.github/experience/asr_fixes.md`（跨视频通用）+ `_work/<视频名>/asr_fixes.md`（本视频局部，如有），准备解码 ASR 误识别（若字幕来自 YouTube 自动生成）
 
 ---
 
@@ -309,25 +310,12 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 阶段三：数据源效果总结
 
-翻译完成且用户确认后，追加记录到 `.github/experience/coverage_log.md`：
+翻译完成且用户确认后：
 
-```markdown
-## <视频标题> — YYYY-MM-DD | 领域：<树场/存储/...>
+1. **写流水**：向 `.github/experience/coverage_log.md` 追加简短流水（日期|视频|领域|一句话关键结论|指针），不再堆入查询数字表格与长"发现"段
+2. **提炼经验**：从本视频「发现」提炼可复用结论，按 `maintain-knowledge`「经验提炼规则」合并写入 `.github/experience/source_experience.md`（IF-THEN 句式、重复结论去重、新增递减）
 
-| 数据源 | 查询次数 | 命中 | 命中案例 | 缺失案例 |
-|--------|----------|------|----------|----------|
-| knowledge/ | N | N | ... | ... |
-| .cache/glossary/ | N | N | ... | ... |
-| .cache/wiki/ | N | N | ... | ... |
-| MCP Wiki（本次新抓） | N | N | ... | ... |
-| _repos/（索引定位） | N | N | ... | ... |
-
-### 发现
-- ✅ 本次在 <数据源> 中新发现可覆盖的知识类型：<...>
-- ❌ 本次 <数据源> 未能覆盖的知识类型：<...>
-```
-
-目的：逐步建立"哪个数据源擅长哪类知识"的经验地图，供后续 Agent 在阶段〇参考。
+目的：让"哪个数据源擅长哪类知识"沉淀为**收敛型经验**，供后续 Agent 在阶段〇优先读 `source_experience.md`（而非整个日志）。
 
 ## Wiki 抓取与兜底
 

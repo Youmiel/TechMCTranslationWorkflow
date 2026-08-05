@@ -32,8 +32,11 @@ python scripts/setup_editors.py --force
 │   ├── index-repos/
 │   └── humanizer-zh/        # 外部 submodule（去翻译腔，op7418/Humanizer-zh）
 └── experience/              # Agent 经验数据
+    ├── asr_fixes.md
     ├── coverage_log.md
-    └── glossary_categories.yaml
+    ├── source_experience.md
+    ├── glossary_categories.yaml
+    └── trap_words.md
 
 .claude/skills/  ──(symlink)──→ .github/skills/     # 自动同步（含 humanizer-zh）
 CLAUDE.md        ──(生成)────→ AGENTS.md              # 运行 setup 同步

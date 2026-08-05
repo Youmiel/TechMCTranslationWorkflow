@@ -14,10 +14,13 @@ description: 阶段一术语扫描（translate-redstone §1.1）的机制细节�
 
 ## ASR 语义解码（主流程）
 
-1. 注入素材：`.github/experience/asr_fixes.md` + 阶段〇语义判定的**领域术语集**（L1+L2 词形+译名，作解码候选空间）
-2. 遇怪词，先查 asr_fixes
+1. 注入素材：
+   - `.github/experience/asr_fixes.md`（跨视频通用映射，按正确词聚合）
+   - `_work/<视频名>/asr_fixes.md`（本视频已识别映射，如有）
+   - 阶段〇语义判定的**领域术语集**（L1+L2 词形+译名，作解码候选空间）
+2. 遇怪词，先查全局表 → 再查本视频局部表
 3. 未命中，则在术语集内做**语义/音近联想**，标 `[ASR 推测]`（附首次时间戳）
-4. 确认后登记 asr_fixes.md（必要时入术语库）
+4. 确认后按分层登记（规则见 `term-registration`「ASR 映射登记」）：跨视频通用→全局表；视频专属→`_work/<视频名>/asr_fixes.md`（必要时入术语库）
 5. 完成后写 `01_subtitle_asr_fixed.srt`
 
 ## 机械查找（补充机制）

@@ -99,10 +99,10 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 
 两个机制各司其职，不可混淆：
 
-| | `.github/experience/coverage_log.md` | `.github/experience/glossary_categories.yaml` |
+| | `.github/experience/coverage_log.md` + `source_experience.md` | `.github/experience/glossary_categories.yaml` |
 |---|---|---|
-| 记录什么 | 数据源检索效果（找到了/没找到） | 领域关键词→分类映射 |
-| 维护者 | Agent 自动追加 | Agent 提案 + 用户确认后写入 |
+| 记录什么 | 数据源检索流水（coverage_log）+ 可复用经验结论（source_experience，IF-THEN） | 领域关键词→分类映射 |
+| 维护者 | Agent 自动追加 + 提炼 | Agent 提案 + 用户确认后写入 |
 | 触发时机 | 翻译后（阶段三） | 翻译前（阶段〇无法判断时） |
 | 目的 | 优化"去哪找" | 优化"加载哪些术语表" |
 
