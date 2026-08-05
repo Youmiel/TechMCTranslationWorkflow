@@ -127,9 +127,11 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 环境
 - 本机**无 venv**，直接使用 `python`。若 `venv\Scripts\Activate.ps1` 存在才激活，否则不激活。
+- PowerShell 中带 `[` 的文件路径须用 `-LiteralPath`（否则被当通配符，Get-Content/Get-FileHash 失败）
 
 ### 时间戳
 - 输出 SRT 的所有时间边界**必须 ⊆ 原字幕边界集合**（不允许新造时间点）
+- **01 生成后立即校验时间轴与原始 ASR 对齐**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、保留原时间码、不增删 cue；时间轴错位会一路传给 03/04（表现为"字幕比语音快/慢"），须在断句前发现并修正
 - 合并/断句后每段时间码 = 该段覆盖的原字幕片段**首段 start → 末段 end**
 - **相邻段时间不得重叠**：`end_i ≤ start_{i+1}`（允许相接不允许交叉）。共享 cue 的整条归属与中间断句估算切分见 [segment-subtitles#共享 cue 与整条归属（时间不重叠）](../segment-subtitles/SKILL.md#共享-cue与整条归属时间不重叠)
 - 每次分句/合并后立即校验，**不要最后抽查**：时间/重叠/逆序用 `python scripts/srt_check_segments.py <目标> --orig <01_subtitle_asr_fixed.srt>`，行宽用 `srt_check_width.py`（见 [segment-subtitles#输出与校验](../segment-subtitles/SKILL.md#输出与校验)）
@@ -156,6 +158,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 - **输入**：merge 阶段用 `01_subtitle_asr_fixed.srt`（单语 cue 流）；translate 阶段用合并后的段 SRT（双语，附带知识卡）
 - **每块 prompt**：见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)
 - **跨块未完成句（结转规则）**：每块只产出语义完整句且其 start cue 落在 OWNED 区；负责区末尾句在可见上下文（OWNED+CONTEXT）内仍不完整则标记 `CARRY: c<起始idx>` 结转、不产出；下一块在 CONTEXT 看到该句开头则正常产出（start 落 CONTEXT 的结转句允许产出）；主 Agent 组装时对结转句只采用 start 最早的版本
+- **每块结果由 subagent 直接写独立文件**：subagent 把结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`（merge→`_merge_results/`、translate→`_trans_results/`、term→`_term_results/`、humanize→`_humanize_results/`），写后报告文件名+行数、**不返回全文给主会话**；主 Agent 组装时**只读每块头尾衔接窗口**、不读中间，全量校验交脚本（见 subagent-dispatch「组装」），勿只存会话（压缩后恢复极耗时）
 - **落地位置**：§1.1 术语扫描（术语识别）、阶段二 合并/翻译、阶段二+ 去翻译腔
 
 ## 固定工作流指令
@@ -190,6 +193,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
    - **游离单词归位**（防换行漏看）
    - 规则见 [term-scan#ASR 语义解码](../term-scan/SKILL.md#asr-语义解码主流程)、[segment-subtitles#英文预整理](../segment-subtitles/SKILL.md#英文预整理游离单词归位)
    - **跨行合并成整句/合并时间戳是阶段二断句的重活，此处不做**
+   - **立即校验时间轴**：写 `01_subtitle_asr_fixed.srt` 后马上跑 `python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、**保留原时间码、不增删 cue**；发现时间偏移（时间轴断裂）立即回到本步修正，勿带入断句（否则一路传到最终稿，表现为"字幕比语音快/慢"）
 3. **机械查找（术语扫描的补充覆盖网）**：运行 `python scripts/glossary_lookup.py scan <01_subtitle_asr_fixed.srt> --categories <L2 集合，可多个> --levels L1,L2 --out scan_terms.txt`，产出命中清单（`cue|时间戳|词|译名|来源|层级`）；命中项无论像不像术语一律按登记译名处理（`filter`/`main storage`）。见 [term-scan#机械查找](../term-scan/SKILL.md#机械查找补充机制)
 4. **术语识别**：把字幕逐块交给 subagent——每块注入「本块命中项（按 cue 范围过滤）+ 术语/陷阱词知识卡」；subagent 对命中项强制查词确认、补词形变体、排除误报、识别真新词（L3），输出本块术语清单（派发模板见 [subagent-dispatch#任务变体](../subagent-dispatch/SKILL.md#任务变体)）
 5. **主会话汇总**：合并去重（按 `term_en`）；`[ASR 推测]`/`[推断]`/`[待审核]` 行保留**首次时间戳**；L3 未命中跨块去重后进 §1.2
@@ -256,6 +260,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
   2. 第 1 遍英文侧初步分组 -> [segment-subtitles#合并判据](../segment-subtitles/SKILL.md#合并判据语义完整性不以标点为准)
   3. 第 2 遍中文侧最终定段 -> [segment-subtitles#分割超长句](../segment-subtitles/SKILL.md#分割超长句)
 - **落盘**：断句定稿后写 `03_segments.md` 再交用户审核（详见「中间产物与断点恢复」）
+- **ASR 修正应用在组装期**：`02_terms.md` 已确认的 ASR 修正（如 word tear、the end dimension）在组装 `03_segments.md` 时直接替换文本，勿留待翻译期
 - **分段方案先交用户审核**（阶段二½），确认后再定稿翻译
 
 #### 正式翻译
@@ -305,6 +310,8 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 - **上下文推断 / [待审核] 候选**：附候选译名 + 依据 + 时间戳
 
 **反馈定位**：涉及具体字幕位置的意见/说明（如某处 ASR 修正、某术语处理点、某段划分理由），必须附上对应 SRT 时间戳（`HH:MM:SS`），保证用户能直接跳转到该处核对。
+
+**重复表达审查**：审核时对照 EN 行核查中文是否重复表达同一信息（如"36 个分区"中文出现 2 次而 EN 仅 1 次），发现即去重。
 
 ---
 

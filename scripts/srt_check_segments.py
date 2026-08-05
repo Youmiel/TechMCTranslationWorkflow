@@ -9,11 +9,16 @@
   4. （03_segments.md 模式）cue 覆盖完整、段号连续
 
 用法:
-  python scripts/srt_check_segments.py <目标> --orig <原字幕.srt> [--allow-estimated]
+  python scripts/srt_check_segments.py <目标> --orig <原字幕.srt> [--allow-estimated] [--cue-exact]
 
 <目标> 两种输入：
   - 03_segments.md（行格式 `段号|cstart[-cend][~]|文本`；`~` 标注该侧边界为估算切分点）
   - 成稿 SRT（04_translation_draft.srt 等）
+
+--cue-exact（SRT 模式专用，用于 01 修正字幕）：
+  目标为逐 cue 流（如 01_subtitle_asr_fixed.srt），要求 cue 数与原始一致、
+  且逐 cue 时间戳与原始完全一致（01 只改文本、保留原时间码、不增删 cue）。
+  时间轴错位会一路传给 03/04（表现为"字幕比语音快/慢"），须在断句前发现。
 
 退出码：0=全部通过；1=发现问题。
 """
@@ -28,6 +33,8 @@ ap.add_argument('target', help='目标文件：03_segments.md 或成稿 SRT')
 ap.add_argument('--orig', required=True, help='原字幕 SRT（如 01_subtitle_asr_fixed.srt）')
 ap.add_argument('--allow-estimated', action='store_true',
                 help='允许估算切分点：成稿 SRT 中新时间点降级为告警（仅限受控例外的中间断句）')
+ap.add_argument('--cue-exact', action='store_true',
+                help='SRT 模式：目标为逐 cue 流（如 01 修正字幕），要求 cue 数一致且逐 cue 时间戳与原始完全一致')
 args = ap.parse_args()
 
 TS_RE = re.compile(r'(\d{2}):(\d{2}):(\d{2}),(\d{3})')
@@ -91,7 +98,7 @@ def parse_md(path):
 
 
 def parse_srt(path):
-    """返回 [(start, end), ...]（毫秒）"""
+    """返回 [(idx, start, end), ...]（SRT 序号 + 毫秒）"""
     out = []
     with open(path, encoding='utf-8-sig') as fh:
         text = fh.read()
@@ -99,9 +106,11 @@ def parse_srt(path):
         lines = [l.strip() for l in block.splitlines() if l.strip()]
         if len(lines) < 2:
             continue
+        if not re.fullmatch(r'\d+', lines[0]):
+            continue
         m = re.match(r'(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})', lines[1])
         if m:
-            out.append((parse_time(m.group(1)), parse_time(m.group(2))))
+            out.append((int(lines[0]), parse_time(m.group(1)), parse_time(m.group(2))))
     return out
 
 
@@ -162,26 +171,40 @@ else:
     if not segs:
         sys.exit('目标解析失败（既非 03_segments.md 也非 SRT）：%s' % args.target)
     prev_end = None
-    for i, (s, e) in enumerate(segs, 1):
+    for n, (idx, s, e) in enumerate(segs, 1):
         if s is None or e is None:
-            errors.append('段 %d: 时间行无法解析' % i)
+            errors.append('段 %d: 时间行无法解析' % n)
             continue
         if s > e:
-            errors.append('段 %d: start>end %s > %s' % (i, fmt(s), fmt(e)))
+            errors.append('段 %d: start>end %s > %s' % (n, fmt(s), fmt(e)))
             continue
         for label, t in (('start', s), ('end', e)):
             if t not in orig_bounds:
-                msg = '段 %d: %s %s 不在原字幕边界集（新造时间点）' % (i, label, fmt(t))
+                msg = '段 %d: %s %s 不在原字幕边界集（新造时间点）' % (n, label, fmt(t))
                 if args.allow_estimated:
                     warnings_.append(msg)
                 else:
                     errors.append(msg)
         if prev_end is not None and s < prev_end:
             errors.append('段 %d 与段 %d 时间重叠: 前段 end=%s, 本段 start=%s'
-                          % (i, i - 1, fmt(prev_end), fmt(s)))
+                          % (n, n - 1, fmt(prev_end), fmt(s)))
         prev_end = e
-    print('目标: %s（SRT）  段数: %d  原字幕时间边界数: %d'
-          % (args.target, len(segs), len(orig_bounds)))
+    # --cue-exact：目标为逐 cue 流（如 01 修正字幕），要求 cue 数一致且逐 cue 时间戳与原始一致
+    if args.cue_exact:
+        if len(segs) != len(orig_cues):
+            errors.append('cue 数不一致：目标=%d，原始=%d（01 应保留原时间码、不增删 cue）'
+                          % (len(segs), len(orig_cues)))
+        for idx, s, e in segs:
+            oc = orig_cues.get(idx)
+            if oc is None:
+                errors.append('cue %d: 原始字幕无此序号（目标序号错位）' % idx)
+                continue
+            os_, oe = oc
+            if s != os_ or e != oe:
+                errors.append('cue %d: 时间错位  目标=%s-%s  原始=%s-%s'
+                              % (idx, fmt(s), fmt(e), fmt(os_), fmt(oe)))
+    print('目标: %s（SRT%s）  段数: %d  原字幕 cue 数: %d'
+          % (args.target, '，逐 cue 对齐' if args.cue_exact else '', len(segs), len(orig_cues)))
 
 for w in warnings_:
     print('  !! %s' % w)
