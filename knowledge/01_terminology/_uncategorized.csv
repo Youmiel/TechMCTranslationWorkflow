@@ -11,5 +11,6 @@ multiply by eight glitch,,利用下界↔主世界坐标 8:1 映射的传送漏�
 server tour,,服务器游览：带领观众参观服务器设施的视频形式。,来源：6sPS4yqC72I 视频 c2/c1458；2026-08-04 用户确认,服务器游览,
 node,,末影龙寻路系统的基本单元：龙用于创建飞行路径的坐标点。视频原文定义：a coordinate that the dragon uses to create paths。,[推断：视频上下文定义] 来源：kxHpyV95rB0 视频 c17 附近；2026-08-05 用户确认,节点,
 pathfind;pathfinding,,（末影龙）在寻路节点之间规划飞行路径的行为/机制。视频原文：how dragon path finds。,[推断：视频上下文定义] 来源：kxHpyV95rB0 视频 c13；2026-08-05 用户确认,寻路,
-red node,,末影龙寻路系统中始终激活的节点类型（龙总是把红色节点纳入路径规划）。,[推断：随 node] 来源：kxHpyV95rB0 视频；2026-08-05 用户确认,红色节点,
-green node,,末影龙寻路系统中可选的节点类型（空闲时随机选取为终点，被方块阻挡时无法穿过）。,[推断：随 node] 来源：kxHpyV95rB0 视频；2026-08-05 用户确认,绿色节点,
+world download,,存档下载：作者提供的可下载世界存档链接。,[推断：视频语境] 来源：xyw455piBUE 视频；2026-08-06 用户确认,存档下载,
+Discord server,,Discord 服务器：作者的 Discord 社区邀请链接。,[推断：视频语境] 来源：xyw455piBUE 视频；2026-08-06 用户确认,Discord 服务器,
+redstoneers,,红石技术玩家：对精通红石电路玩家的社区称谓。,[推断：视频语境] 来源：xyw455piBUE 视频；2026-08-06 用户确认,红石玩家（红石技术玩家）,

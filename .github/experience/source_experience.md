@@ -45,8 +45,9 @@
 ## 知识三级路由 / 上下文推断
 
 - 当出现「人名/服务器名」时 → 先查 `knowledge/01_terminology/proper_nouns.csv`，直接覆盖则复用。（案例：cubicmetre、Wavetech）
-- 当出现「视频内部 jargon / 社区黑话」时 → 优先上下文推断 + 用户确认，因为无公开数据源。（案例：safe state、global flag、spawn tower、falling flag；末影龙寻路机制 node/pathfind/end island 同样无 Mojang 表与术语表收录，靠视频内定义“a coordinate that the dragon uses to create paths”推断）
-- 人名与黑话的最终译名 → 依赖用户确认（ASR 听感/语境不可靠）。
+- 当出现「视频内部 jargon / 社区黑话」时 → 优先上下文推断 + 用户确认，因为无公开数据源。（案例：safe state、global flag、spawn tower、falling flag；末影龙寻路机制 node/pathfind/end island 同样无 Mojang 表与术语表收录，靠视频内定义"a coordinate that the dragon uses to create paths"推断；即时红石 jargon floating state、infinite frequency、update doubler、update chain、slanted rail 同样靠视频内定义推断）
+- 当术语属「数字电路/逻辑门」时 → 直接用[数电常识]标准译名，因为数电译名固定、无需网络源。（案例：xyw455piBUE 视频 22 条逻辑门/锁存器/半加器/进位/LSB/MSB/时钟电路全数电常识命中）
+- 人名与黑话的最终译名 → 依赖用户确认（ASR 听感/语境不可靠；大小写同样不可信，Hamster→hampter 由用户确认小写）。
 
 ## 已纠正的误判（防止重犯）
 

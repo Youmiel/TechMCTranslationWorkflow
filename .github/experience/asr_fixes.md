@@ -58,6 +58,7 @@
 | caustic | costic | 难缠的（形容物品集） |
 | redstone | resto | 红石（装置） |
 | Louvain | levane | 鲁汶（图聚类算法） |
+| update suppressor | object suppressor | 更新抑制器（即时红石/更新抑制语境） |
 | ideal | idol | — |
 | higher-end | higherend | — |
 | sort bee | sort be | 蜂巢（bee nests） |

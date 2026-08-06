@@ -8,3 +8,4 @@ Fluid Acceleration,,实体在与流体接触时受到的加速作用（区别于
 Item Components,,Minecraft 1.20.5+中取代NBT的物品数据系统，定义物品的属性、行为等,[通用] 来源：cubicmetre视频,物品组件,
 Tick Warping,,利用技术手段加速游戏刻执行速度以进行快速测试,[通用] 来源：cubicmetre视频,游戏刻加速,
 server-sided hitbox,,服务端维护的实体碰撞箱，与客户端（client）相对。,[通用] 来源：TechMCDocs 文章 GameMechanics/WorldBorder（FX）；2026-08-01 用户确认直译；世界边界场景机制细节见 knowledge/02_mechanic/server-sided-hitbox.md,服务端碰撞箱,
+tick rate,,游戏刻速率：每秒执行的游戏刻数量（默认 20 TPS）。,[推断：视频语境] 来源：xyw455piBUE 视频；2026-08-06 用户确认,游戏刻速率,
