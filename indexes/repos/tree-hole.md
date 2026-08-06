@@ -1,7 +1,7 @@
 ﻿# tree-hole 内容索引
 
-> 生成时间：2026-07-30
-> 上游 commit：b70c8a19575d7dbbbde4090c4745d5310fb61f9c
+> 生成时间：2026-08-06
+> 上游 commit：4d8cd9a6bbc24d8bf1fb72b114bbf2d41163355c
 > 仓库：https://github.com/acaciachan/tree-hole
 
 ## 方块机制
@@ -92,6 +92,8 @@
   - 关键词：命令, Component, give, data
 - **杂项 misc/常用命令(NBT).txt** — 传统 NBT 格式命令 [1.20.5-]
   - 关键词：命令, NBT, data, give
+- **杂项 misc/比较器信号.xlsx / 比较器衰减自复位时钟.xlsx** — 比较器信号强度与衰减自复位时钟数据表（同目录另有 比较器信号相关计算.txt） [通用]
+  - 关键词：比较器, 信号强度, 衰减时钟, 数据表
 
 ## 模组与资源包
 

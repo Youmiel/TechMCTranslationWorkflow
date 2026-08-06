@@ -1,7 +1,7 @@
 # gtmc-articles 内容索引
 
-> 生成时间：2026-07-30
-> 上游 commit：d8ea519b0862a0f03386853944548626b9e19bc6
+> 生成时间：2026-08-06
+> 上游 commit：16c7b5097a43c035283939ca2f889125fd613979
 > 仓库：https://github.com/techmc-wiki/articles
 > 在线阅读：https://techmc.wiki
 
@@ -34,10 +34,12 @@
 - **EntityMove/** — 移植自 lovexyn0827（基础→碰撞→自由运动→外力→LivingEntity→具体实体→应用→附录）
   - 关键词：实体运动, Motion, 碰撞, 自由运动, TNT炮
 
-## 区块机制 [1.14-1.20]
+## 区块机制 [1.20.1]
 
-- **ChunkMechanics/01~21.zh.md** — 完整的区块管理系统教程（21 章）
-  - 关键词：区块, ChunkStatus, 加载票, ChunkHolder, POI, 光照抑制
+- **ChunkMechanics/README.zh.md** — 绪论：1.20.1（Yarn Mapping）区块系统研究背景、术语约定与章节阅读路线
+  - 关键词：区块, 绪论, Yarn, 阅读顺序
+- **ChunkMechanics/01~21.zh.md** — 分章完整教程（重写版）：01 基础概念与结构、02 生成状态与光照系统、03 区块存储管理器、04 主线程异步任务、06 加载票机制、07 ChunkHolder 生命周期、08 计划刻与区块运行级别、17 完整流程总览、18 Savestate 与区块保存抑制、19 区块互换、20 光照抑制、21 PendingChunk
+  - 关键词：区块, ChunkStatus, 加载票, ChunkHolder, POI, 计划刻, 光照抑制, Savestate
 
 ## 树场 [通用]
 

@@ -1,7 +1,7 @@
 ﻿# Discovering-Minecraft 内容索引
 
-> 生成时间：2026-07-30
-> 上游 commit：969f5cdbc7f0f4a08d450577f12e9fc69e2a8994
+> 生成时间：2026-08-06
+> 上游 commit：603259fb19217f51114ca44277feac84e374be1c
 > 仓库：https://github.com/lovexyn0827/Discovering-Minecraft
 
 ## 实体运动研究与应用
@@ -28,6 +28,8 @@
   - 关键词：参考文献, 来源, Wiki
 - **Minecraft实体运动研究与应用/10-Appendix.md** — 公式汇总与辅助材料 [1.16.4]
   - 关键词：附录, 公式汇总, 数据表
+- **Minecraft实体运动研究与应用/AlgebraicApproach.tex** — 《Motion Of Entities — An Algebraic Approach》实体运动代数方法专著 LaTeX 源文件 [通用]
+  - 关键词：实体运动, 代数方法, LaTeX, 公式推导
 
 ## 区块管理系统
 
