@@ -48,6 +48,12 @@
 - 当出现「视频内部 jargon / 社区黑话」时 → 优先上下文推断 + 用户确认，因为无公开数据源。（案例：safe state、global flag、spawn tower、falling flag；末影龙寻路机制 node/pathfind/end island 同样无 Mojang 表与术语表收录，靠视频内定义"a coordinate that the dragon uses to create paths"推断；即时红石 jargon floating state、infinite frequency、update doubler、update chain、slanted rail 同样靠视频内定义推断）
 - 当术语属「数字电路/逻辑门」时 → 直接用[数电常识]标准译名，因为数电译名固定、无需网络源。（案例：xyw455piBUE 视频 22 条逻辑门/锁存器/半加器/进位/LSB/MSB/时钟电路全数电常识命中）
 - 人名与黑话的最终译名 → 依赖用户确认（ASR 听感/语境不可靠；大小写同样不可信，Hamster→hampter 由用户确认小写）。
+- 当字幕是「手动转录」（非 YouTube ASR 自动生成）时 → 跳过 ASR 误识别解码，直接按原文语义翻译，因为词汇正确率高、过度“修正”反而破坏原意。（案例：22UL5d4G3mY 用户明确要求保留 Mxi、free pistons 原文拼写）
+- 当技术语境出现「裸数字版本号修饰词」时 → 先确认指代（1.5 flying machine = “MC 1.5 版本的飞行器”，非数量），译文显式加 “MC” 前缀防止误读成物理/渲染引擎。（案例：22UL5d4G3mY 段 21/50/57）
+
+## 时间戳对齐（方法论）
+
+- 当合并/断句后的段文本与原字幕时间错位（表现为字幕比语音快/慢）时 → 用「段英文文本在原字幕文本流中顺序匹配 + cue 内线性插值」重算每段时间戳，因为流匹配定位到文本真实位置、比按 cue 粗分准确；单词级 fallback 可容忍单复数等小差异。（案例：22UL5d4G3mY 114 段全量对齐，段 51 core components/component 用 fallback）
 
 ## 已纠正的误判（防止重犯）
 

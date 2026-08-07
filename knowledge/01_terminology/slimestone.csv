@@ -1,0 +1,7 @@
+﻿term_en,short_form,definition,notes,term_zh,term_ja
+manual update engine,,需外部触发（如被侦测器激活）才移动一次的飞行器引擎，区别于自动循环引擎。,[推断] 来源：22UL5d4G3mY 视频；2026-08-07 用户确认,手动更新引擎,
+sideways extension,,飞行器沿横向（与前进方向垂直的水平方向）延伸的结构模块。,[推断] 来源：22UL5d4G3mY 视频；gtmc-articles SlimeTech/Molforte 0a-附录「拓展/延伸」；2026-08-07 用户确认,横向延伸,
+backwards extension,,飞行器沿前进反方向延伸的结构模块，可拼接多个模块使引擎自循环。,[推断] 来源：22UL5d4G3mY 视频；gtmc-articles SlimeTech/Molforte 0a-附录「拓展/延伸」；2026-08-07 用户确认,反向延伸,
+instant sideways extension,,可瞬时（同刻内）完成推进的横向延伸模块。,[推断] 来源：22UL5d4G3mY 视频（原文误写 instance，用户确认修正为 instant）；2026-08-07 用户确认,瞬时横向延伸,
+slimeless engine,,不使用黏液块/蜜脾块，仅靠活塞与红石块工作的飞行器引擎。,[推断] 来源：22UL5d4G3mY 视频；2026-08-07 用户确认,无黏液引擎,
+piston worm,,狭义指仅活塞头与活塞头直接相对的可移动飞行器；广义泛指飞行器。,来源：gtmc-articles SlimeTech/Molforte/0a-附录.zh.md（权威）；22UL5d4G3mY 视频；2026-08-07 用户确认,活塞虫,

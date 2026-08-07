@@ -13,3 +13,4 @@
 | 2026-08-04 | SciCraft Getting Command Blocks In Survival | 1.12.2 黑科技/落沙/命令方块 | 1.12.2_magic.csv 主源；ASR 114 条（人名/落沙/命令主题误识别密集） | source_experience.md |
 | 2026-08-05 | How to Trap the Ender Dragon Forever in Survival Minecraft | 末影龙 AI 寻路机制 | node/pathfind 无公开源→视频内定义+上下文推断+用户确认；Mojang 表覆盖末影龙/末地水晶等标准名 | source_experience.md |
 | 2026-08-06 | How 4 Blocks Revolutionized Computational Redstone | 即时红石/数电 | 数电术语（逻辑门/锁存器/加法器/进位等 22 条）全由[数电常识]覆盖无需网络源；更新抑制/即时红石 jargon 靠 Wiki 教程页 + 视频内定义推断 | source_experience.md |
+| 2026-08-07 | 22UL5d4G3mY Flying Machine But Pistons Can Only Move 2 Blocks | 飞行器/推动上限 2 | 手动转录字幕免 ASR 解码；断句后时间戳错位用文本流匹配重算对齐；裸版本号“1.5 flying machine”经用户确认为 MC 1.5 版本指代 | source_experience.md |
