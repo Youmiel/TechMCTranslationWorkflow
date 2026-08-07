@@ -57,7 +57,7 @@ Project_Main/
 |------|------|----------|
 | `.github/skills/` | Skill 定义 | 工作流/机制说明 SKILL.md（如 translate-redstone、segment-subtitles、wiki-tools） |
 | `.github/experience/` | Agent 运行经验 | `asr_fixes.md`、`coverage_log.md`、`source_experience.md`、`glossary_categories.yaml`、`trap_words.md` |
-| `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`srt_*`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py`、`split_subtitles.py` 等）；一次性脚本不在此列 |
+| `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`srt_*`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py`、`srt_split.py` 等）；一次性脚本不在此列 |
 | `configs/` | 配置 | 当前为空 |
 | `docs/` | 项目文档 | 本文档及 PIPELINE_ISOLATION / EDITOR_COMPAT / MCP_DEPLOYMENT / SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
 

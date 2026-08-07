@@ -1,4 +1,4 @@
-﻿# tree-hole 内容索引
+# tree-hole 内容索引
 
 > 生成时间：2026-08-06
 > 上游 commit：4d8cd9a6bbc24d8bf1fb72b114bbf2d41163355c

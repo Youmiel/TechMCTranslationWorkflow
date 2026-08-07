@@ -10,7 +10,7 @@
 加名字即可，例如加上 'jp' 就会自动生成「前缀.jp.srt」。
 
 用法：
-    python split_subtitles.py 输入.srt [选项]
+    python srt_split.py 输入.srt [选项]
 
 选项：
     -o, --output-prefix 前缀   输出文件前缀（默认取输入文件名主体）
@@ -18,13 +18,13 @@
     --out 字段=路径             显式指定任意字段的输出文件（可多次使用）
 
 示例：
-    python split_subtitles.py video.srt
+    python srt_split.py video.srt
         # -> video.en.srt , video.zh.srt（与输入同目录）
 
-    python split_subtitles.py video.srt -o sub -d out
+    python srt_split.py video.srt -o sub -d out
         # -> out/sub.en.srt , out/sub.zh.srt
 
-    python split_subtitles.py video.srt --out en=my_en.srt --out zh=my_zh.srt
+    python srt_split.py video.srt --out en=my_en.srt --out zh=my_zh.srt
         # -> 使用显式指定的输出文件
 """
 import argparse

@@ -1,4 +1,4 @@
-﻿# Discovering-Minecraft 内容索引
+# Discovering-Minecraft 内容索引
 
 > 生成时间：2026-08-06
 > 上游 commit：603259fb19217f51114ca44277feac84e374be1c
