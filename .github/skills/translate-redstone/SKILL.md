@@ -59,13 +59,13 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 3. **阶段二 正式翻译**（本工作流）
    - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`
    - 产物：
-     - 合并断句 → `<工作目录>/03_segments.md`
-     - 逐段翻译 → `<工作目录>/04_translation_draft.srt`
+     - 合并断句 → `<工作目录>/s03_segments.md`
+     - 逐段翻译 → `<工作目录>/s04_translation_draft.srt`
 4. **阶段二+ 去翻译腔**（`humanizer-zh`，可选）
-   - 输入：`04_translation_draft.srt` 全稿
-   - 产物：修订稿（回写 `04`）
+   - 输入：`s04_translation_draft.srt` 全稿
+   - 产物：修订稿（回写 `s04`）
 5. **阶段二½ 人工审核**（`redstone-review`）
-   - 输入：待审方案 + 翻译结果（`03` / `04`）
+   - 输入：待审方案 + 翻译结果（`s03` / `s04`）
    - 产物：用户确认（无新落盘）
 6. **阶段三 数据源总结**（`redstone-finalize`）
    - 输入：确认后的完整成果
@@ -76,8 +76,8 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 1. 无任何产物 → 从头开始（阶段〇）
 2. 仅 `01_subtitle_asr_fixed.srt` → 阶段一 §1.1 开头（重新第一次遍历，确保 01 完整）
 3. 有 `02_terms.md` → 阶段一 §1.3 开头（重新术语确认；§1.4 入库照做）
-4. 有 `03_segments.md`（无草稿）→ 阶段二 合并断句开头（重新断句）
-5. 有 `04_translation_draft.srt` → 阶段二 逐段翻译开头（断点续译：确认已译段、补译未译段）
+4. 有 `s03_segments.md`（无草稿）→ 阶段二 合并断句开头（重新断句）
+5. 有 `s04_translation_draft.srt` → 阶段二 逐段翻译开头（断点续译：确认已译段、补译未译段）
 
 > 各阶段结束**立即落盘**（conventions「断点恢复」）；中间产物是工作底稿，**禁止自动删除**（AGENTS.md #6），清理提示用户手动执行。
 
@@ -109,7 +109,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 #### 时间戳
 - 输出 SRT 的所有时间边界**必须 ⊆ 原字幕边界集合**（不允许新造时间点）——**本工作流特有**（reflow 允许预测点）
-- **01 生成后立即校验时间轴对齐**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、保留原时间码、不增删 cue；错位须在断句前发现（否则一路传 03/04，表现为"字幕比语音快/慢"）
+- **01 生成后立即校验时间轴对齐**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、保留原时间码、不增删 cue；错位须在断句前发现（否则一路传 s03/s04，表现为"字幕比语音快/慢"）
 - 合并/断句后每段时间码 = 覆盖原字幕片段**首段 start → 末段 end**；共享 cue 整条归属/中间断句估算见 [segment-subtitles#共享 cue 与整条归属（时间不重叠）](../segment-subtitles/SKILL.md#共享-cue与整条归属时间不重叠)
 - （时间不重叠 + 每步即时校验为通用规则，见 conventions「时间纪律」）
 
@@ -142,7 +142,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 **产物契约（本阶段输入 / 输出）**：
 - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`（preprocess 产物）
-- 输出：`03_segments.md`（断句定稿，交用户审核前落盘）、`04_translation_draft.srt`（逐段翻译落盘，中断从未完成段继续）
+- 输出：`s03_segments.md`（断句定稿，交用户审核前落盘）、`s04_translation_draft.srt`（逐段翻译落盘，中断从未完成段继续）
 
 **翻译风格**：翻译前读 `ref_translations/` 参考译例（如有），模仿其**语气 / 句长偏好 / 术语偏好 / 注释风格**。
 
@@ -153,14 +153,14 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
   1. 英文预整理（游离单词归位）-> [segment-subtitles#英文预整理](../segment-subtitles/SKILL.md#英文预整理游离单词归位)
   2. 第 1 遍英文侧初步分组 -> [segment-subtitles#合并判据](../segment-subtitles/SKILL.md#合并判据语义完整性不以标点为准)
   3. 第 2 遍中文侧最终定段 -> [segment-subtitles#分割超长句](../segment-subtitles/SKILL.md#分割超长句)
-- **落盘**：断句定稿后写 `03_segments.md` 再交用户审核（本阶段产物契约，见上方）
-- **ASR 修正应用在组装期**：`02_terms.md` 已确认的 ASR 修正（如 word tear、the end dimension）在组装 `03_segments.md` 时直接替换文本，勿留待翻译期
+- **落盘**：断句定稿后写 `s03_segments.md` 再交用户审核（本阶段产物契约，见上方）
+- **ASR 修正应用在组装期**：`02_terms.md` 已确认的 ASR 修正（如 word tear、the end dimension）在组装 `s03_segments.md` 时直接替换文本，勿留待翻译期
 - **分段方案先交用户审核**（阶段二½），确认后再定稿翻译
 
 #### 正式翻译
 - 严格使用阶段一确认的译名；`[待审核]` 术语用**候选译名**并保留 `[待审核]` 标记（供用户复核）
 - 默认输出双语对照格式
-- **逐段落盘**：每译完一段立即追加到 `04_translation_draft.srt`（本阶段产物契约，见上方），中断后可从未完成段继续
+- **逐段落盘**：每译完一段立即追加到 `s04_translation_draft.srt`（本阶段产物契约，见上方），中断后可从未完成段继续
 
 #### 输出约束
 - 禁止直译红石术语（Comparator 必须为"比较器"）
@@ -173,7 +173,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 初步翻译完成后，用 [humanizer-zh](../humanizer-zh/SKILL.md) 检查并消除译文中的"翻译腔"和 AI 味。
 
-> **独立上下文执行**（原隐含在主会话顺带做，现按 `docs/PIPELINE_ISOLATION.md` 隔离）：本步骤作为**独立一遍**运行——只读 `04_translation_draft.srt` 全稿 + `humanizer-zh` 规则，独立窗口产出修订稿，不在翻译会话里顺带改。全稿超长时可先分块、各块独立跑（块间用同一规则模板约束，保持风格一致）。
+> **独立上下文执行**（原隐含在主会话顺带做，现按 `docs/PIPELINE_ISOLATION.md` 隔离）：本步骤作为**独立一遍**运行——只读 `s04_translation_draft.srt` 全稿 + `humanizer-zh` 规则，独立窗口产出修订稿，不在翻译会话里顺带改。全稿超长时可先分块、各块独立跑（块间用同一规则模板约束，保持风格一致）。
 
 1. 加载 `humanizer-zh` Skill（`.github/skills/humanizer-zh/SKILL.md`），按其 24 种 AI 写作模式清单扫描译文
 2. 重点关注字幕场景常见的：
@@ -189,7 +189,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 阶段二½：人工审核循环
 
-按 [redstone-review](../redstone-review/SKILL.md) 执行（循环机制 + 输出门禁）。**审核对象：分段方案 + 翻译结果**（`03_segments.md` + `04_translation_draft.srt`）。
+按 [redstone-review](../redstone-review/SKILL.md) 执行（循环机制 + 输出门禁）。**审核对象：分段方案 + 翻译结果**（`s03_segments.md` + `s04_translation_draft.srt`）。
 
 ---
 
