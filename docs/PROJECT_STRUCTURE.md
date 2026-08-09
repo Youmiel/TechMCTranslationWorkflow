@@ -55,9 +55,9 @@ Project_Main/
 
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
-| `.github/skills/` | Skill 定义 | 工作流/机制说明 SKILL.md（如 translate-redstone、segment-subtitles、wiki-tools） |
+| `.github/skills/` | Skill 定义 | 工作流/机制说明 SKILL.md（如 translate-redstone、reflow-redstone、redstone-conventions、segment-subtitles、wiki-tools） |
 | `.github/experience/` | Agent 运行经验 | `asr_fixes.md`、`coverage_log.md`、`source_experience.md`、`glossary_categories.yaml`、`trap_words.md` |
-| `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`srt_*`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py`、`srt_split.py` 等）；一次性脚本不在此列 |
+| `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`srt_*`、`srt_reflow_*`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py`、`srt_split.py` 等）；一次性脚本不在此列 |
 | `configs/` | 配置 | 当前为空 |
 | `docs/` | 项目文档 | 本文档及 PIPELINE_ISOLATION / EDITOR_COMPAT / MCP_DEPLOYMENT / SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
 
@@ -66,7 +66,8 @@ Project_Main/
 | 产物类型 | 归属位置 |
 |----------|----------|
 | 待翻译字幕 | `_input/` |
-| ASR 修正稿 / 术语清单 / 分段方案 / 翻译草稿 | `_work/<视频名>/`（`01_`/`02_`/`03_`/`04_`） |
+| ASR 修正稿 / 术语清单 / 分段方案 / 翻译草稿 | `_work/<视频名>/`（`01_`/`02_`/`s03_`/`s04_`） |
+| 回填中间产物（空隙/合并/译文/回填方案/预览） | `_work/<视频名>/reflow/`（`r00_`–`r04_`） |
 | 翻译最终输出 | `_output/` |
 | 视频专属的一次性脚本 | `_work/<视频名>/` |
 | 通用可复用脚本 | `scripts/` |

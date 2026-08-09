@@ -1,6 +1,6 @@
 # 脚本
 
-按用途分组，文件名前缀标识类别（`glossary_` 术语词表、`srt_` 字幕流水线）；独立工具保留原名。
+按用途分组，文件名前缀标识类别（`glossary_` 术语词表、`srt_` 字幕工具（两工作流共用 + 通用）、`srt_reflow_` 回填工作流专用）；独立工具保留原名。
 
 ## 术语词汇表工具（`glossary_*`）
 
@@ -12,16 +12,31 @@
 
 > `mojang_glossary/` 是 `glossary_fetch_mojang.py` 的实现包（内部逻辑），**非独立工具，勿直接调用**；`__init__.py`、`LICENSE` 非工具。
 
-## 字幕流水线工具（`srt_*`，`translate-redstone` Skill 用）
+## 字幕流水线工具（`srt_*`，translate / reflow 两工作流共用）
 
 | 脚本 | 用途 | 用法 |
 |------|------|------|
-| `srt_check_width.py` | 检查 SRT 中文行视觉宽度（translate-redstone 行宽规则；`--order` 指定双语语言顺序） | `python scripts/srt_check_width.py <draft.srt> [--warn 24] [--order en-zh|zh-en]` |
+| `srt_check_width.py` | 检查 SRT 中文行视觉宽度（行宽规则；`--order` 指定双语语言顺序） | `python scripts/srt_check_width.py <draft.srt> [--warn 24] [--order en-zh|zh-en]` |
 | `srt_check_segments.py` | 校验分段/成稿时间约束：相邻段时间不重叠、时间边界 ⊆ 原边界集、段序不逆序、cue 覆盖完整（segment-subtitles Skill 用；`03_segments.md` 的 `~`=估算切分点；`--cue-exact` 用于 01 修正字幕：cue 数一致 + 逐 cue 时间戳与原始完全一致，输出目标/原始时间戳供返工） | `python scripts/srt_check_segments.py <目标> --orig <原字幕.srt> [--allow-estimated] [--cue-exact]` |
 | `srt_chunk.py` | 长视频按「N 负责 + M 上下文」分块（segment-subtitles Skill 用） | `python scripts/srt_chunk.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]` |
+
+## 通用字幕工具（`srt_*`）
+
+| 脚本 | 用途 | 用法 |
+|------|------|------|
 | `srt_verify.py` | 核对并重编号修正 SRT（块数/时间码对齐）；**ASR 修正差异工具，非双语翻译稿校验器** | `python scripts/srt_verify.py <orig.srt> <fixed.srt>` |
 | `srt_diff.py` | 逐块对比两个 SRT（ts/正文差异） | `python scripts/srt_diff.py <a.srt> <b.srt>` |
 | `srt_split.py` | 将双语/多语 SRT 按字段拆分成多个单语文件（`FIELDS` 常量配置行顺序，字段名即输出后缀，加新语言只需添名字） | `python scripts/srt_split.py <双语.srt> [-o 前缀] [-d 目录] [--out 字段=路径]` |
+
+## 回填工作流工具（`srt_reflow_*`，`reflow-redstone` Skill 用）
+
+| 脚本 | 用途 | 用法 |
+|------|------|------|
+| `srt_reflow.py` | 语义回填确定性时间运算：`reflow`（r03 方案 + 01 → r04 时间轴；整句锚定 + 单元级 cue 锚定 + 分割点就近吸附真实边界 + 100ms 预测点）、`attach-en`（双语组装，英文行 = r03 互斥英文片段） | `python scripts/srt_reflow.py reflow <r03> <01> [-o r04_reflow.srt]` / `... attach-en <r04> <r03> [-o r04_bilingual.srt]` |
+| `srt_reflow_gap_scan.py` | 空隙探测（长停顿 >5s / 剪辑跳转 >10s）→ `r00_gaps.md` | `python scripts/srt_reflow_gap_scan.py <01> [-o reflow/r00_gaps.md]` |
+| `srt_reflow_breaks.py` | r01 硬性断句输入：断句点清单（含 Agent 复核字段）+ 注入【强制断句】标记的补标点输入文本 → `r01_breaks.md` | `python scripts/srt_reflow_breaks.py <01> [-o reflow/r01_breaks.md]` |
+| `srt_reflow_check_breaks.py` | r01 硬性断句校验：逐空隙点查句末标点 `.?!`；违规退出码 1（打回信号，受控例外 Agent 裁决） | `python scripts/srt_reflow_check_breaks.py <01> <r01_merged_en.txt>` |
+| `srt_reflow_check_words.py` | r01 措辞校验：词序列与 01 一致（不得改动措辞） | `python scripts/srt_reflow_check_words.py <01> <r01_merged_en.txt>` |
 
 ## 独立工具
 

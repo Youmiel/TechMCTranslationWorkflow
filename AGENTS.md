@@ -20,6 +20,7 @@
 ## 组织路由
 
 - 翻译工作流 → `translate-redstone` Skill（细节在各扩展 Skill，见其「扩展 Skill 地图」）
+- 语义回填工作流 → `reflow-redstone` Skill（共享阶段〇/一/二½/三，见其「依赖（扩展 Skill 地图）」）
 - 知识/索引维护 → `maintain-knowledge` Skill（决策路由见其「维护任务决策」）
 - Wiki 抓取/兜底 → `wiki-tools` Skill
 
