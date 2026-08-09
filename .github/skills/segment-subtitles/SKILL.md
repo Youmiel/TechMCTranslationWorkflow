@@ -1,6 +1,6 @@
 ---
 name: segment-subtitles
-description: 字幕断句（合并/分割）的规范。ASR 自动字幕常无标点，合并以语义完整性为判据而非标点；含英文预整理（游离单词归位）、两遍式定段、多说话人对白拆分、行宽规则、相邻段时间不重叠（共享 cue 整条归属 / 中间断句估算切分）。翻译工作流阶段一第一次遍历归位、阶段二断句时使用；分块见 translate-redstone「长视频分块」。
+description: 字幕断句（合并/分割）的规范。ASR 自动字幕常无标点，合并以语义完整性为判据而非标点；含英文预整理（游离单词归位）、两遍式定段、多说话人对白拆分、行宽规则、相邻段时间不重叠（共享 cue 整条归属 / 中间断句估算切分）。翻译工作流阶段一第一次遍历归位、阶段二断句时使用；分块见 redstone-conventions「长视频分块」。
 ---
 
 # 字幕断句规范
@@ -15,7 +15,7 @@ description: 字幕断句（合并/分割）的规范。ASR 自动字幕常无�
 
 1. **英文预整理**（游离单词归位）-> [英文预整理](#英文预整理游离单词归位)
 2. **第 1 遍（英文侧，初步分组）**：以整理后的英文句的**语义边界**为据（标点仅最弱参考、不作依据），把碎片拼成句级单元，只保证语音/语义连续 -> [合并判据](#合并判据语义完整性不以标点为准)；说话人切换拆段 -> [对白拆分](#对白拆分多说话人)
-3. **分块**（长视频）-> [translate-redstone#长视频分块](../translate-redstone/SKILL.md#长视频分块全流程通用机制)
+3. **分块**（长视频）-> [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)
 4. **翻译**（每块交 subagent，见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)）
 5. **第 2 遍（中文侧，最终定段）**：以**中文为主导**做最终合并与分割 -> [合并判据](#合并判据语义完整性不以标点为准) [分割超长句](#分割超长句)：
    - 中文读着零碎/别扭的片段 → **合并**成语义完整单元（中文怎么顺就怎么分）
@@ -27,7 +27,7 @@ description: 字幕断句（合并/分割）的规范。ASR 自动字幕常无�
 
 ## 长视频分块
 
-> 分块是**全流程通用机制**（术语扫描/合并/翻译/去翻译腔都用），已不属于断句规范——工具、参数与结转规则见 [translate-redstone#长视频分块](../translate-redstone/SKILL.md#长视频分块全流程通用机制)。
+> 分块是**全流程通用机制**（术语扫描/合并/翻译/去翻译腔都用），已不属于断句规范——工具、参数与结转规则见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)。
 
 ## 英文预整理（游离单词归位）
 
@@ -93,7 +93,7 @@ ASR 可能完全无标点，**合并的唯一判据是语义完整性**——一
 
 ## 输出与校验
 
-- 断句定稿写入 `03_segments.md`（格式见 [translate-redstone#中间产物与断点恢复](../translate-redstone/SKILL.md#中间产物与断点恢复)）
+- 断句定稿写入 `03_segments.md`（格式见 [translate-redstone#阶段二正式翻译](../translate-redstone/SKILL.md#阶段二正式翻译) · 产物契约）
 - 每次合并/分割后**立即校验**（**必须通过**才能进入下一步）：
   1. 时间不重叠 + 边界归属 + 段序：`python scripts/srt_check_segments.py <03_segments.md 或 draft.srt> --orig <01_subtitle_asr_fixed.srt>`（检查相邻段 `end_i ≤ start_{i+1}` 不重叠、时间边界 ⊆ 原边界集、不逆序、cue 覆盖完整）
   2. 中文行宽：`python scripts/srt_check_width.py <draft.srt> --order en-zh`
