@@ -12,6 +12,21 @@ description: Minecraft Wiki 页面获取与缓存写入的规范（MCP 工具降
 - **产出**：`.cache/wiki/<规范中文页面名>.md` 缓存 + 术语译名补充
 - **关联工具**：`mc-wiki-fetch-mcp` / `minecraft-wiki-mcp`（MCP）、`scripts/fetch_wiki.py`（兜底）、浏览器
 
+## 缓存读取（先查缓存，命中即用）
+
+**查词第一步是读 `.cache/wiki/`，不是联网**。`docs/WIKI_CACHE_FORMAT.md` 是唯一格式规范，读取流程如下：
+
+1. **构造中文命中键**：对待查术语先用术语表（`.cache/glossary/`、`knowledge/`）得到中文译名/候选——缓存文件名 = 中文规范标题，直接以 `缓存文件名` 判定
+2. **命中判定**：`.cache/wiki/<中文规范标题>.md` 存在即命中 → 直接读缓存内容，**不再发网络请求**
+   - 中文译名缺失（L3 新词）时：用 grep_search 在 `.cache/wiki/` 按**英文关键词**搜正文兜底（如 `红石比较器.md` 正文含 "Comparator"）
+   - 反向命中：`knowledge/01_terminology/*.csv` 的「来源」列已引用 `.cache/wiki/<页面>.md`，据此可反查已缓存页面
+3. **fidelity 回源判定**：命中后按内容保真度决定是否回源——
+   - 查 **ID / 色值 / 历史 / 隐藏注释** → 需 `lossless`；`plain`/`degraded` 时回源 wikitext（`mc-wiki-fetch-mcp` `get_page`）
+   - 只看**正文定义 / 机制** → `plain` / `refined` 足够，直接用
+4. **未命中才联网**：走下方「Wiki 页面获取」降级链抓取，结果按「缓存写入保真阶梯」落盘，供本视频后续与**跨视频复用**
+
+> **跨视频复用**：`.cache/wiki/` 是全局共享缓存，其它视频抓过的页面直接读，禁止重复联网。
+
 ## Wiki 页面获取（按数据源可靠度降级，优先保真度高的源）
 
 1. `mc-wiki-fetch-mcp` → `search_wiki(q)` / `get_page(pageName)`（wikitext，**唯一无损源**，ID 表/色值/历史/隐藏注释全保留，查精确数据/术语定义最可靠）
@@ -28,7 +43,7 @@ description: Minecraft Wiki 页面获取与缓存写入的规范（MCP 工具降
 - Agent 获取后顺手提取要点 + 格式化 → `fidelity: refined`（默认推荐）
 - `fetch_wiki.py`（纯文本）→ `fidelity: plain`，正文+版别+数值可读，但**表格被剥离**，查 ID/色值/历史不能信它
 - `minecraft-wiki-mcp`（markdown）→ `fidelity: degraded`，三源中最差（模板占位/乱码/数值丢），只适合快速浏览正文
-- 读缓存时按 `fidelity` 判断是否回源补精确数据；缓存格式规范见 `docs/WIKI_CACHE_FORMAT.md`
+- 缓存文件格式规范见 `docs/WIKI_CACHE_FORMAT.md`；读取 / 回源规则见上「缓存读取」
 
 ## 抓取注意事项
 

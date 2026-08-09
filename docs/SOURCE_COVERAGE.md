@@ -48,10 +48,14 @@ Wiki 不擅长（优先查 `_repos/` 或 `knowledge/`）：
 - 玩家个人博客的经验总结
 - 特定版本的 Bug 分析
 
-注意事项：
-- 优先确认授权状态
-- 仅提取客观事实，用自己的语言重组
-- 结果写入 `.cache/community/`
+使用方式：
+- **社区资料不通过网络抓取**：`_repos/` 外部知识仓库（git submodule，只读）即本地缓存，经 `indexes/repos/` 索引定位后直接读（见 `wiki-tools`「社区资料」）
+- 优先确认授权状态；仅提取客观事实，用自己的语言重组
+- **`.cache/community/` 为社区博客网页预留**：当前尚无可靠数据源，暂不启用（不写入、不读取）
+- **启用 checklist（数据源可用时，以 wiki 为模板，三件套一起补）**：
+  1. 写入通道：建立博客抓取脚本/降级链 → 落盘 `.cache/community/<规范名>.md`
+  2. 缓存规范：命名 + front matter（可简化，无需 wiki 的 fidelity 多级，按来源站点命名）
+  3. 读取闭环：在 `wiki-tools` 与 `translate-redstone` §1.2 同步挂"先查 community 缓存 → 未命中才抓取"
 
 ## 决策流程
 
