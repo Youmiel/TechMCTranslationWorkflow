@@ -49,8 +49,9 @@ def parse_srt(path):
 def main():
     ap = argparse.ArgumentParser(description="空隙探测：扫描 01 时间戳，生成 r00_gaps.md")
     ap.add_argument("src", help="01_subtitle_asr_fixed.srt")
-    ap.add_argument("-o", dest="out", default="reflow/r00_gaps.md", help="输出 r00_gaps.md（默认 reflow/r00_gaps.md）")
+    ap.add_argument("-o", dest="out", default=None, help="输出 r00_gaps.md（默认 01 同目录 reflow/r00_gaps.md）")
     args = ap.parse_args()
+    out = args.out or str(Path(args.src).parent / "reflow" / "r00_gaps.md")
 
     cues = parse_srt(args.src)
     gaps = []  # (gap_ms, idx_a, idx_b, a_end, b_start, a_text, b_text, is_jump)
@@ -88,10 +89,10 @@ def main():
     lines.append("2. **步骤 3 分句对应**：游离停顿词 cue（单词级 so/okay/and）两侧若有大空隙，应独立成单元或归前句句尾，不与后句主体合并（避免跨空隙单元）。")
     lines.append("3. **复盘**：r04 回填告警（内部空隙/剪辑跳转/超长单元）应与本清单对照——理论上 r04 不应出现本清单之外的新空隙。")
 
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"OK: {len(gaps)} 处长停顿（{n_jump} 剪辑跳转）→ {args.out}")
+    print(f"OK: {len(gaps)} 处长停顿（{n_jump} 剪辑跳转）→ {out}")
     for g in gaps:
         print(f"  c{g[1]}→c{g[2]} {g[0]/1000:.1f}s {'⚠️跳转' if g[7] else '停顿'}  {g[5][:30]} / {g[6][:30]}")
 

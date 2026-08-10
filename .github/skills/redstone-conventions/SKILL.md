@@ -37,10 +37,11 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 - 各阶段结束**立即落盘**；恢复时按**最完整产物**跳步
 - 产物契约表（共享前置 `01/02`；translate 阶段二 `s03/s04`；reflow 阶段二 `r00–r04`）见各工作流主 skill
 
-## 语言顺序
+## 语言顺序与输出变体
 
 - 固定 `en-zh`（英文行在前、中文行在后），输出/构建/校验脚本一律遵守，不得产出后再手动重排
 - 双语相关脚本统一用 `--order en-zh|zh-en` 显式指定（默认 en-zh）
+- **输出变体**（translate / reflow 两工作流统一）：`bilingual`（默认，en-zh 双语）· `zh-only`（仅目标语言）· `annotated`（双语 + 术语来源注释）
 
 ## 时间纪律（通用部分）
 
@@ -52,6 +53,7 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 
 > 超长上下文任务（术语扫描、合并/断句、翻译、去翻译腔、批量校验等）都可用本机制控制上下文，**不限于断句**。凡 cue/段数超出单次上下文，必须先分块再逐块交给 subagent。
 
+- **前置判断（读前必做）**：读取全文前先估算上下文——`cue 数 × 平均词数 × 双语比例`（双语再 ×2）对照单次上下文预算；超限即分块，**不得靠规模直觉直接读**（"恰好没超"是运气不是流程保证）
 - **工具**：`python scripts/srt_chunk.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]`（默认 N=100、M=6；输出 OWNED=本块负责 / CONTEXT=前后只读衔接 两分区；边界不切开任何 cue）
 - **输入**：merge 阶段用 `01_subtitle_asr_fixed.srt`（单语 cue 流）；translate 阶段用合并后的段 SRT（双语，附带知识卡）
 - **每块 prompt**：见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)

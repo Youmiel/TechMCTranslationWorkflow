@@ -35,7 +35,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 ### 输出
 
 - `<工作目录>/../_output/<文件名>.reflow.srt`，默认双语 en-zh（英文行 = 分句原文，中文行 = 对应译文），时间轴 = 以原轴为基础局部合并/切分
-- 变体：`zh-only`
+- 输出变体（`bilingual` 默认 / `zh-only` / `annotated`）见 [redstone-conventions#语言顺序与输出变体](../redstone-conventions/SKILL.md#语言顺序与输出变体)
 
 ### 中间产物与断点恢复（按产物路由）
 
@@ -48,8 +48,8 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
      - 步骤 1 前置 → `r00_gaps.md`、`r01_breaks.md`
      - 步骤 1 合并补标点 → `r01_merged_en.txt`
      - 步骤 2/3 整段翻译 + 术语抽查 → `r02_translation_zh.txt`
-     - 步骤 4 分句语义对应 → `r03_reflow_plan.md`
-     - 步骤 5/6 回填 + 组装 → `r04_reflow.srt`（预览，止步 `_work/`）
+     - 步骤 4 分句语义对应 → `r03_plan.md`
+     - 步骤 5/6 回填 + 组装 → `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.json`（锚定明细：逐整句锚定状态 + 单元 cue 命中）
 3. **阶段二+ 去翻译腔**（`humanizer-zh`，可选）——输入 `r04` 全稿 → 修订稿
 4. **阶段二½ 人工审核**（`redstone-review`）——输入 `r03` + `r04` → 用户确认（无新落盘）
 5. **阶段三 数据源总结**（`redstone-finalize`）——`.github/experience/` 追加
@@ -61,8 +61,8 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 3. 有 `02_terms.md` → preprocess §1.3 开头（§1.4 入库照做）
 4. 有 `r01_merged_en.txt` → 步骤 1 开头（重新合并补标点）
 5. 有 `r02_translation_zh.txt` → 步骤 2 开头（重新整段翻译）
-6. 有 `r03_reflow_plan.md` → 步骤 4 开头（重新分句对应）
-7. 有 `r04_reflow.srt` → 步骤 5 开头（重新回填）
+6. 有 `r03_plan.md` → 步骤 4 开头（重新分句对应）
+7. 有 `r04_draft.srt` → 步骤 5 开头（重新回填）
 
 > 各阶段结束**立即落盘**（conventions「断点恢复」）；中间产物是工作底稿，**禁止自动删除**（AGENTS.md #6）。
 
@@ -91,6 +91,8 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 - **超长单元阈值 15s 或 > 2×中位时长**（时长分布报告双向告警）
 - **时间边界规则**：允许预测点（100ms 取整、不入原边界集）——与 translate（边界 ⊆ 原集合）不同
 - **回填严格脚本化**：只做断句 + 时间运算，禁止任何二次翻译/改写（译文在 r02 定稿后不改）；断句暴露译文问题 → 回 r02/r03 改，不在回填阶段擅自改写
+- **r03 写时即合规预检**：步骤 4 产出 r03 后、步骤 5 回填前必跑 `srt_reflow.py check-r03`（锚定唯一性 / 拆句互斥 / 行宽 ≤20），违规打回改写——行宽超限（34 处级返工）、锚定失败/非唯一、互斥破坏都应从分句时拦截，不等步骤 5 告警
+- **读前预算**：读取全文/整段前先估算上下文（cue 数 × 平均词数 × 双语比例），超限即分块（conventions「长视频分块」），不靠规模直觉
 - **输出门禁**：`_output/` 只收阶段二½ 用户确认后的正式稿（见 `redstone-review`）
 
 ## 固定工作流指令
@@ -117,7 +119,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 4. **补标点**：把 `r01_breaks.md` 的「补标点输入文本」交给 LLM 补全标点（仅加标点、不改措辞）；空隙标记处按复核方式强制断句（不跨空隙合句）
 5. **硬性校验（必跑）**：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_merged_en.txt`——逐空隙点查句末标点 `.?!`；违规默认打回步骤 4 重跑（语义停顿可作受控例外放行，须 r03 不跨空隙成单元）
 6. **措辞校验**：`python scripts/srt_reflow_check_words.py <01> reflow/r01_merged_en.txt`——词序列与 01 一致
-7. 产出 `reflow/r01_merged_en.txt`；全文超长按语义段分块补标点（块边界与步骤 2 语义段一致）
+7. 产出 `reflow/r01_merged_en.txt`；**读前预算**：读取全文前先估算上下文（cue 数 × 平均词数 × 双语比例），超限即按语义段分块补标点（块边界与步骤 2 语义段一致），见 conventions「长视频分块」
 
 #### 步骤 2：整段翻译（不分割、不编号；仅极长间隔处分段）
 
@@ -134,13 +136,16 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 1. 原文分句：`r01_merged_en.txt` 按标点（`.?!` 和逗号）分成**整句**序列（回填锚定单元，脚本全文搜索定位）
 2. 译文分句：`r02_translation_zh.txt` 按标点（含逗号）分成译文单元序列
 3. 语义对应（Agent）：逐一判断译文单元归属哪个整句（及拆/合关系）——1:1 / 1:n（拆句，整句英文切成**互斥子片段**分别对应各子单元）/ n:1（合句）
-4. 输出回填方案 `reflow/r03_reflow_plan.md`（**按整句分组**：整句号 + 整句文本 + 组内译文单元（中文 + 英文片段 + 拆/合标注）），产出即交用户审核
+4. 输出回填方案 `reflow/r03_plan.md`（**按整句分组**：整句号 + 整句文本 + 组内译文单元（中文 + 英文片段 + 拆/合标注）），产出即交用户审核
 5. 拆句子单元用整句号+后缀（`6a/6b`）；合句标 `[19+20]`；**不再手写 cue 集/区间**（精确时间由步骤 5 脚本锚定）
 6. **游离停顿词规则**：单词级游离 cue（so/okay/and）+ 后随大空隙（>5s）必须独立成单元覆盖自身 cue，不得与后句主体合并（S56a 实证）
+7. **r03 写时即合规预检（必跑，通过才进步骤 5）**：`python scripts/srt_reflow.py check-r03 reflow/r03_plan.md <01>`——三查 ① 整句锚定唯一性（01 全文）② 拆句子单元互斥拼接 == 整句 ③ 译文单元行宽 ≤20；违规打回改写后重跑。把"步骤 5 跑完才发现"变成"写时即合规"（事后返工主因，见反馈）
 
 #### 步骤 5：回填（合并 / 切分 / 预测；脚本化）
 
-`python scripts/srt_reflow.py reflow r03_reflow_plan.md <01> -o reflow/r04_reflow.srt [--snap-ms 300]`
+`python scripts/srt_reflow.py reflow r03_plan.md <01> -o reflow/r04_draft.srt [--anchored reflow/r03_anchored.json] [--snap-ms 300]`
+
+- **锚定明细**：同步落盘 `r03_anchored.json`——逐整句锚定状态（unique / non-unique / failed）+ 每单元 cue 命中情况（hit + 起止 cue 号），可逐条审查哪些句非唯一/失败、哪些单元走了字数兜底（hit=false）
 
 - **整句锚定**：脚本以 r03 整句文本在 01 全文唯一性搜索 → 锚定时间范围 `[start, end]`
 - **单元级 cue 锚定**：组内各单元文本在整句区间内顺序搜索，直接取自身 cue 区间；首末单元裁剪到整句边界；分割点**就近吸附真实 cue 边界**（非"空隙优先"吸附空隙后沿，S56 实证）
@@ -153,7 +158,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 #### 步骤 6：组装输出（双语）
 
-`python scripts/srt_reflow.py attach-en reflow/r04_reflow.srt r03_reflow_plan.md -o reflow/r04_bilingual.srt`
+`python scripts/srt_reflow.py attach-en reflow/r04_draft.srt r03_plan.md -o reflow/r04_bilingual.srt`
 
 - 中文行 = 对应译文单元；英文行 = r03 的**英文片段**（拆句子单元取各自互斥片段，**不得复用整句原文**）
 - 行宽校验 `srt_check_width.py <输出> --order en-zh`（残留超限仅预警）
@@ -168,7 +173,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ### 阶段二½：人工审核循环（复用）
 
-按 [redstone-review](../redstone-review/SKILL.md) 执行（循环机制 + 输出门禁）。**审核对象：回填方案 + 最终 SRT**（`r03_reflow_plan.md` + `r04_reflow.srt`），重点核对语义对应是否判对（拆/合关系、切分位置）。
+按 [redstone-review](../redstone-review/SKILL.md) 执行（循环机制 + 输出门禁）。**审核对象：回填方案 + 最终 SRT**（`r03_plan.md` + `r04_draft.srt`），重点核对语义对应是否判对（拆/合关系、切分位置）。
 
 ### 阶段三：数据源效果总结（复用）
 

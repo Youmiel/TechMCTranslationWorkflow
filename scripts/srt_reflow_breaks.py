@@ -59,8 +59,9 @@ def parse_srt(path):
 def main():
     ap = argparse.ArgumentParser(description="r01 硬性断句输入：生成断句点清单 + 注入【强制断句】标记的补标点输入文本")
     ap.add_argument("src", help="01_subtitle_asr_fixed.srt")
-    ap.add_argument("-o", dest="out", default="reflow/r01_breaks.md", help="输出 r01_breaks.md（默认 reflow/r01_breaks.md）")
+    ap.add_argument("-o", dest="out", default=None, help="输出 r01_breaks.md（默认 01 同目录 reflow/r01_breaks.md）")
     args = ap.parse_args()
+    out = args.out or str(Path(args.src).parent / "reflow" / "r01_breaks.md")
 
     cues = parse_srt(args.src)
 
@@ -140,10 +141,10 @@ def main():
     lines.append("")
     lines.append("> 通过 = 每个空隙点两侧 cue 之间已断句；违规 = 存在跨空隙合句，打回步骤 1 重跑（带断句标记输入）。")
 
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.out, "w", encoding="utf-8") as f:
+    Path(out).parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"OK: {len(breaks)} 处断句点（{sum(1 for b in breaks if b[3])} 剪辑跳转）→ {args.out}")
+    print(f"OK: {len(breaks)} 处断句点（{sum(1 for b in breaks if b[3])} 剪辑跳转）→ {out}")
     for ia, ib, gap, is_jump in breaks:
         print(f"  c{ia}→c{ib} {gap/1000:.1f}s {'⚠️跳转' if is_jump else '停顿'}")
 
