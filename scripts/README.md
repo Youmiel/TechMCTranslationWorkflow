@@ -32,7 +32,7 @@
 
 | 脚本 | 用途 | 用法 |
 |------|------|------|
-| `srt_reflow.py` | 语义回填确定性时间运算：`reflow`（r03 方案 + 01 → r04 时间轴 + `r03_anchored.json` 锚定明细；整句锚定 + 单元级 cue 锚定 + 分割点就近吸附真实边界 + 100ms 预测点）、`attach-en`（双语组装，英文行 = r03 互斥英文片段）、`check-r03`（r03 写时即合规预检：锚定唯一性 / 拆句互斥 / 行宽 ≤20，违规退出码 1 打回） | `python scripts/srt_reflow.py reflow <r03> <01> [-o r04_draft.srt] [--anchored r03_anchored.json]` / `... attach-en <r04> <r03> [-o r04_bilingual.srt]` / `... check-r03 <r03> <01>` |
+| `srt_reflow.py` | 语义回填确定性时间运算：`reflow`（r03 方案 + 01 → r04 时间轴 + `r03_anchored.json` 锚定明细；整句锚定 + 单元级 cue 锚定 + 分割点就近吸附真实边界 + 100ms 预测点）、`attach-en`（双语组装，英文行 = r03 互斥英文片段）、`check-r03`（r03 写时即合规预检：锚定唯一性 / 拆句互斥 / 行宽 ≤20 / ZH 忠实，违规退出码 1 打回） | `python scripts/srt_reflow.py reflow <r03> <01> [-o r04_draft.srt] [--anchored r03_anchored.json]` / `... attach-en <r04> <r03> [-o r04_bilingual.srt]` / `... check-r03 <r03> <01> <r02>` |
 | `srt_reflow_gap_scan.py` | 空隙探测（长停顿 >5s / 剪辑跳转 >10s）→ `r00_gaps.md` | `python scripts/srt_reflow_gap_scan.py <01> [-o reflow/r00_gaps.md]` |
 | `srt_reflow_breaks.py` | r01 硬性断句输入：断句点清单（含 Agent 复核字段）+ 注入【强制断句】标记的补标点输入文本 → `r01_breaks.md` | `python scripts/srt_reflow_breaks.py <01> [-o reflow/r01_breaks.md]` |
 | `srt_reflow_check_breaks.py` | r01 硬性断句校验：逐空隙点查句末标点 `.?!`；违规退出码 1（打回信号，受控例外 Agent 裁决） | `python scripts/srt_reflow_check_breaks.py <01> <r01_merged_en.txt>` |

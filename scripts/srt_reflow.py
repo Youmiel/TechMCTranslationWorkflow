@@ -5,12 +5,12 @@
   reflow    r03_plan.md + 01_subtitle_asr_fixed.srt -> r04_draft.srt + r04_alerts.md + r03_anchored.json
             整句锚定 -> 单元级 cue 锚定 -> 分割点就近吸附真实 cue 边界 -> 100ms 取整预测点（兜底）
   attach-en r04_draft.srt + r03_plan.md -> 双语 SRT（en-zh，英文行 = r03 英文片段）
-  check-r03 r03_plan.md + 01 -> 写时即合规预检（锚定唯一性 / 拆句互斥 / 行宽 ≤20），违规退出码 1
+  check-r03 r03_plan.md + 01 + r02 -> 写时即合规预检（锚定唯一性 / 拆句互斥 / 行宽 ≤20 / ZH 忠实），违规退出码 1
 
 用法（命令根 = Project_Main/；输出默认写到输入文件 r03/r04 同目录，与 cwd 无关）：
   python scripts/srt_reflow.py reflow r03_plan.md 01_subtitle_asr_fixed.srt [-o r04_draft.srt] [--snap-ms 300]
   python scripts/srt_reflow.py attach-en r04_draft.srt r03_plan.md [-o r04_bilingual.srt]
-  python scripts/srt_reflow.py check-r03 r03_plan.md 01_subtitle_asr_fixed.srt
+  python scripts/srt_reflow.py check-r03 r03_plan.md 01_subtitle_asr_fixed.srt r02_translation_zh.txt
 
 实现拆分：逻辑在 srt_reflow_core/（io/plan/anchor/allocate/alerts/reflow/attach），本文件只做 CLI 分发。
 语义判断（分句对应、拆/合、切分位置）由 Agent 写入 r03 方案，脚本只做确定性时间运算。
@@ -53,9 +53,10 @@ def main():
     p2.add_argument("r03", help="r03_plan.md（英文片段）")
     p2.add_argument("-o", dest="out", default=None, help="输出双语（默认 r04 同目录 r04_bilingual.srt）")
 
-    p3 = sub.add_parser("check-r03", help="r03 写时即合规预检（锚定唯一性/拆句互斥/行宽），违规退出码 1")
+    p3 = sub.add_parser("check-r03", help="r03 写时即合规预检（锚定唯一性/拆句互斥/行宽/ZH忠实），违规退出码 1")
     p3.add_argument("r03", help="r03_plan.md（回填方案）")
     p3.add_argument("srt", help="01_subtitle_asr_fixed.srt（cue 时间戳）")
+    p3.add_argument("r02", help="r02_translation_zh.txt（定稿译文，ZH 忠实校验基准）")
 
     args = ap.parse_args()
     if args.cmd == "reflow":
@@ -67,7 +68,7 @@ def main():
         out = args.out or str(Path(args.r04).parent / "r04_bilingual.srt")
         attach_en(args.r04, args.r03, out)
     elif args.cmd == "check-r03":
-        sys.exit(check_r03(args.r03, args.srt))
+        sys.exit(check_r03(args.r03, args.srt, args.r02))
 
 
 if __name__ == "__main__":
