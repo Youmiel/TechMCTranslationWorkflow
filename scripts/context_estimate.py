@@ -6,22 +6,37 @@
 - 读取某产物只是第一步：后续步骤（翻译输出 / 组装 / 校验 / subagent 汇总）也要占窗口
 - 中间产物**落盘优于会话回顾**（断点恢复、subagent 组装都从文件读）——分块成本低，宁可多分块
 
-阈值：估算 token > 窗口上限 × ratio（默认 0.5）即建议分块——内容+本步 prompt 不超窗口一半，
-留出另一半给输出与后续步骤；字幕密集时可调低 ratio（如 0.4），宁低勿高。
+阈值：估算 token > 窗口上限 × ratio（默认 0.04）即建议分块——分块阈值按全流程读取次数摊销
+（完整流程 0.04=3.8% 保守、子任务不读 r03/r04 时 0.05=5% 上限，推导见 redstone-conventions 分块）；宁低勿高。
 
 确定性：字符 → token 用固定启发式（去空白字符 / 1.5，中英混合近似），同样输入同样输出。
 
 用法（命令根 = Project_Main/）：
-  python scripts/context_estimate.py <文件> [--window 128000] [--ratio 0.5]
+  python scripts/context_estimate.py <文件> [--window 128000] [--ratio 0.04]
   输入支持：SRT（额外报 cue 数）与 reflow 非 SRT 产物（r01_merged_en.txt / r02_translation_zh.txt / r03_plan.md 等 txt/md/json）
 """
 import argparse
+import json
 import re
 import sys
+from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "configs" / "context_window.json"
+DEFAULT_WINDOW = 128000
+
 TS_RE = re.compile(r"(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})")
+
+
+def load_context_length():
+    """模型窗口上限（单一事实源 = configs/context_window.json，仅 context_length 一个值）。
+    缺失/损坏 → None（调用方降级默认并提示询问用户写入）。"""
+    try:
+        v = int(json.loads(CONFIG_PATH.read_text(encoding="utf-8")).get("context_length", 0))
+        return v if v > 0 else None
+    except (OSError, ValueError, KeyError):
+        return None
 
 
 def parse_srt_cues(path):
@@ -43,10 +58,16 @@ def parse_srt_cues(path):
 def main():
     ap = argparse.ArgumentParser(description="上下文量估算与分块建议（SRT / 任意文本，确定性，替代人工估算）")
     ap.add_argument("file", help="输入文件：SRT 或 reflow 非 SRT 产物（txt/md/json）")
-    ap.add_argument("--window", type=int, default=128000, help="模型上下文窗口上限（估算 token，默认 128000）")
-    ap.add_argument("--ratio", type=float, default=0.5,
-                    help="分块阈值 = 窗口上限 × 该比例（默认 0.5：内容+prompt 不超窗口一半，留余量给输出/后续步骤）")
+    ap.add_argument("--window", type=int, default=None, help="模型上下文窗口上限（估算 token；默认读 configs/context_window.json，缺失时提示配置）")
+    ap.add_argument("--ratio", type=float, default=0.04,
+                    help="分块阈值 = 窗口上限 × 该比例（默认 0.04 保守=完整流程摊销 3.8%；子任务不读 r03/r04 时用 0.05；推导见 redstone-conventions 分块）")
     args = ap.parse_args()
+    cfg = load_context_length()
+    if args.window is None:
+        args.window = cfg or DEFAULT_WINDOW
+        if cfg is None:
+            print(f"⚠️ 未配置窗口上限：configs/context_window.json 缺失或无效，暂按 {DEFAULT_WINDOW} 计。")
+            print(f"   请询问用户期望的窗口上限（仅一个值），写入 configs/context_window.json：{{\"context_length\": <值>}}")
 
     if not (0 < args.ratio < 1):
         sys.exit("--ratio 必须在 (0, 1) 内（建议 ≤0.5：字幕不容压缩、后续步骤也占窗口）")

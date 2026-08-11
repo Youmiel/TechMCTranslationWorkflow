@@ -44,6 +44,24 @@
 
 ---
 
+## 配置文件（分块机制依赖，非工作流产物）
+
+### `configs/context_window.json`
+
+- 角色：模型窗口上限的**单一事实源**（`context_estimate.py` 的 `--window` 默认读它）
+- 格式：仅 `context_length` 一个字段（整数 = 模型**实际有效**窗口上限，token；非标称上限，见 redstone-conventions「标称 ≠ 实际有效」）
+
+```json
+{ "context_length": 128000 }
+```
+
+- 约束：
+  - **只放一个值**，不写模型名等冗余
+  - config 缺失/无效 → `context_estimate.py` 降级默认（128000）并提示 agent 询问用户期望窗口后写入（部署时一次）
+  - 变更需同步：本文件 + `context_estimate.py`（默认值/提示文案）+ `redstone-conventions`（分块 `--window` 口径）
+
+---
+
 ## 共享产物（阶段〇/一，redstone-preprocess）
 
 ### `01_subtitle_asr_fixed.srt`
