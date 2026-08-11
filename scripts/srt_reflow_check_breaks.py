@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """r01 硬性断句校验（输出层，打回机制）：检查 r01_merged_en.txt 是否跨空隙合句
 
-空隙点 = 01 中相邻 cue gap > 长停顿阈值（与 srt_reflow_gap_scan.py / srt_reflow_breaks.py 一致）。
+空隙点 = 01 中相邻 cue gap > 长停顿阈值（与 srt_reflow_gap_scan.py / srt_reflow_breaks.py 一致）；
+非语音标记 cue（[Music] 等，去括号后为空）两侧不参与空隙判定。
 对每个空隙点 c_a → c_b：
   在 r01 中定位 c_a 的末尾字符偏移 与 c_b 的首字符偏移（全文按 cue 顺序对齐），
   检查两偏移之间的原始文本是否含句末标点（. ? !）：
@@ -25,6 +26,12 @@ LONG_GAP_MS = 5000      # 长停顿阈值（与 srt_gap_scan.py 一致）
 NORM_RE = re.compile(r"[^a-z0-9']")
 SENT_END_RE = re.compile(r"[.?!]")
 BRACKET_RE = re.compile(r"\[[^\]]*\]")
+
+
+def is_pure_marker(text):
+    """纯非语音标记 cue：去掉全部 [xxx] 后无可见字符（[Music]/[Applause] 等）——
+    动态识别、不硬编码枚举；此类 cue 两侧不参与空隙判定"""
+    return BRACKET_RE.sub("", text).strip() == ""
 
 
 def parse_time(s):
@@ -69,9 +76,11 @@ def main():
     cues = parse_srt(args.src)
     r01_raw = open(args.r01, encoding="utf-8").read()
 
-    # 空隙点
+    # 空隙点（非语音标记 cue 两侧跳过）
     breaks = []  # (ia, ib, gap)
     for k in range(len(cues) - 1):
+        if is_pure_marker(cues[k]["text"]) or is_pure_marker(cues[k + 1]["text"]):
+            continue
         gap = cues[k + 1]["start"] - cues[k]["end"]
         if gap > LONG_GAP_MS:
             breaks.append((cues[k]["idx"], cues[k + 1]["idx"], gap))

@@ -74,11 +74,11 @@ def build_alerts(alerts, timeline, anchored, cues):
     alerts.append(f"极短单元(<300ms): {sum(1 for t in timeline if t[2]-t[1] < 300)} 处")
     alerts.append(f"长句碎片(<{MIN_FRAG_MS}ms): {n_frag} 处")
 
-    # 行宽预警（中文 >20）
+    # 行宽预警（软 22 / 硬 26；>26 硬违规已由 check-r03 拦截）
     for t in timeline:
         w = text_width(t[3])
-        if w > 20:
-            alerts.append(f"📏 行宽 {w:.1f}（>{20}）{t[0]}: {t[3]}")
+        if w > 22:
+            alerts.append(f"📏 行宽 {w:.1f}（>22 软预警）{t[0]}: {t[3]}")
 
 
 def write_outputs(timeline, alerts, out_path, alert_path):

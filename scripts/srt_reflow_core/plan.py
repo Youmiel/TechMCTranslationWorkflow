@@ -92,7 +92,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
 
     - 锚定唯一性：每个整句 EN 在 01 全文唯一命中（未命中 / 重复命中均报告）
     - 拆句互斥性：1:n 拆句子单元 EN 拼接 == 整句 EN
-    - 行宽：每个译文单元中文视觉宽度 ≤ 24（目标 20，警告阈值 24，与 srt_check_width 一致）
+    - 行宽：每个译文单元中文视觉宽度 ≤ 26（软 22 / 硬 26，与 srt_check_width 一致；>26 硬违规）
     - ZH 忠实性（需 r02）：r03 整句 ZH 拼接（去标点空白）== r02 定稿——断句只允许插断点标点，不得改写译文
     - 碎片预检（预警，不阻断；--no-frag 可关）：1:n 整句按中文阅读速度（--cjk-speed）粗估子单元时长，
       <1s 的提示 Agent 在 r03 阶段就合并/调整切分点（长句不碎，避免回填后返工）
@@ -133,8 +133,20 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
         units = s.units or [(s.key, s.en, s.zh)]
         for u in units:
             w = text_width(u[2])
-            if w > 24:
-                problems.append(f"📏 行宽 {w:.1f}（>24）{u[0]}: {u[2]}")
+            if w > 26:
+                problems.append(f"📏 行宽 {w:.1f}（>26 硬）{u[0]}: {u[2]}")
+
+    # 括号/引号配对预警（存疑，不阻断）：单元内不成对 = 括号被拆 / 引号归属漂移（S24/S61e/S70c 类）
+    for s in sentences:
+        units = s.units or [(s.key, s.en, s.zh)]
+        for u in units:
+            zh = u[2]
+            for o, c in (("（", "）"), ("(", ")")):
+                if zh.count(o) != zh.count(c):
+                    warnings.append(f"🧩 括号不配对 {u[0]}: 「{zh}」含 {o}×{zh.count(o)}/{c}×{zh.count(c)}——括号整体应归同一单元（可能被切在括号中间）")
+                    break
+            if zh.count('"') % 2 == 1 or zh.count("“") != zh.count("”"):
+                warnings.append(f"🧩 引号不配对 {u[0]}: 「{zh}」引号不成对——引号归属可能漂移（整句中间的引号随其后中文文本归属，不得丢失/错位）")
 
     # 跨整句共享 cue 切分（预估贴近回填：相邻整句共享 cue 时末单元被裁到共享切分点，S6/S7 实证）
     resolve_shared_cues([a for a in anchors if a is not None], cues, cue_offsets, [])

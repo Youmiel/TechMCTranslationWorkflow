@@ -9,7 +9,7 @@
 
 背景：S56 事故实证「合句逻辑胜过分割逻辑」——只给文本无时间信息时 LLM 必然合句，
 剪辑空隙被文本连续性吞掉。软指令（prompt 里写"空隙处强制断句"）不足，
-必须把空隙点作为结构约束注入输入。
+必须把空隙点作为结构约束注入输入。非语音标记 cue（[Music] 等，去括号后为空）不参与空隙判定。
 
 阈值与 reflow-redstone SKILL 一致：长停顿 >5s；剪辑跳转 >10s。
 用法（命令根 = Project_Main/）：
@@ -25,6 +25,12 @@ sys.stdout.reconfigure(encoding="utf-8")
 LONG_GAP_MS = 5000      # 长停顿阈值（与 srt_gap_scan.py / 步骤 2/5 一致）
 JUMP_GAP_MS = 10000     # 剪辑跳转阈值
 BRACKET_RE = re.compile(r"\[[^\]]*\]")
+
+
+def is_pure_marker(text):
+    """纯非语音标记 cue：去掉全部 [xxx] 后无可见字符（[Music]/[Applause] 等）——
+    动态识别、不硬编码枚举；此类 cue 两侧不参与空隙判定"""
+    return BRACKET_RE.sub("", text).strip() == ""
 
 
 def parse_time(s):
@@ -65,9 +71,11 @@ def main():
 
     cues = parse_srt(args.src)
 
-    # 空隙点（与 srt_gap_scan.py 同一判定）
+    # 空隙点（与 srt_gap_scan.py 同一判定；非语音标记 cue 两侧跳过）
     breaks = []  # (ia, ib, gap, is_jump)
     for k in range(len(cues) - 1):
+        if is_pure_marker(cues[k]["text"]) or is_pure_marker(cues[k + 1]["text"]):
+            continue  # [Music] 等非语音标记 cue 不成为断句锚点——标记不打断语义
         gap = cues[k + 1]["start"] - cues[k]["end"]
         if gap > LONG_GAP_MS:
             breaks.append((cues[k]["idx"], cues[k + 1]["idx"], gap, gap > JUMP_GAP_MS))
