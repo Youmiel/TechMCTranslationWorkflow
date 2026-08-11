@@ -140,6 +140,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 **产物契约（本阶段输入 / 输出）**：
 - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`（preprocess 产物）
 - 输出：`s03_plan.md`（断句定稿，交用户审核前落盘）、`s04_draft.srt`（逐段翻译落盘，中断从未完成段继续）
+- 各产物结构/分隔符/标记约定（单一权威）见 [PRODUCT_FORMATS](../../docs/PRODUCT_FORMATS.md)，处理前先查对应节
 
 **翻译风格**：翻译前读 `ref_translations/` 参考译例（如有），模仿其**语气 / 句长偏好 / 术语偏好 / 注释风格**。
 

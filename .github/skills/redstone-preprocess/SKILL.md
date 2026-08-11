@@ -14,6 +14,8 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 | `<工作目录>/01_subtitle_asr_fixed.srt` | §1.1 第一次遍历后 | ASR 修正 + 游离单词归位的英文字幕（保留原时间码、不增删 cue） | 避免重复 ASR 解码 |
 | `<工作目录>/02_terms.md` | §1.3 用户确认后 | 确认后的术语映射表（时间戳/原文/译名/来源/ASR 修正） | 翻译唯一译名依据，跳过整个阶段一 |
 
+> 产物结构/格式/标记约定（单一权威）见 [PRODUCT_FORMATS](../../docs/PRODUCT_FORMATS.md)；处理前先查对应节，勿现查代码猜格式。
+
 ## 依赖
 
 `use-glossary` · `term-scan` · `term-registration` · `subagent-dispatch` · `csv-rules` · `wiki-tools` · `segment-subtitles` · `redstone-conventions` · `maintain-knowledge`
