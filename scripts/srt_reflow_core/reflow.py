@@ -1,13 +1,20 @@
 # -*- coding: utf-8 -*-
-"""reflow 主流程编排：r03 方案 + 01 -> r04 时间轴 + r04_alerts + r03_anchored.json"""
+"""reflow 主流程编排：r03 方案 + 01 -> r04 时间轴 + r04_alerts + r03_anchored.jsonl"""
 from .io import parse_srt, build_full, norm, fmt
 from .plan import parse_r03
 from .anchor import anchor, resolve_shared_cues, unit_anchor_in_sentence
-from .allocate import allocate_unit_cues, allocate_by_ratio
+from .allocate import (
+    allocate_unit_cues,
+    allocate_by_reading,
+    allocate_by_ratio,
+    needs_reading_interp,
+    READING_MISMATCH_RATIO,
+    MIN_FRAG_MS,
+)
 from .alerts import build_alerts, write_outputs, write_anchored_json
 
 
-def reflow(r03_path, srt_path, out_path, alert_path, anchored_path, snap_ms):
+def reflow(r03_path, srt_path, out_path, alert_path, anchored_path, snap_ms, cjk_speed=5.0):
     sentences = parse_r03(r03_path)
     cues = parse_srt(srt_path)
     full, mapping, cue_offsets = build_full(cues)
@@ -42,20 +49,38 @@ def reflow(r03_path, srt_path, out_path, alert_path, anchored_path, snap_ms):
         real_bounds.add(c["start"])
         real_bounds.add(c["end"])
 
-    # 句内分配（单元级 cue 锚定优先，字数比例兜底）
+    # 句内分配（单元级 cue 锚定优先 → 阅读失配触发阅读感知插值 → 字数比例兜底）
     timeline = []      # (unit_key, start, end, zh, en_frag, is_pred_start, is_pred_end)
-    anchor_detail = [] # 逐整句锚定明细 → r03_anchored.json
+    anchor_detail = [] # 逐整句锚定明细 → r03_anchored.jsonl（每行一整句）
     for a in anchored:
         s, start, end = a["s"], a["start"], a["end"]
         units = s.units or [(s.key, s.en, s.zh)]
+        alloc_mode = "ratio"
         unit_cues = None
         if len(units) > 1 and a.get("pos") is not None:
             unit_cues = unit_anchor_in_sentence(s, a, full, mapping, cues)
         if unit_cues is not None:
-            timeline.extend(allocate_unit_cues(s, a, units, unit_cues, cues, cue_offsets, alerts))
+            segs = allocate_unit_cues(s, a, units, unit_cues, cues, cue_offsets, alerts)
+            alloc_mode = "cue"
+            # 阅读感知插值（长句碎片<1s 或 显著阅读失配 → 按中文阅读速度重分配，不机械匹配英文 cue）
+            short = needs_reading_interp(segs, cjk_speed)
+            if short and (end - start) > 0:
+                alerts.append(
+                    f"📖 阅读插值 {s.key}: 单元 {[k for k, _, _ in short]} 时长不足"
+                    f"（碎片<{MIN_FRAG_MS}ms 或 显著失配<阅读所需×{READING_MISMATCH_RATIO}）"
+                    f"（{[(k, f'{d}ms') for k, d, _ in short]}）"
+                    f"——倒装/中英时长差，改中文阅读速度插值（{cjk_speed} 字/秒）"
+                )
+                segs = allocate_by_reading(units, start, end, real_bounds, snap_ms, cjk_speed)
+                alloc_mode = "reading"
+            timeline.extend(segs)
             unit_hits = [{"hit": True, "cues": [cues[uc[0]]["idx"], cues[uc[1]]["idx"]]} for uc in unit_cues]
+            if alloc_mode == "reading":
+                for uh in unit_hits:
+                    uh["hit"] = False  # 时长已由阅读插值决定，非 cue 命中
         else:
             timeline.extend(allocate_by_ratio(units, start, end, real_bounds, snap_ms))
+            alloc_mode = "ratio"
             if len(units) == 1:
                 unit_hits = [{"hit": a.get("status") != "failed", "cues": None}]
             else:
@@ -66,6 +91,7 @@ def reflow(r03_path, srt_path, out_path, alert_path, anchored_path, snap_ms):
             "en": s.en,
             "zh": s.zh,
             "anchor": a.get("status", "unique"),
+            "alloc": alloc_mode,  # cue / reading / ratio
             "start": fmt(start),
             "end": fmt(end),
             "span_ms": end - start,

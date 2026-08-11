@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""r01 措辞校验：r01 词序列 == 01 词序列（剔除 [Music]），验证"不得改动措辞"硬约束
+"""r01 措辞校验：r01 词序列 == 01 词序列（剔除 [Music]/[Applause] 非语音标记），验证"不得改动措辞"硬约束
 
 回填工作流（reflow-redstone）步骤 1：LLM 合并补标点后，词序列必须与 01 一致（只加标点、不改措辞）。
 
@@ -22,7 +22,7 @@ def srt_words(path):
         if len(lines) < 3:
             continue
         body = " ".join(lines[2:])
-        if body.strip() in ("[Music]", "[Music] "):
+        if body.strip() in ("[Music]", "[Music] ", "[Applause]", "[Applause] "):
             continue
         texts.append(body)
     joined = " ".join(texts)

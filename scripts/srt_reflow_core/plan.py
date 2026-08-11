@@ -5,6 +5,14 @@ from collections import Counter
 from pathlib import Path
 
 from .io import norm, text_width, parse_srt, build_full
+from .allocate import (
+    cjk_reading_ms,
+    estimate_unit_durations,
+    MIN_FRAG_MS,
+    READING_MISMATCH_RATIO,
+    READING_MIN_GAP_MS,
+)
+from .anchor import resolve_shared_cues, unit_anchor_in_sentence
 
 # 译文忠实校验：去空白/标点，留中文字符与字母数字（断点标点不计入比较）
 ZH_KEEP_RE = re.compile(r"[^\u4e00-\u9fff0-9a-zA-Z]")
@@ -79,27 +87,45 @@ def parse_r03(path):
     return out
 
 
-def check_r03(r03_path, srt_path, r02_path=None):
+def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True, check_mismatch=True):
     """r03 写时即合规预检（步骤 4 产出后、步骤 5 回填前必跑）：
 
     - 锚定唯一性：每个整句 EN 在 01 全文唯一命中（未命中 / 重复命中均报告）
     - 拆句互斥性：1:n 拆句子单元 EN 拼接 == 整句 EN
-    - 行宽：每个译文单元中文视觉宽度 ≤ 20
+    - 行宽：每个译文单元中文视觉宽度 ≤ 24（目标 20，警告阈值 24，与 srt_check_width 一致）
     - ZH 忠实性（需 r02）：r03 整句 ZH 拼接（去标点空白）== r02 定稿——断句只允许插断点标点，不得改写译文
+    - 碎片预检（预警，不阻断；--no-frag 可关）：1:n 整句按中文阅读速度（--cjk-speed）粗估子单元时长，
+      <1s 的提示 Agent 在 r03 阶段就合并/调整切分点（长句不碎，避免回填后返工）
+    - 中英失配预估（预警，不阻断；--no-mismatch 可关）：1:n 整句按单元级 cue 锚定 + 共享 cue 切分预估
+      各单元实际时长，文本量大的中文单元只拿到很短英文 cue（倒装/中英时长差）时提示 Agent
+      调整切分点或依赖回填阅读插值
 
-    有违规输出清单并返回 1（打回 r03 改写），全部通过返回 0。
+    有硬违规输出清单并返回 1（打回 r03 改写），仅存疑预警则通过并打印提示（Agent 智能判断）。全部通过返回 0。
     """
     sentences = parse_r03(r03_path)
     cues = parse_srt(srt_path)
-    full, _mapping, _offsets = build_full(cues)
+    full, mapping, cue_offsets = build_full(cues)
     problems = []
+    warnings = []
+    anchors = []
     for s in sentences:
         n = norm(s.en)
         pos = full.find(n)
         if pos == -1:
             problems.append(f"❌ 整句 {s.key} 锚定失败（01 全文未找到）——回填将走顺序兜底，须修正措辞")
-        elif full.find(n, pos + 1) != -1:
-            problems.append(f"⚠️ 整句 {s.key} 非唯一命中（01 全文出现 ≥2 次）——回填将取第一处，须保证唯一或接受")
+            anchors.append(None)
+        else:
+            if full.find(n, pos + 1) != -1:
+                problems.append(f"⚠️ 整句 {s.key} 非唯一命中（01 全文出现 ≥2 次）——回填将取第一处，须保证唯一或接受")
+            anchors.append({
+                "key": s.key,
+                "start": cues[mapping[pos]]["start"],
+                "end": cues[mapping[pos + len(n) - 1]]["end"],
+                "si": mapping[pos],
+                "ei": mapping[pos + len(n) - 1],
+                "pos": pos,
+                "pos_end": pos + len(n) - 1,
+            })
         if s.rel == "1:n" and s.units:
             joined = "".join(norm(u[1]) for u in s.units)
             if joined != n:
@@ -107,8 +133,49 @@ def check_r03(r03_path, srt_path, r02_path=None):
         units = s.units or [(s.key, s.en, s.zh)]
         for u in units:
             w = text_width(u[2])
-            if w > 20:
-                problems.append(f"📏 行宽 {w:.1f}（>20）{u[0]}: {u[2]}")
+            if w > 24:
+                problems.append(f"📏 行宽 {w:.1f}（>24）{u[0]}: {u[2]}")
+
+    # 跨整句共享 cue 切分（预估贴近回填：相邻整句共享 cue 时末单元被裁到共享切分点，S6/S7 实证）
+    resolve_shared_cues([a for a in anchors if a is not None], cues, cue_offsets, [])
+
+    # 回填前预估预警（碎片 + 中英失配，均为存疑、Agent 智能判断）
+    for s, a in zip(sentences, anchors):
+        if a is None:
+            continue
+        units = s.units or [(s.key, s.en, s.zh)]
+        if s.rel != "1:n" or len(units) < 2 or cjk_speed <= 0:
+            continue
+        start, end = a["start"], a["end"]
+        span = end - start
+        # 碎片预检：整句 span 按阅读比例粗估子单元时长，<1s 预警（长句切碎风险）
+        if check_frag and span > 0:
+            weights = [max(1, cjk_reading_ms(u[2], cjk_speed)) for u in units]
+            total = sum(weights) or 1
+            for u, w in zip(units, weights):
+                est = span * w / total
+                if est < MIN_FRAG_MS:
+                    warnings.append(
+                        f"🔪 碎片预检 {u[0]}: 整句 {s.key} span {span}ms 按阅读比例约 {est:.0f}ms"
+                        f" <{MIN_FRAG_MS}ms——建议在 r03 合并相邻单元或调整切分点（长句不碎）"
+                    )
+        # 中英失配预估：单元级 cue 锚定 + 共享 cue 切分预估实际时长，对比中文阅读所需
+        # ——倒装/中英时长差：文本量大的中文单元可能只拿到很短的英文 cue（读不完）
+        if check_mismatch:
+            ucs = unit_anchor_in_sentence(s, a, full, mapping, cues)
+            if ucs is not None:
+                ests = estimate_unit_durations(s, a, units, ucs, cues, cue_offsets)
+                if ests:
+                    for u, est in zip(units, ests):
+                        d = int(est[1] - est[0])
+                        need = cjk_reading_ms(u[2], cjk_speed)
+                        if need > 0 and d < need * READING_MISMATCH_RATIO \
+                                and (need * READING_MISMATCH_RATIO - d) >= READING_MIN_GAP_MS:
+                            warnings.append(
+                                f"📖 中英失配预估 {u[0]}: 中文「{u[2]}」阅读需 {need}ms，英文 cue 预估仅 {d}ms"
+                                f"（<阅读所需×{READING_MISMATCH_RATIO}，失配 {int(need * READING_MISMATCH_RATIO - d)}ms）"
+                                f"——倒装/时长不均，整句 {s.key}：可调整 r03 切分点或依赖回填阅读插值"
+                            )
     # 拆句单元层一致性：1:n 子单元 ZH 拼接 == 整句 ZH（去标点后逐字相等）——拦截子单元层译文改写
     for s in sentences:
         if s.rel == "1:n" and len(s.units) > 1:
@@ -132,6 +199,10 @@ def check_r03(r03_path, srt_path, r02_path=None):
                 f"❌ 译文忠实性：r03 译文单元 ZH ≠ r02 定稿（断句不得增删/改写字，仅可插标点）"
                 f"；r03 多出「{added}」/ r02 有而 r03 缺「{removed}」"
             )
+    if warnings:
+        print(f"🔪 check-r03 存疑预警 {len(warnings)} 条（估算值，供 Agent 判断：合并相邻单元 / 调整切分点 / 接受 / 依赖回填插值）:")
+        for w in warnings:
+            print("  " + w)
     if not problems:
         print(f"✅ check-r03 通过：{len(sentences)} 整句，锚定唯一 / 互斥 / 行宽 / ZH忠实均合规")
         return 0
