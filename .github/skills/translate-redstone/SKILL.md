@@ -135,6 +135,8 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 阶段二：正式翻译
 
+> **阶段入口 · 报告 subagent 策略**：本阶段是否派 subagent（如长视频分块合并/翻译）、几个、原因——见 [subagent-dispatch#subagent 决策（阶段级报告）](../subagent-dispatch/SKILL.md#subagent-决策阶段级报告)。
+
 **产物契约（本阶段输入 / 输出）**：
 - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`（preprocess 产物）
 - 输出：`s03_plan.md`（断句定稿，交用户审核前落盘）、`s04_draft.srt`（逐段翻译落盘，中断从未完成段继续）

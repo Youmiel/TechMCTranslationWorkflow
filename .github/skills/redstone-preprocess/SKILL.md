@@ -38,6 +38,8 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 ### 1.1 术语扫描
 > 机制见 [term-scan](../term-scan/SKILL.md)（权威）、[use-glossary#四级查找](../use-glossary/SKILL.md#四级查找)、[subagent-dispatch#任务变体](../subagent-dispatch/SKILL.md#任务变体)；长视频分块见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)（通用机制）。
 
+> **阶段入口 · 报告 subagent 策略**：本阶段是否派 subagent、几个、原因——见 [subagent-dispatch#subagent 决策（阶段级报告）](../subagent-dispatch/SKILL.md#subagent-决策阶段级报告)。
+
 1. **加载领域知识**：加载阶段〇判定的分类术语文件（L2 按文件名、L1 全量），建立术语映射表
 2. **第一次遍历（英文侧轻量处理）** → 写 `01_subtitle_asr_fixed.srt`：
    - ASR 修正（注入 asr_fixes + 领域术语集）+ 游离单词归位（见 [segment-subtitles#英文预整理](../segment-subtitles/SKILL.md#英文预整理游离单词归位)）
