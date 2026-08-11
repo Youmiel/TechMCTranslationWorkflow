@@ -9,6 +9,7 @@
 
 用法:
   python scripts/srt_chunk.py <input.srt> --out <dir> --owned 100 --ctx 6 [--order en-zh|zh-en]
+  （分块前置判定已移入 scripts/context_estimate.py：任意文本/SRT 的上下文量估算与分块建议）
 
 输入:
   merge 阶段     : 01_subtitle_asr_fixed.srt（单语英文 cue 流）
