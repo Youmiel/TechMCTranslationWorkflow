@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """将 SRT 字幕流按「N 条负责 + M 条上下文」分块，供 subagent 分块处理长视频。
 
+⚠️ 旧版工具（仅 SRT）：**新任务一律用 `text_chunk.py`**（SRT 与非 SRT 统一，见 docs/PRODUCT_FORMATS.md「通用文本分块」）。
+本脚本仅保留兼容历史产物/旧流程。
+
 设计：
 - 每块 = OWNED 区（本块负责的 cue，必须产出）+ CONTEXT 区（前/后各 M 条，只读，仅作衔接参考，不产出）
 - 块边界始终在 cue 边界，不切开任何 cue；合并后的段时间码仍 ⊆ 原字幕边界集

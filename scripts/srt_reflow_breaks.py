@@ -50,7 +50,8 @@ def parse_srt(path):
     cues = []
     for block in text.strip().split("\n\n"):
         lines = [l for l in block.splitlines() if l.strip()]
-        if len(lines) < 3:
+        # 空文本 cue 只有索引行+时间行（2 行）；只要含有效时间行即保留，保证 cues 与 SRT 原始索引一一对齐
+        if len(lines) < 2:
             continue
         idx = int(re.match(r"\d+", lines[0]).group())
         m = re.match(r"(\d\d:\d\d:\d\d,\d\d\d) --> (\d\d:\d\d:\d\d,\d\d\d)", lines[1])
@@ -71,14 +72,13 @@ def main():
 
     cues = parse_srt(args.src)
 
-    # 空隙点（与 srt_gap_scan.py 同一判定；非语音标记 cue 两侧跳过）
+    # 空隙点（与 srt_gap_scan.py 同一判定：先剔除纯标记 cue，在剩余语音 cue 上按顺序相邻判定——跨标记空隙也算）
     breaks = []  # (ia, ib, gap, is_jump)
-    for k in range(len(cues) - 1):
-        if is_pure_marker(cues[k]["text"]) or is_pure_marker(cues[k + 1]["text"]):
-            continue  # [Music] 等非语音标记 cue 不成为断句锚点——标记不打断语义
-        gap = cues[k + 1]["start"] - cues[k]["end"]
+    speech = [c for c in cues if not is_pure_marker(c["text"])]
+    for k in range(len(speech) - 1):
+        gap = speech[k + 1]["start"] - speech[k]["end"]
         if gap > LONG_GAP_MS:
-            breaks.append((cues[k]["idx"], cues[k + 1]["idx"], gap, gap > JUMP_GAP_MS))
+            breaks.append((speech[k]["idx"], speech[k + 1]["idx"], gap, gap > JUMP_GAP_MS))
 
     # —— 断句点清单 ——
     lines = []

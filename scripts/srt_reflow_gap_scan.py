@@ -45,7 +45,8 @@ def parse_srt(path):
     cues = []
     for block in text.strip().split("\n\n"):
         lines = [l for l in block.splitlines() if l.strip()]
-        if len(lines) < 3:
+        # 空文本 cue 只有索引行+时间行（2 行）；只要含有效时间行即保留，保证 cues 与 SRT 原始索引一一对齐
+        if len(lines) < 2:
             continue
         idx = int(re.match(r"\d+", lines[0]).group())
         m = re.match(r"(\d\d:\d\d:\d\d,\d\d\d) --> (\d\d:\d\d:\d\d,\d\d\d)", lines[1])
@@ -85,7 +86,7 @@ def main():
     lines.append("")
     lines.append(f"## 长停顿清单（>{LONG_GAP_MS/1000:.0f}s，共 {len(gaps)} 处，按时长降序）")
     lines.append("")
-    n_jump = sum(1 for g in gaps if g[7])
+    n_jump = sum(1 for g in gaps if g[8])
     lines.append(f"- 其中剪辑跳转（>{JUMP_GAP_MS/1000:.0f}s）: {n_jump} 处")
     lines.append("")
     for i, (gap, ia, ib, a_start, a_end, b_start, at, bt, is_jump) in enumerate(gaps, 1):
@@ -115,7 +116,7 @@ def main():
         f.write("\n".join(lines) + "\n")
     print(f"OK: {len(gaps)} 处长停顿（{n_jump} 剪辑跳转；非语音标记 {len(markers)} 条已跳过）→ {out}")
     for g in gaps:
-        print(f"  c{g[1]}→c{g[2]} {g[0]/1000:.1f}s {'⚠️跳转' if g[7] else '停顿'}  {g[6][:30]} / {g[7][:30]}")
+        print(f"  c{g[1]}→c{g[2]} {g[0]/1000:.1f}s {'⚠️跳转' if g[8] else '停顿'}  {g[6][:30]} / {g[7][:30]}")
 
 
 if __name__ == "__main__":

@@ -44,11 +44,19 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 1. **阶段〇/一 领域预判与术语补齐**（`redstone-preprocess`）——输入 `_input/` 原始字幕 → 产物 `<工作目录>/01_subtitle_asr_fixed.srt`、`<工作目录>/02_terms.md`
 2. **阶段二 语义回填**（本工作流，产物在 `<工作目录>/reflow/`）
    - 输入：`01` + `02`
-   - 产物（按序）：
+   - **两条路径由 `context_estimate.py` 判定**（cue 数超出单次上下文 → 分块；未超 → 不分块）。产物形态不同，分别列出：
+   - **分块路径（长视频，产物按序）**：
      - 步骤 1 前置 → `r00_gaps.md`、`r01_breaks.md`
-     - 步骤 1 合并补标点 → `r01_merged_en.txt`
-     - 步骤 2/3 整段翻译 + 术语抽查 → `r02_translation_zh.txt`
-     - 步骤 4 分句语义对应 → `r03_plan.md`
+     - 分块骨架 → `chunks/`（从 01 `--gaps` 分块，空隙组-片）
+     - 步骤 1 补标点 → `r01_results/`（每块独立，**不生成 r01_merged_en.txt**）
+     - 步骤 2/3 翻译 + 术语抽查 → `r02_results/`（每块独立，**不生成 r02_translation_zh.txt**）
+     - 步骤 4 分句 → `r03_results/` → 拼 `r03_plan.md`（回填输入）
+     - 步骤 5/6 回填 + 组装 → `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
+   - **不分块路径（短视频，产物按序）**：
+     - 步骤 1 前置 → `r00_gaps.md`、`r01_breaks.md`
+     - 步骤 1 补标点 → `r01_merged_en.txt`（完整块结构英文）
+     - 步骤 2/3 翻译 + 术语抽查 → `r02_translation_zh.txt`（完整中文）
+     - 步骤 4 分句 → `r03_plan.md`（回填输入）
      - 步骤 5/6 回填 + 组装 → `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
 
 > **产物格式/分隔符/标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式；块间分隔一律空行、标记文本仅限脚本生成的 `【强制断句】`。
@@ -57,13 +65,20 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 **中断恢复路由**：检查 `_work/<视频名>/` 最完整产物，**从产出该产物的阶段/步骤开头继续**（假设该阶段异常中断、产物可能不完整）：
 
-1. 无任何产物 → 从头开始（阶段〇）
-2. 仅 `01_subtitle_asr_fixed.srt` → preprocess §1.1 开头
-3. 有 `02_terms.md` → preprocess §1.3 开头（§1.4 入库照做）
-4. 有 `r01_merged_en.txt` → 步骤 1 开头（重新合并补标点）
-5. 有 `r02_translation_zh.txt` → 步骤 2 开头（重新整段翻译）
-6. 有 `r03_plan.md` → 步骤 4 开头（重新分句对应）
-7. 有 `r04_draft.srt` → 步骤 5 开头（重新回填）
+- **分块路径**：
+  1. 有 `reflow/chunks/`（01 分块骨架）→ 步骤 1b 第 5 步（从逐块补标点续）
+  2. 有 `reflow/r01_results/`（逐块中间产物）→ 步骤 1b 第 6/7 步（从逐块校验续）
+  3. 有 `reflow/r02_results/`（逐块中间产物）→ 步骤 2 第 2a 步（从逐块翻译续）
+  4. 有 `reflow/r03_results/`（逐块中间产物）→ 步骤 4 第 0 步（从分句续，拼 r03_plan.md）
+- **不分块路径**：
+  1. 有 `r01_merged_en.txt` → 步骤 1c 开头（重新整段补标点）
+  2. 有 `r02_translation_zh.txt` → 步骤 2 第 2b 步（重新整段翻译）
+- **两路径共用**：
+  1. 无任何产物 → 从头开始（阶段〇）
+  2. 仅 `01_subtitle_asr_fixed.srt` → preprocess §1.1 开头
+  3. 有 `02_terms.md` → preprocess §1.3 开头（§1.4 入库照做）
+  4. 有 `r03_plan.md` → 步骤 4 开头（重新分句对应）
+  5. 有 `r04_draft.srt` → 步骤 5 开头（重新回填）
 
 > 各阶段结束**立即落盘**（conventions「断点恢复」）；中间产物是工作底稿，**禁止自动删除**（AGENTS.md #6）。
 
@@ -111,32 +126,76 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 > 语义工作（合并补标点 / 翻译 / 分句对应 / 回填判断）由 Agent 承担；确定性时间运算由 `scripts/srt_reflow*.py` 承担（见各步骤）。
 
-> **阶段入口 · 报告 subagent 策略**：本阶段是否派 subagent（如长视频分块合并补标点 / 分块整段翻译）、几个、原因——见 [subagent-dispatch#subagent 决策（阶段级报告）](../subagent-dispatch/SKILL.md#subagent-决策阶段级报告)。
+> **阶段入口 · 报告 subagent 策略**：本阶段是否派 subagent（分块路径：逐块补标点 / 逐块翻译；不分块路径：整段翻译）、几个、原因——见 [subagent-dispatch#subagent 决策（阶段级报告）](../subagent-dispatch/SKILL.md#subagent-决策阶段级报告)。
 
 #### 步骤 1：合并全文 + 补充标点（语义；硬性断句脚本驱动）
 
-1. **空隙探测**：`python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md`
+> **两条路径共用前置（1a），随后按 `context_estimate.py` 判定分两条路径**：cue 数超出单次上下文 → **分块路径（1b）**（从 01 分块、逐块补标点、中间不拼全文）；未超 → **不分块路径（1c）**（整段补标点）。机制见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) + [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)。
+
+##### 1a 前置（两条路径共用）
+
+1. **空隙探测（先验证 gap 准确性）**：`python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md`——空隙点清单（长停顿 >5s / 剪辑跳转 >10s）即分块组边界依据；**已有 r00_gaps.md 则复用，勿重复探测**；探测结果人工确认后作为 `--gaps` 分块的空隙点集
 2. **硬性断句输入**：`python scripts/srt_reflow_breaks.py <01> -o reflow/r01_breaks.md`——断句点清单（含 Agent 复核字段）+ 注入【强制断句】标记的补标点输入文本
 3. **Agent 复核断句点清单**（回填 r01_breaks.md）：每空隙点判定**性质**（剪辑跳转→断死 / 语义停顿→可松断）、**断句方式**（独立成句 / 分段 / 归前句句尾）、**游离停顿词归属**
-4. **补标点**：读取 `r01_breaks.md` 的「补标点输入文本」补全标点（仅加标点、不改措辞）；空隙标记处按复核方式强制断句（不跨空隙合句）。**输出保持「补标点输入文本」的块结构**——每块（空隙间）一段连续文本、块内加标点但**不按句分行**、空隙块间空行分隔（格式见 [PRODUCT_FORMATS#r01_merged_en.txt](../../docs/PRODUCT_FORMATS.md)）；不要为"可读性"把句子拆成独立行（分行会把 ASR 残片孤立成"句子"导致误译）
-5. **硬性校验（必跑）**：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_merged_en.txt`——逐空隙点查句末标点 `.?!`；违规默认打回步骤 4 重跑（语义停顿可作受控例外放行，须 r03 不跨空隙成单元）
-6. **措辞校验**：`python scripts/srt_reflow_check_words.py <01> reflow/r01_merged_en.txt`——词序列与 01 一致
-7. 产出 `reflow/r01_merged_en.txt`——补标点后的**块结构英文**（块 = 空隙间一段连续文本、块内加标点、块间空行；逐空隙块对应 `r00_gaps.md`/`r01_breaks.md`）；**读前预算**：读取全文前按 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) 用**脚本确定性判定**（`context_estimate.py`，非人工估算）判断是否超阈值，超限即按语义段分块补标点（块边界与步骤 2 语义段一致）
 
-#### 步骤 2：整段翻译（不分割、不编号；仅极长间隔处分段）
+##### 1b 分块路径（长视频）
 
-1. 读取 `r01_merged_en.txt` 整段翻译：不改变句子顺序（可合并/拆分，顺序不得颠倒）、保留全部标点、严格使用 `02_terms.md` 术语、输出完整连贯中文（不输出原文、不编号、不拆段）。**输出块结构与 r01 一一对应**——每块 = 对应 r01 空隙块的整段翻译，块内不按句分行、块间空行分隔（格式见 [PRODUCT_FORMATS#r02_translation_zh.txt](../../docs/PRODUCT_FORMATS.md)）。**识别并剔除 ASR 残片/噪音**：孤立 `the`/`and` 等实义不足的残片（多为 [Music] 等非语音被 ASR 误识别，整段语境下不自然）不译、归并相邻句——此类剔除属语义修正，非 8c1baa7「复刻原始翻译句」限制下的改写
-2. **去翻译腔内联（本步骤一体完成，无独立事后返工阶段）**：按 [humanizer-zh](../humanizer-zh/SKILL.md) 规则直接输出自然中文——避免 AI 词汇（此外/至关重要/深入探讨/增强等）、三段式法则（"无缝、直观、强大"堆叠）、否定式排比（"不仅是……更是……"）、系动词回避、通用积极结论；保留字幕口语感与节奏；**r02 定稿即自然译文**——r03 忠实铁律只许「切」不许「译」，翻译腔若拖到 r04 后只能回 r02 返工
-3. 落盘 `reflow/r02_translation_zh.txt`
-4. 分块策略（优先级）：整段优先 > 极长间隔语义段（gap > 5s 为界，注入术语表 + 前段末尾 1–2 句衔接）> N+M 兜底（`srt_chunk.py`）；语义段是步骤 1/4/5 统一分块单位。**读前判定不限于 SRT**：`r01`/`r02`/`r03` 等非 SRT 产物读取前同样按 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) 的脚本确定性判定（`context_estimate.py`）；超限分块按各产物**语义单位**——`r01` 按空隙语义段（与步骤 1 一致）、`r02` 按句、`r03` 按整句组（见 conventions 长视频分块「非 SRT 文本」）
+4. **分块（从 01）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <N> --ctx <M> --out reflow/chunks/`
+   - **块 = 「空隙组-片」**：块边界优先在空隙点（=语义硬边界）、组内按 N cue 分片（=窗口控制）
+   - `--owned` 按 `context_estimate.py` 反推（目标 ≈ 阈值 token×1.5），拿不准默认 100
+   - `--ctx` 建议放长（如 10–20，衔接用）
+5. **补标点（逐块）**：逐块派 subagent（每块 prompt 见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)），输入 = `reflow/chunks/chunk_<k>.txt`（OWNED cue 区间 + CONTEXT）——
+   - 补标点规则：**仅加标点、不改措辞**
+   - 空隙标记处按复核方式强制断句（**不跨空隙合句**）
+   - 块内加标点但**不按句分行**（分行会把 ASR 残片孤立成"句子"导致误译）
+   - 结果写 `reflow/r01_results/chunk_<k>.txt`（保留 cue 行前缀）——**中间不拼全文**
+6. **硬性校验（分块路径）**：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md`——逐空隙点查句末标点 `.?!`（复用 r00_gaps 已验证空隙点）；违规默认打回步骤 5 重跑（语义停顿可作受控例外放行，须 r03 不跨空隙成单元）
+7. **措辞校验（分块路径）**：`python scripts/srt_reflow_check_words.py <01> reflow/r01_results/ --chunks reflow/chunks/`——逐块词序列与对应 01 cue 段一致
+8. 中间产物 `reflow/r01_results/`（各块独立，**不生成 `r01_merged_en.txt`**）
+
+##### 1c 不分块路径（短视频）
+
+9. **整段补标点**：读取 `01` 合并全文（按 r01_breaks.md 复核结果在空隙点注入【强制断句】），整段补标点——仅加标点、不改措辞；不按句分行（分行会把 ASR 残片孤立成"句子"导致误译）；产出 `r01_merged_en.txt`（完整块结构英文）
+10. **措辞校验（不分块路径）**：`python scripts/srt_reflow_check_words.py <01> r01_merged_en.txt`——词序列与 01 一致
+11. 中间产物 `r01_merged_en.txt`
+
+#### 步骤 2：翻译（整段输出、不分割、不编号；仅极长间隔处分段）
+
+> - **分块路径**：步骤 1 分块后（`reflow/chunks/` + `r01_results/` 存在），本步骤**在同一套 01 分块骨架上逐块翻译**、中间不拼全文
+> - **不分块路径**：整段翻译
+
+1. **分块判定**：若 `reflow/r01_results/` 存在（步骤 1 已走分块路径）→ 步骤 2a；否则按 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) 用 `context_estimate.py` 判定 `r01_merged_en.txt` 是否超阈值——未超 → 不分块路径（整段翻译，步骤 2b）；超 → 从 01 分块（`text_chunk.py <01.srt> --type srt --gaps --out reflow/chunks/`）+ 逐块补标点（回步骤 1b）后走步骤 2a
+2. **2a 分块路径翻译**：逐块派 subagent 整段翻译（每块输入 = `reflow/r01_results/chunk_<k>.txt` + 前后块 CONTEXT 衔接，prompt 见 subagent-dispatch），结果写 `reflow/r02_results/chunk_<k>.txt`（保留 cue 前缀）；**翻译纪律见下**；**中间不拼全文**；`--ctx` 放长（建议 10–20）保证块间衔接连贯
+3. **2b 不分块路径翻译**：读取 `r01_merged_en.txt` 整段翻译，产出 `reflow/r02_translation_zh.txt`（翻译纪律见下，同 2a）
+4. **翻译纪律**（分块路径与不分块路径通用）：
+   - **不改变句子顺序**（可合并/拆分，顺序不得颠倒）
+   - **保留全部标点**；**严格使用 `02_terms.md` 术语**；输出完整连贯中文（不输出原文、不编号、不拆段）
+   - **输出块结构与 r01 一一对应**——每块 = 对应 r01 空隙块的整段翻译，块内不按句分行、块间空行分隔（格式见 [PRODUCT_FORMATS#r02_translation_zh.txt](../../docs/PRODUCT_FORMATS.md)）
+   - **识别并剔除 ASR 残片/噪音**：孤立 `the`/`and` 等实义不足的残片（多为 [Music] 等非语音被 ASR 误识别，整段语境下不自然）不译、归并相邻句——此类剔除属语义修正，非 8c1baa7「复刻原始翻译句」限制下的改写
+5. **去翻译腔内联（本步骤一体完成，无独立事后返工阶段）**：按 [humanizer-zh](../humanizer-zh/SKILL.md) 规则直接输出自然中文——
+   - **避免 AI 词汇**（此外/至关重要/深入探讨/增强等）、**三段式法则**（"无缝、直观、强大"堆叠）、**否定式排比**（"不仅是……更是……"）、**系动词回避**、**通用积极结论**
+   - **保留字幕口语感与节奏**
+   - **r02 定稿即自然译文**——r03 忠实铁律只许「切」不许「译」，翻译腔若拖到 r04 后只能回 r02 返工
+6. 中间产物 `reflow/r02_results/`（各块独立，**不生成 `r02_translation_zh.txt`**）；`r02_translation_zh.txt` 仅存在于**不分块路径**（步骤 2 直接整段翻译产出）
+7. **语义段**：语义段是步骤 1/4/5 统一分块单位（见 conventions）；分块路径翻译时 CONTEXT 注入前块末尾 1–2 句衔接（`--ctx` 放长）
 
 #### 步骤 3：术语抽查（防漂移）
 
-用 `02_terms.md` 全量核对译文术语（<50 条成本可忽略）；漂移回写 `r02_translation_zh.txt`。
+用 `02_terms.md` 全量核对译文术语（<50 条成本可忽略）；漂移回写——**分块路径**：`reflow/r02_results/` 对应块；**不分块路径**：`r02_translation_zh.txt` 对应句。
 
 #### 步骤 4：分句 + 语义对应（翻译后）
 
-1. 原文分句：`r01_merged_en.txt` 按**句末标点（`.?!`）**分成**整句**序列（回填锚定单元，脚本全文搜索定位）——**r01 为块结构、一行内可能含多句**，整句一律按标点切、不依赖换行；**逗号不作整句边界**，只作长句内部切分参考；r01 只读、不得在其上断句/改写，整句切分结果只落 r03_plan.md
+> - **分块路径**：同一套 01 分块骨架，逐块读 `r01_results/`（英文）+ `r02_results/`（中文）对应块做分句对应，最后拼 `r03_plan.md`
+> - **不分块路径**：整段分句
+> - **分句语义对应是需全貌的跨切面决策**——分块路径下也要在每块内保持整句/单元的语义完整性（不跨块拆句；空隙为硬边界，整句不跨空隙块）
+
+0. **分块判定**：若 `reflow/r02_results/` 存在（已走分块路径）→ 逐块派 subagent 分句（每块输入 = `reflow/r01_results/chunk_<k>.txt` + `reflow/r02_results/chunk_<k>.txt` 对照 + 前后块 CONTEXT，prompt 见 subagent-dispatch），结果写 `reflow/r03_results/chunk_<k>.txt` → 全部完成后按块序拼接成完整 `reflow/r03_plan.md`（各块 r03 方案按块序直接拼接；这是回填输入，**必须合并**）；否则不分块路径整段按下方规则分句，直接产出 `r03_plan.md`
+
+1. **原文分句**：英文按**句末标点（`.?!`）**分成**整句**序列（回填锚定单元，脚本定位）——
+   - **r01 为块结构、一行内可能含多句**，整句一律按标点切、不依赖换行；**逗号不作整句边界**，只作长句内部切分参考
+   - r01 只读、不得在其上断句/改写，整句切分结果只落 r03_plan.md
+   - **分块路径**：逐块从 `reflow/r01_results/chunk_<k>.txt` 提取整句（块内空隙为硬边界，整句不跨块）
+   - **不分块路径**：从 `r01_merged_en.txt` 提取
 2. 译文分句（**先判长短，再定切分点**）：对 r02 每句先归类——
    - **判长短**：短句（视觉宽 ≤22 且语义自足）→ 整句成行，**不切**；长句（>22 或含多语义块）→ 在**语义完整处**切分，**不机械按逗号切**
    - **按中文语义切，不镜像英文结构**：切分以中文单元读得通为准，英文仅作 cue 锚定参考；**禁按英文词组/语法硬切**（如 "in 1994." / "there is no" 的切法，会把倒装中文切成碎片）；倒装按中文语义组织，英文 cue 错位交步骤 5 阅读插值，不在 r03 硬凑对应；**英文子片段仍按整句原文顺序互斥切**（不得随中文倒装重排，否则 ② 互斥检查打回）
@@ -147,8 +206,11 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 5. 输出回填方案 `reflow/r03_plan.md`（**按整句分组**：整句号 + 整句文本 + 组内译文单元（中文 + 英文片段 + 拆/合标注）；结构见 [PRODUCT_FORMATS#r03_plan.md](../../docs/PRODUCT_FORMATS.md)），产出即交用户审核
 6. 拆句子单元用整句号+后缀（`6a/6b`）；合句标 `[19+20]`；**不再手写 cue 集/区间**（精确时间由步骤 5 脚本锚定）
 7. **游离停顿词规则**：单词级游离 cue（so/okay/and）+ 后随大空隙（>5s）必须独立成单元覆盖自身 cue，不得与后句主体合并
-8. **r03 写时即合规预检（必跑，通过才进步骤 5）**：`python scripts/srt_reflow.py check-r03 reflow/r03_plan.md <01> reflow/r02_translation_zh.txt [--cjk-speed 5] [--no-frag] [--no-mismatch]`——六查：
-   - ① **整句锚定唯一性**（01 全文）
+8. **r03 写时即合规预检（必跑，通过才进步骤 5）**：
+   - **分块路径**：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/ [--cjk-speed 5] [--no-frag] [--no-mismatch]`——逐块六查（锚定缩到块内 cue 区间、ZH 忠实缩到块内 r02）
+   - **不分块路径**：`python scripts/srt_reflow.py check-r03 reflow/r03_plan.md <01> reflow/r02_translation_zh.txt [--cjk-speed 5] [--no-frag] [--no-mismatch]`——整段六查
+   - 六查：
+   - ① **整句锚定唯一性**（分块路径缩到块内 cue 区间 / 不分块路径 01 全文）
    - ② **拆句子单元互斥拼接 == 整句（EN）**
    - ③ **译文单元行宽 ≤26**（软 22 / 硬 26）
    - ④ **ZH 忠实性（两层）**：r03 整句 ZH 与 r02 定稿字符多集一致（净增删字即违规，允许口语词重排）+ 拆句子单元 ZH 拼接 == 整句 ZH（拦截译文改写，含整句/子单元两层）
@@ -162,15 +224,29 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 `python scripts/srt_reflow.py reflow r03_plan.md <01> -o reflow/r04_draft.srt [--anchored reflow/r03_anchored.jsonl] [--snap-ms 300] [--cjk-speed 5]`
 
-- **锚定明细**：同步落盘 `r03_anchored.jsonl`（JSONL，每行一整句）——逐整句锚定状态（unique / non-unique / failed）+ 分配方式（`alloc`: cue/reading/ratio）+ 每单元 cue 命中情况（hit + 起止 cue 号），可逐行审查哪些句非唯一/失败、哪些单元走了字数兜底（hit=false）、哪些走了阅读插值（alloc=reading）
+- **锚定明细**：同步落盘 `r03_anchored.jsonl`（JSONL，每行一整句）——
+  - 逐整句锚定状态（unique / non-unique / failed）
+  - 分配方式（`alloc`: cue/reading/ratio）
+  - 每单元 cue 命中情况（hit + 起止 cue 号）
+  - 可逐行审查：哪些句非唯一/失败、哪些单元走了字数兜底（hit=false）、哪些走了阅读插值（alloc=reading）
 
 - **整句锚定**：脚本以 r03 整句文本在 01 全文唯一性搜索 → 锚定时间范围 `[start, end]`
 - **单元级 cue 锚定**：组内各单元文本在整句区间内顺序搜索，直接取自身 cue 区间；首末单元裁剪到整句边界；分割点**就近吸附真实 cue 边界**（非"空隙优先"吸附空隙后沿）
 - **共享 cue 中间断句**：真实 cue 内部需估算切分时按两侧字符比例（受控例外，人工抽查）
 - **字数比例降级兜底**：文本未命中时按字数比例 + 就近吸附；仍无边界则 **100ms 取整预测点**（不入原边界集）
 - **阅读感知插值（倒装/中英时长差）**：单元 cue 锚定后若任一单元「时长 <1s（长句碎片）」或「显著失配（< 阅读所需×0.7 且失配 ≥300ms）」——触发该整句按中文阅读速度（`--cjk-speed 5`）在整句区间内重分配并就近吸附真实 cue 边界（无则 100ms 预测点）；**不机械匹配英文 cue**（倒装语序下英文 cue 长短与中文阅读量不匹配）
-- **告警**：输出 `r04_alerts.md`——时长分布（极短 <300ms / 超长 >15s 或 >2×中位）、🔪 长句碎片（同一整句拆出的 <1s 单元，**回报 Agent 裁决**）、⏱️ 独立短句（<1s 语义自足，仅复核）、📖 阅读插值（触发整句清单）、单元内 gap > 5s、剪辑跳转 > 10s、预测点清单、行宽 > 22
-- 动作规则：碎片 cue 合并容纳完整单元；行宽 > 26 必切（软 22 预警；"标点+有 cue"处，无 cue 则预测点）；时长超限不单独触发；[Music] 等非语音 cue 跳过；n:1 合句超长找"语义分割 + 有 cue"处切
+- **告警**：输出 `r04_alerts.md`——
+  - 时长分布（极短 <300ms / 超长 >15s 或 >2×中位）
+  - 🔪 长句碎片（同一整句拆出的 <1s 单元，**回报 Agent 裁决**）
+  - ⏱️ 独立短句（<1s 语义自足，仅复核）
+  - 📖 阅读插值（触发整句清单）
+  - 单元内 gap > 5s、剪辑跳转 > 10s、预测点清单、行宽 > 22
+- **动作规则**：
+  - 碎片 cue 合并容纳完整单元
+  - 行宽 > 26 必切（软 22 预警；"标点+有 cue"处，无 cue 则预测点）
+  - 时长超限不单独触发
+  - [Music] 等非语音 cue 跳过
+  - n:1 合句超长找"语义分割 + 有 cue"处切
 - **预览止步 `_work/`**，未经确认禁止写入 `_output/`；严格脚本化禁二次翻译
 - 校验：`srt_check_segments.py <输出> --orig <01>`（不启用 cue-exact，cue 数已变）——时间不重叠、语义完整、区间不逆
 - **长句碎片复核（必跑）**：`python scripts/srt_reflow.py check-duration reflow/r04_draft.srt r03_plan.md`——逐条长句碎片（<1s 拆句单元）**回报 Agent 裁决**（合并 / 调整 r03 切分点 / 接受）；插值已修复（≥1s）的碎片不在此列

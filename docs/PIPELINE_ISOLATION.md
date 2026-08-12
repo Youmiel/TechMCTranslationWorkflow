@@ -2,7 +2,7 @@
 
 > 目标：把"一个持续会话跑完整个翻译工作流"改造成**产物传递的管道**，隔离各步骤上下文、节省窗口、抵抗压缩丢细节。
 > 状态：方法与准则说明文档，供后续落地与改造参考；**不记录实施进度**（进度/改动以仓库提交历史为准）。
-> 相关实现：`scripts/srt_chunk.py`、`.github/skills/segment-subtitles`、`.github/skills/subagent-dispatch`。
+> 相关实现：`scripts/text_chunk.py` / `scripts/text_merge.py`（长视频分块/合并）、`.github/skills/segment-subtitles`、`.github/skills/subagent-dispatch`。
 
 ## 1. 为什么需要
 
@@ -14,7 +14,7 @@
 1. **定义输入产物**：每步只读它需要的东西（某块字幕、知识卡、全稿+规则），不读全量历史
 2. **定义输出产物**：每步产出并**落盘**，成为下一步输入（01/02/03/04 + 块级清单）
 3. **独立上下文执行**：无状态 subagent（或独立会话），prompt = 输入产物 + 权威规则（Skill）+ 固定模板（`subagent-dispatch`）
-4. **主 Agent 组装**：汇总各块 → 去重/结转 → 校验 → 交用户审核
+4. **主 Agent 合并**：`text_merge.py` 全自动拼接（无异常零读取）；有异常读报告 + 异常块头尾窗口决策 → 校验 → 交用户审核（见 subagent-dispatch「合并」）
 
 > **隔离的本质**：不是"把步骤从主会话搬到 subagent"——Agent 原本就常临时拆派 subagent 做事（ad-hoc 派发，无明确产物契约）。隔离的关键是**固化产物契约**：明确的输入/输出产物、规则来源、组装与校验流程。原先形态是"隐式/ad-hoc"，改造后是"有契约的独立步骤"；是否跑在独立上下文（subagent）只是手段，不是目标。
 
@@ -66,7 +66,7 @@
 
 ## 7. 可落地的方向
 
-- 基础件：`srt_chunk.py`、`segment-subtitles`、`subagent-dispatch`
+- 基础件：`text_chunk.py`、`text_merge.py`、`segment-subtitles`、`subagent-dispatch`
 - 术语扫描分块（`translate-redstone` §1.1）
 - 去翻译腔独立化（`translate-redstone` 阶段二+）
 - 阶段〇 / 阶段三 顺手隔离（低优先级）
@@ -74,7 +74,7 @@
 
 ## 8. 相关资产
 
-- `scripts/srt_chunk.py` — N 负责 + M 上下文分块（OWNED/CONTEXT 分区）
+- `scripts/text_chunk.py` — 通用分块（SRT 与非 SRT 统一，OWNED/CONTEXT 分区 + 组-片细分）；`scripts/text_merge.py` — 合并（全自动 + 异常清单）；旧 `srt_chunk.py` 保留兼容
 - `.github/skills/segment-subtitles` — 断句/对白/结转/分块规则
 - `.github/skills/subagent-dispatch` — 派发模板 + 任务变体 + 纪律
 - `.github/skills/translate-redstone` — 主工作流（已引用本管道）

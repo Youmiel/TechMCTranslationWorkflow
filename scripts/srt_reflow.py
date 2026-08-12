@@ -7,6 +7,7 @@
             -> 分割点就近吸附真实 cue 边界 -> 100ms 取整预测点（兜底）；r04_alerts 含长句碎片检测
   attach-en r04_draft.srt + r03_plan.md -> 双语 SRT（en-zh，英文行 = r03 英文片段）
   check-r03 r03_plan.md + 01 + r02 -> 写时即合规预检（锚定唯一性 / 拆句互斥 / 行宽 ≤20 / ZH 忠实），违规退出码 1
+            r03 为目录时走块级：check-r03 r03_results/ 01 r02_results/ --chunks chunks/（锚定缩块内、ZH 忠实缩块内）
   check-duration r04_draft.srt + r03_plan.md -> 回填后时长复核（长句碎片/独立短句/阅读失配），长句碎片退出码 1
 
 用法（命令根 = Project_Main/；输出默认写到输入文件 r03/r04 同目录，与 cwd 无关）：
@@ -27,6 +28,7 @@
 - 长期：抽独立 langs.py 配置模块供脚本共用；加语言 = 加配置项，时间运算核心零改动
 """
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -37,7 +39,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.srt_reflow_core.reflow import reflow
 from scripts.srt_reflow_core.attach import attach_en
-from scripts.srt_reflow_core.plan import check_r03
+from scripts.srt_reflow_core.plan import check_r03, check_r03_blocks
 from scripts.srt_reflow_core.alerts import check_duration
 
 
@@ -60,10 +62,11 @@ def main():
     p2.add_argument("r03", help="r03_plan.md（英文片段）")
     p2.add_argument("-o", dest="out", default=None, help="输出双语（默认 r04 同目录 r04_bilingual.srt）")
 
-    p3 = sub.add_parser("check-r03", help="r03 写时即合规预检（锚定唯一性/拆句互斥/行宽/ZH忠实/碎片/中英失配预警），硬违规退出码 1")
-    p3.add_argument("r03", help="r03_plan.md（回填方案）")
+    p3 = sub.add_parser("check-r03", help="r03 写时即合规预检（锚定唯一性/拆句互斥/行宽/ZH忠实/碎片/中英失配预警），硬违规退出码 1；r03 为目录时走块级（r03_results/ + --chunks + r02_results/）")
+    p3.add_argument("r03", help="r03_plan.md（整段）或 r03_results 目录（块级）")
     p3.add_argument("srt", help="01_subtitle_asr_fixed.srt（cue 时间戳）")
-    p3.add_argument("r02", help="r02_translation_zh.txt（定稿译文，ZH 忠实校验基准）")
+    p3.add_argument("r02", help="r02_translation_zh.txt（整段基准）或 r02_results 目录（块级基准）")
+    p3.add_argument("--chunks", default=None, help="块级模式：chunks 骨架目录（解析块↔cue区间）")
     p3.add_argument("--cjk-speed", type=float, default=5.0,
                     help="中文阅读速度（字/秒），用于碎片预检与中英失配预估；0=禁用两者（默认 5.0）")
     p3.add_argument("--no-frag", action="store_true", help="禁用碎片预检（存疑预警）")
@@ -86,6 +89,10 @@ def main():
         out = args.out or str(Path(args.r04).parent / "r04_bilingual.srt")
         attach_en(args.r04, args.r03, out)
     elif args.cmd == "check-r03":
+        # r03 为目录 → 块级（r03_results/ + chunks/ 骨架 + r02_results/）；为文件 → 整段
+        if os.path.isdir(args.r03):
+            sys.exit(check_r03_blocks(args.r03, args.srt, args.chunks, args.r02, args.cjk_speed,
+                                      check_frag=not args.no_frag, check_mismatch=not args.no_mismatch))
         sys.exit(check_r03(args.r03, args.srt, args.r02, args.cjk_speed,
                            check_frag=not args.no_frag, check_mismatch=not args.no_mismatch))
     elif args.cmd == "check-duration":

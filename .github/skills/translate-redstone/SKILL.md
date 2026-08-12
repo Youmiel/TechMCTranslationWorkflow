@@ -151,6 +151,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
   1. 英文预整理（游离单词归位）-> [segment-subtitles#英文预整理](../segment-subtitles/SKILL.md#英文预整理游离单词归位)
   2. 第 1 遍英文侧初步分组 -> [segment-subtitles#合并判据](../segment-subtitles/SKILL.md#合并判据语义完整性不以标点为准)
   3. 第 2 遍中文侧最终定段 -> [segment-subtitles#分割超长句](../segment-subtitles/SKILL.md#分割超长句)
+- **长视频分块 + 合并**：超阈值先 `text_chunk.py --type srt` 分块 → 逐块派 subagent → `text_merge.py` 全自动合并（异常读报告），见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) + [subagent-dispatch#合并](../subagent-dispatch/SKILL.md#合并text_mergepy-全自动--异常清单替代主-agent-手工读头尾)
 - **落盘**：断句定稿后写 `s03_plan.md` 再交用户审核（本阶段产物契约，见上方）
 - **ASR 修正应用在组装期**：`02_terms.md` 已确认的 ASR 修正（如 word tear、the end dimension）在组装 `s03_plan.md` 时直接替换文本，勿留待翻译期
 - **分段方案先交用户审核**（阶段二½），确认后再定稿翻译

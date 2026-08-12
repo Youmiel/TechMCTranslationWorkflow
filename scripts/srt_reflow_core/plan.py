@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
-"""r03 方案解析（parse_r03）与写时即合规预检（check_r03，含 ZH 忠实校验）"""
+"""r03 方案解析（parse_r03）与写时即合规预检（check_r03 / check_r03_blocks，含 ZH 忠实校验）"""
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
@@ -87,13 +88,15 @@ def parse_r03(path):
     return out
 
 
-def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True, check_mismatch=True):
+def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True, check_mismatch=True,
+              cue_range=None, r02_text=None):
     """r03 写时即合规预检（步骤 4 产出后、步骤 5 回填前必跑）：
 
-    - 锚定唯一性：每个整句 EN 在 01 全文唯一命中（未命中 / 重复命中均报告）
+    - 锚定唯一性：每个整句 EN 在 01 唯一命中（未命中 / 重复命中均报告）
+      ——块级（cue_range=(cmin,cmax)）时锚定缩到块内 cue 区间，避免跨块重复误报
     - 拆句互斥性：1:n 拆句子单元 EN 拼接 == 整句 EN
     - 行宽：每个译文单元中文视觉宽度 ≤ 26（软 22 / 硬 26，与 srt_check_width 一致；>26 硬违规）
-    - ZH 忠实性（需 r02）：r03 整句 ZH 拼接（去标点空白）== r02 定稿——断句只允许插断点标点，不得改写译文
+    - ZH 忠实性（需 r02）：r03 整句 ZH 拼接（去标点空白）== r02 定稿（块级时缩到该块 r02 段）——断句只允许插断点标点，不得改写译文
     - 碎片预检（预警，不阻断；--no-frag 可关）：1:n 整句按中文阅读速度（--cjk-speed）粗估子单元时长，
       <1s 的提示 Agent 在 r03 阶段就合并/调整切分点（长句不碎，避免回填后返工）
     - 中英失配预估（预警，不阻断；--no-mismatch 可关）：1:n 整句按单元级 cue 锚定 + 共享 cue 切分预估
@@ -104,6 +107,11 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
     """
     sentences = parse_r03(r03_path)
     cues = parse_srt(srt_path)
+    if cue_range:
+        cmin, cmax = cue_range
+        cues = [c for c in cues if cmin <= c["idx"] <= cmax]
+        if not cues:
+            print(f"❌ 块级 check-r03：cue 区间 c{cmin}-c{cmax} 无语音 cue（可能整块为标记），跳过锚定检查")
     full, mapping, cue_offsets = build_full(cues)
     problems = []
     warnings = []
@@ -112,11 +120,11 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
         n = norm(s.en)
         pos = full.find(n)
         if pos == -1:
-            problems.append(f"❌ 整句 {s.key} 锚定失败（01 全文未找到）——回填将走顺序兜底，须修正措辞")
+            problems.append(f"❌ 整句 {s.key} 锚定失败（{'块内 c%d-c%d' % cue_range if cue_range else '01 全文'}未找到）——回填将走顺序兜底，须修正措辞")
             anchors.append(None)
         else:
             if full.find(n, pos + 1) != -1:
-                problems.append(f"⚠️ 整句 {s.key} 非唯一命中（01 全文出现 ≥2 次）——回填将取第一处，须保证唯一或接受")
+                problems.append(f"⚠️ 整句 {s.key} 非唯一命中（{'块内' if cue_range else '01 全文'}出现 ≥2 次）——回填将取第一处，须保证唯一或接受")
             anchors.append({
                 "key": s.key,
                 "start": cues[mapping[pos]]["start"],
@@ -200,8 +208,8 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
                 )
     # ZH 忠实性：r03 整句 ZH（s.zh）与 r02 定稿做字符多集比较
     # ——断句只允许插标点/重排口语词归属，不得增删或改写任何字（净增删即违规）
-    if r02_path:
-        r02_norm = zh_content(Path(r02_path).read_text(encoding="utf-8"))
+    if r02_path or r02_text:
+        r02_norm = zh_content(r02_text if r02_text is not None else Path(r02_path).read_text(encoding="utf-8"))
         r03_norm = zh_content("".join(s.zh for s in sentences))
         c2, c3 = Counter(r02_norm), Counter(r03_norm)
         if c2 != c3:
@@ -222,3 +230,69 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
     for p in problems:
         print("  " + p)
     return 1
+
+
+def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
+                     check_frag=True, check_mismatch=True):
+    """块级 check-r03：逐块校验（r03_results/ + chunks/ 骨架 + r02_results/）。
+
+    - 每块 = 一个空隙组-片（chunks/ 的块 ↔ cue 区间）；锚定缩到块内 cue 区间
+    - ZH 忠实缩到该块 r02 段（r02_results/ 对应块）
+    - 拼回 r03_plan.md 后的整段 check-r03（锚定 01 全文 + 全量 r02）仍建议最后跑一次兜底
+    """
+    import os
+    import re
+    from pathlib import Path
+
+    # 收集块文件（按序号），解析块 ↔ cue 区间
+    chunk_files = {}
+    for fn in sorted(os.listdir(chunks_dir)):
+        m = re.fullmatch(r"chunk_(\d{3})\.txt", fn)
+        if m:
+            chunk_files[int(m.group(1))] = os.path.join(chunks_dir, fn)
+    if not chunk_files:
+        sys.exit("chunks 目录下未找到 chunk_*.txt（需 text_chunk.py 生成）")
+    total = max(chunk_files)
+
+    n_block_err = 0
+    n_blocks = 0
+    for k in sorted(chunk_files):
+        r03_blk = os.path.join(r03_dir, "chunk_%03d.txt" % k)
+        r02_blk = os.path.join(r02_dir, "chunk_%03d.txt" % k)
+        if not os.path.exists(r03_blk):
+            print(f"❌ chunk_{k:03d}: 无 r03 结果文件，跳过")
+            n_block_err += 1
+            continue
+        # 解析块 cue 区间（OWNED 行 cN 前缀）
+        cids = []
+        in_owned = False
+        for ln in open(chunk_files[k], encoding="utf-8").read().split("\n"):
+            if ln.startswith("## OWNED"):
+                in_owned = True
+                continue
+            if ln.startswith("## CONTEXT"):
+                in_owned = False
+                continue
+            if in_owned:
+                mm = re.match(r"c(\d+)\t", ln)
+                if mm:
+                    cids.append(int(mm.group(1)))
+        if not cids:
+            print(f"⚠️ chunk_{k:03d}: 无 OWNED cue 区间，跳过（可能整块为标记）")
+            continue
+        cue_range = (min(cids), max(cids))
+        r02_text = Path(r02_blk).read_text(encoding="utf-8") if os.path.exists(r02_blk) else None
+        print(f"--- chunk_{k:03d} (c{cue_range[0]}-c{cue_range[1]}) ---")
+        rc = check_r03(r03_blk, srt_path, r02_path=None, cjk_speed=cjk_speed,
+                       check_frag=check_frag, check_mismatch=check_mismatch,
+                       cue_range=cue_range, r02_text=r02_text)
+        n_blocks += 1
+        if rc != 0:
+            n_block_err += 1
+    print("=" * 60)
+    if n_block_err:
+        print(f"❌ 块级 check-r03 失败：{n_block_err}/{n_blocks} 块异常（打回对应块 r03 改写）")
+        return 1
+    print(f"✅ 块级 check-r03 通过：{n_blocks} 块全部合规（锚定缩块内 / ZH 忠实缩块内）")
+    print("   ⚠️ 拼回 r03_plan.md 后仍建议整段 check-r03 兜底（锚定 01 全文唯一性）")
+    return 0

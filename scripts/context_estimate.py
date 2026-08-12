@@ -94,7 +94,14 @@ def main():
     print("  分块阈值（window×%.2f）: %d token" % (args.ratio, threshold))
     print("  当前占比: %.1f%%" % pct)
     if token_est > threshold:
-        print("  → 超阈值：建议分块（字幕不容压缩、后续步骤也占窗口；分块方式见工作流分块策略）")
+        print("  → 超阈值：建议分块（字幕不容压缩、后续步骤也占窗口）")
+        # 给可执行建议（非 SRT 按语义单位、SRT 按 cue）
+        if cues:
+            print("  → 建议命令: python scripts/text_chunk.py %s --out <chunk_dir> --type srt --owned <N> --ctx 6" % args.file)
+        else:
+            print("  → 建议命令: python scripts/text_chunk.py %s --out <chunk_dir> --type text --unit 段 --ctx 1 --max-chars <字符>" % args.file)
+            print("     语义单位: r01 用 --unit 段（空隙语义段）；r02 用 --unit 句；r03 用 --unit 整句组；超长单位自动细分（--max-chars，默认 6000）")
+        print("     合并: python scripts/text_merge.py <chunk_dir> <结果目录> --out <合并产物>（全自动，异常读 .report.md）")
     else:
         print("  → 未超阈值：可整段处理（保守起见仍可按语义段分块）")
 
