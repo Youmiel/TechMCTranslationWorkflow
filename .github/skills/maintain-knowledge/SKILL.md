@@ -102,7 +102,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 |------|----------|------|
 | 术语登记（`term-registration`） | 标准译名（英→中） | `_uncategorized.csv` |
 | 通用知识卡（本节） | 词汇/概念的知识要点、语境用法、翻译注意事项 | `<术语>.md` 知识卡 |
-| 陷阱词（`use-glossary`） | 看似普通实为术语的查词触发词 | `trap_words.md` |
+| 陷阱词（`use-glossary`） | 防固有思维漏查的陷阱词（触发层，与词汇表正交） | `trap_words.md` |
 
 ## 经验文件维护（.github/experience/，广义知识）
 
@@ -116,7 +116,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 | `coverage_log.md` | 数据源覆盖流水 | 每视频一行流水 |
 | `source_experience.md` | 数据源经验沉淀（收敛型） | 见「经验提炼规则」 |
 | `glossary_categories.yaml` | 术语表分类预判关键词 | 文件头注释（Agent 协助维护） |
-| `trap_words.md` | 术语陷阱词 | `use-glossary` |
+| `trap_words.md` | 防固有思维漏查的陷阱词（触发层，与词汇表正交） | `use-glossary`（随视频识破即追加） |
 
 ### 写入规则（指针）
 

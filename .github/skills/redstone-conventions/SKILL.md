@@ -54,10 +54,13 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 - 相邻段时间**不得重叠**：`end_i ≤ start_{i+1}`（允许相接不允许交叉）
 - 每次分句/合并后**立即校验**，不要最后抽查：时间/重叠/逆序用 `srt_check_segments.py`，行宽用 `srt_check_width.py`
 - **时间边界规则差异**（工作流特有，见各自主 skill）：translate 输出边界**必须 ⊆ 原字幕边界集合**；reflow 允许预测点（100ms 取整、不入原边界集）
+- **时间引用格式统一（agent 手写/反馈）**：agent 手写产物与向用户反馈（术语表 `02_terms.md`、ASR 修正、审核意见、r03 注释等）一律用**时间戳 `HH:MM:SS`**（无毫秒）；**cue 编号（`c<idx>`）只存在于脚本生成/解析产物**（`s03` 的 `cstart-cend`、chunks 骨架、`r03_anchored.jsonl`），agent 手写**不写 cue 编号**。时间戳须从字幕时间码**精确读取**（SRT 时间码 `HH:MM:SS,mmm` 去毫秒即得），**禁止凭记忆推算或按 cue 号换算**
 
 ## 长视频分块（全流程通用机制）
 
 > 超长上下文任务（术语扫描、合并/断句、翻译、去翻译腔、批量校验等）都可用本机制控制上下文，**不限于断句**。凡 cue/段数超出单次上下文，必须先分块再逐块交给 subagent。
+
+> **分块与不分块共用同一套处理逻辑；不分块 = 分块只有一块（N=1）的特例**：补标点 → 翻译 → 分句 → 回填的处理步骤完全一致，只差**块数**与**产物格式**——分块（N>1）：块级产物 `r01_results/`/`r02_results/`/`r03_results/` + 拼 `r03_plan.md`（块边界优先在空隙点=语义硬边界、组内按 N cue 分片；每块 OWNED+CONTEXT、独立处理、中间不拼全文）；不分块（N=1）：单块直接产出完整文件 `r01_merged_en.txt`/`r02_translation_zh.txt`/`r03_plan.md`。逻辑一致 ⇒ **单块即小规模测试**：用小输入（不分块）即可验证分块流程逻辑。
 
 ### 1. 前置判断（读前必做，脚本确定性判定）
 
@@ -108,9 +111,9 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 - **一次分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <N> --ctx <M> --out reflow/chunks/`——块 = 「空隙组-片」（块0 单独、块1 拆多片...），块边界 = 明确 cue 区间；`--ctx` 建议放长（10–20，衔接用）
 - **各阶段共用同一套块**：r01 补标点读 chunks/ 的 cue 区间、r02 翻译读 r01_results/ 对应块、r03 分句读 r01+r02 对应块——**块边界始终来自 01 分块骨架**，不做链式继承
 - **中间产物只落块级**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，**不生成 r01_merged_en.txt / r02_translation_zh.txt**——分块时彻底只留块级；仅短视频不分块路径才有这两个完整文件）
-- **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，**不需要先合并全文**
+- **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，**不需要先合并全文**；**全局校验（块级模式一次验全部块）由主会话在所有块产出后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)——避免每块 subagent 重复跑全量校对）
 - **必须合并的**：`r03_plan.md`（`srt_reflow.py` 回填输入，各块 r03 方案按块序直接拼接）、`r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）——这两个合并后走全局校验
-- **约束**：内容源块文件须保留组-片/cue 前缀（subagent 输出纪律）；分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
+- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
 - **旧 `--inherit` 已弃用（deprecated）**：仅兼容旧流程，新方案从 01 分块 + 块级独立流转，不再需要继承边界
 
 ### 5. 逐块派发与合并（两工作流共用）

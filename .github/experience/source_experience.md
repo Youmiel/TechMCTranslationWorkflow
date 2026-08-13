@@ -72,7 +72,5 @@
 
 ## 已纠正的误判（防止重犯）
 
-- `main storage` ≠ 直译"主存储"：在存储科技中是专有名词「全物品仓库」（TechMC Glossary：MS=全物品/全物品分类仓库）。
-- `filter` 在物品分类语境 = 「分类器」，非"过滤器"（与术语表"脉冲式/无粉物品分类器"一致）。
 - `world border` 取 Mojang zh_cn.json `commands.worldborder.*` 官方译名「世界边界」。
 - ASR 高发主题：人名密集视频（SciCraft 成员、嘉宾）与"落沙/命令方块"主题误识别会爆发（单视频 114 条），此类视频需重点准备人名库与主题词集；实体机制讲解视频中机制词会被误听为常见词（末影龙主题：note/notes/endnote/i know/red nose/screen notes→node/nodes/green nodes、pat find/path finds→pathfind、gender dragon→ender dragon、iceland→island、play blocks→place blocks、by level→y level、pallet→valid path、third→dirt、logs→blocks、carry→cut it 剪辑用语；潜影贝农场主题：sugar/shoulder/shocker/choker→shulker、agreeing/agree on/I grow→aggro、trash Muppets→trash mob、social I grow→social aggro、replacement shoes→placement chute、title ability→tileability、red coder→redstone coder、an ilmango um→omega long pulse extender）；误识别映射已按正确词聚合到 `asr_fixes.md`，翻译前先查

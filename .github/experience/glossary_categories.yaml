@@ -15,34 +15,34 @@
 categories:
   mechanical:
     label: "红石元件、信号、更新机制"
-    keywords: []
+    keywords: [piston extender, DPE, TPE, 0-tick, observer, comparator]
   slimestone:
     label: "绿萌、飞行器、粘液块技术"
-    keywords: []
+    keywords: [flying machine, piston, slime block, sticky piston]
   tree_farm:
     label: "树场相关"
-    keywords: []
+    keywords: [tree farm, sapling, bone meal, dark oak, spruce, QC detection]
   mob_farm:
     label: "刷怪塔、生物农场"
     keywords: [wither, ghast, end crystal, wither skeleton, mob farm, spawner, spawning rate]
   storage:
     label: "存储技术、物品分类"
-    keywords: [sorter, sorting, storage, hopper, shulker, partition, unstackable, filter, main storage, bulk storage, shulker box]
+    keywords: [sorter, sorting, storage, hopper, shulker, partition, unstackable, filter, main storage, bulk storage, shulker box, unloader]
   computational:
     label: "红石计算"
-    keywords: []
+    keywords: [logic gate, counter, encoder, decoder]
   contraptions:
     label: "实用装置"
-    keywords: []
+    keywords: [chunk loader, breeder, duper, farm, cobblestone farm]
   glitch:
     label: "游戏机制漏洞/特性"
-    keywords: []
+    keywords: [update suppression, suppressor, CCE, OOM, block swap]
   coding:
     label: "命令方块、数据包编程"
-    keywords: []
+    keywords: [command block, data pack, give, execute, tp]
   "1.12.2_magic":
     label: "1.12.2 版本特有机制"
-    keywords: []
+    keywords: [async observer, chunk manipulation, chunk swap, falling swap, cluster]
 
 # 始终加载的默认分类
 always_load:

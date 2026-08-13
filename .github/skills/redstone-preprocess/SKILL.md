@@ -29,7 +29,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 ## 阶段〇：领域预判与准备（翻译前，轻量扫描）
 
 1. **刷新本地知识**：`python scripts/refresh_cache.py`（统一入口；或按需 `glossary_split.py --check`、`glossary_fetch_mojang.py`）
-2. **类别预判**：按 [use-glossary#类别预判](../use-glossary/SKILL.md#类别预判翻译前确定领域)——读 `.github/experience/glossary_categories.yaml`，扫描标题/简介 + 前 ~20 句关键词，命中 ≥2 次加载对应分类；无法判断列出候选请用户确认
+2. **类别预判**：按 [use-glossary#类别预判](../use-glossary/SKILL.md#类别预判翻译前确定领域)——读 `.github/experience/glossary_categories.yaml`，扫描标题/简介 + 前 ~20 句关键词，命中 ≥2 次加载对应分类；**产出领域判断并向用户报告确认**；**无法确定/拿不准时必须列出候选请用户选择，不得静默跳过**（见 [use-glossary#无法判断时的处理](../use-glossary/SKILL.md#无法判断时的处理必须交互配置文件自维护入口)）；确认后如有该分类未收录的高频词，回填 yaml `keywords`
 3. **红石专属补充加载**：`.cache/mojang/redstone.csv`（~100 条，全量）；`.cache/mojang/<类别>.csv`（非红石 ~1400 条不预加载，L1 未命中 grep 按需查）
 4. **加载知识地图**：读 `indexes/knowledge/` + `indexes/repos/_manifest.md`（机制知识卡 `knowledge/02_mechanic/`、外部仓库经索引定位）
 5. 读 `docs/SOURCE_COVERAGE.md`（各数据源擅长/不擅长）
@@ -38,7 +38,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 ## 阶段一：术语扫描与知识补齐
 
 ### 1.1 术语扫描
-> 机制见 [term-scan](../term-scan/SKILL.md)（权威）、[use-glossary#四级查找](../use-glossary/SKILL.md#四级查找)、[subagent-dispatch#任务变体](../subagent-dispatch/SKILL.md#任务变体)；长视频分块见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)（通用机制）。
+> 机制见 [term-scan](../term-scan/SKILL.md)（权威，含术语识别块输出格式）、[use-glossary#四级查找](../use-glossary/SKILL.md#四级查找)；长视频分块见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)（通用机制）。
 
 > **阶段入口 · 报告 subagent 策略**：本阶段是否派 subagent、几个、原因——见 [subagent-dispatch#subagent 决策（阶段级报告）](../subagent-dispatch/SKILL.md#subagent-决策阶段级报告)。
 
@@ -49,9 +49,10 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
    - **立即校验时间轴**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、保留原时间码、不增删 cue；时间轴错位立即回本步修正（否则一路传最终稿）
 3. **机械查找**：`python scripts/glossary_lookup.py scan <01> --categories <L2 集合> --levels L1,L2 --out scan_terms.txt`，命中项无论像不像术语一律按登记译名处理
 4. **术语识别**：把字幕逐块交 subagent（注入命中项 + 术语/陷阱词知识卡），subagent 强制查词、补词形变体、排误报、识别 L3 新词，输出术语清单
-5. **主会话汇总**：按 `term_en` 合并去重；`[ASR 推测]`/`[推断]`/`[待审核]` 行保留**首次时间戳**；L3 未命中进 §1.2
+5. **主会话汇总**：按 `term_en` 合并去重；`[ASR 推测]`/`[推断]`/`[待审核]` 行保留**首次时间戳**（格式 `HH:MM:SS`，取字幕时间码精确值）；L3 未命中进 §1.2
+6. **非预期命中记录**：scan 命中项/查词/知识卡若来自**未预判分类**的词汇表 → 记录该分类 + 命中词，阶段末回填 yaml `keywords`（见 [use-glossary#运行中反哺](../use-glossary/SKILL.md#运行中反哺非预期命中--回填-categories)）
 
-> 每块 subagent 要点：命中项强制查词（不判断"像不像"）；未登记陷阱词（`filter`/`main storage`/`Hermits`）强制走 L1/L2；怪词先查 asr_fixes，形似已知实体按 `[ASR 推测]` 处理并登记附首次时间戳。
+> 每块 subagent 要点：命中项强制查词（不判断"像不像"）；**trap_words 清单词**强制走 L1/L2（不论是否已登记入 L1）；怪词先查 asr_fixes，形似已知实体按 `[ASR 推测]` 处理并登记附首次时间戳（`HH:MM:SS`，从输入 cue 时间码精确读取，勿凭 cue 号/记忆推算）。
 
 ### 1.2 集中补齐（翻译前一次性完成所有网络请求）
 > 缓存命中判定、`fidelity` 回源、降级链、请求频率、保真阶梯、缓存写入见 [wiki-tools](../wiki-tools/SKILL.md)（权威）；数据源选择参考 `docs/SOURCE_COVERAGE.md`。
@@ -78,7 +79,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 
 - `[推断]`：Agent 从对白推测，用户重点确认；`[待审核]`：附候选 + 依据，确认或否决，不默认保留原文
 - `ASR 修正` 列：列原始误识别词，可一次确认/纠正全部推测
-- **时间戳列**：取首次出现处 `HH:MM:SS`，决策行缺失视为不完整输出
+- **时间戳列**：取首次出现处 `HH:MM:SS`（**从字幕时间码精确读取**，不是 cue 编号、不是凭记忆推算；SRT 时间码 `HH:MM:SS,mmm` 去毫秒即得），决策行缺失视为不完整输出
 - **落盘**：确认后写 `02_terms.md`（§1.4 入库前）
 
 ### 1.4 术语入库

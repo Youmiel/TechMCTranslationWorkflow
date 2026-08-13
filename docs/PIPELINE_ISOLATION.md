@@ -76,5 +76,5 @@
 
 - `scripts/text_chunk.py` — 通用分块（SRT 与非 SRT 统一，OWNED/CONTEXT 分区 + 组-片细分）；`scripts/text_merge.py` — 合并（全自动 + 异常清单）；旧 `srt_chunk.py` 保留兼容
 - `.github/skills/segment-subtitles` — 断句/对白/结转/分块规则
-- `.github/skills/subagent-dispatch` — 派发模板 + 任务变体 + 纪律
+- `.github/skills/subagent-dispatch` — 派发模板 + 各任务格式导航 + 纪律（格式细节在各工作流/产物契约）
 - `.github/skills/translate-redstone` — 主工作流（已引用本管道）

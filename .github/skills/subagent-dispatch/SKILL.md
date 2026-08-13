@@ -33,6 +33,7 @@ description: 派发 subagent 处理长视频分块任务的模板与纪律。约
 
 ## 先验知识（必须遵守）
 <知识卡：全量术语表 + 按本块命中词过滤，至少含已确认术语、scan 命中项（按本块 cue 过滤）、陷阱词命中项、ASR 修正映射>
+<各工作流可要求额外注入本任务规则——由主 Agent 按当前工作流组装，通用模板不预置>
 
 ## 本块数据（OWNED=负责产出；CONTEXT=只读衔接，见 segment-subtitles）
 <chunk_k.txt 内容>
@@ -43,24 +44,27 @@ description: 派发 subagent 处理长视频分块任务的模板与纪律。约
 - 只输出结构化结果（见下），不要描述推理过程
 
 ## 输出（写文件，勿返回全文）
-- 将结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`（任务目录：merge→`_merge_results/`、translate→`_trans_results/`、term→`_term_results/`、humanize→`_humanize_results/`）
-- 格式（utf-8，覆盖写本块文件，勿追加、勿碰其它文件）：
-  - **srt 类型**：每行 `段号|cue范围|<文本>`（merge/翻译）；`CARRY: c<idx>` 结转标记独立成行
-  - **text 类型**：单元间空行分隔；每单元首行 `<组>-<片>\t<产出文本>`（保留输入 OWNED 的组-片前缀；内容可多行；单元数 = OWNED 单元数）
+- 将结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`（任务目录 = 下方「各任务输出格式」表，主 Agent 按任务指定）
+- 格式（utf-8，覆盖写本块文件，勿追加、勿碰其它文件）——按本块**类型三选一**（关键行如下，细节权威见各工作流/产物契约）：
+  - **srt 类型（translate merge/翻译）**：每行 `段号|cue范围|<文本>`；`CARRY: c<idx>` 结转标记独立成行（权威 [PRODUCT_FORMATS#s03_plan.md](../../docs/PRODUCT_FORMATS.md)）
+  - **text 类型（术语扫描/去翻译腔/r03 分句）**：单元间空行分隔；每单元首行 `<组>-<片>\t<产出文本>`（保留输入 OWNED 的组-片前缀；内容可多行；单元数 = OWNED 单元数）（权威 [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)）
+  - **reflow 整段文字（r01/r02 块）**：把 OWNED cue 文本按顺序拼成**一段连续文字**输出（补标点后英文 / 整段中文译文）；块内**不按 cue 分行、不按句分行、不带 `c<idx>\t时间码\t` 前缀、不编号**；一个空隙组-片 = 一段（CONTEXT 只读不产出）——逐句/cue 分行会孤立 ASR 残片导致误译，校验脚本按整段解析（权威 [PRODUCT_FORMATS#r01_results / r02_results](../../docs/PRODUCT_FORMATS.md)）
 - 写完后报告 `已写入 <文件名>（N 行）`，不要粘贴结果全文
 ```
 
-## 任务变体（各隔离步骤的输出格式）
+## 各任务输出格式（导航表）
 
-| 任务 | 输入 | 输出文件（`_work/<视频名>/`，每行一条） |
-|------|------|----------------------|
-| 合并 | OWNED cue + CONTEXT | `_merge_results/chunk_<k>.txt`：srt→`段号\|cue范围\|合并后文本`（含 `CARRY: c<idx>` 结转标记）；text→`组-片\|文本`（单元间空行） | 
-| 翻译 | OWNED 段 + 知识卡 | `_trans_results/chunk_<k>.txt`：srt→`段号\|cue范围\|译文`（双语：英文行+中文行）；text→`组-片\|译文`（单元间空行） | 
-| 术语扫描 | OWNED cue + scan 命中项（按块过滤）+ 术语/陷阱词知识卡 | `_term_results/chunk_<k>.txt`：`term_en\|译名\|来源\|ASR修正\|[待查/待审核]`（决策行附首次时间戳） | 
-| 去翻译腔 | 04 全稿/分块 + humanizer 规则 | `_humanize_results/chunk_<k>.txt`：`段号\|修订后译文`（可附改动点说明） | 
-| 补标点（reflow 步骤 1） | `reflow/chunks/chunk_<k>.txt`（OWNED cue 区间 + 空隙断句标记） | `reflow/r01_results/chunk_<k>.txt`：补标点后英文文本（保留 cue 行前缀） |
-| 整段翻译（reflow 步骤 2） | `reflow/r01_results/chunk_<k>.txt` + 前后块 CONTEXT + 知识卡 | `reflow/r02_results/chunk_<k>.txt`：中文译文（保留 cue 行前缀） |
-| 分句对应（reflow 步骤 4） | `reflow/r01_results/chunk_<k>.txt` + `reflow/r02_results/chunk_<k>.txt` 对照 | `reflow/r03_results/chunk_<k>.txt`：r03 逐块方案（整句分组） | 
+> 各任务输入/输出/格式权威见 [reflow-redstone](../reflow-redstone/SKILL.md)、[translate-redstone](../translate-redstone/SKILL.md)、[term-scan](../term-scan/SKILL.md) 各步骤 + [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)
+
+| 任务 | 输入 | 输出（`_work/<视频名>/`） | 格式权威 |
+|------|------|-------------------------|----------|
+| 合并（translate） | OWNED cue + CONTEXT | `_merge_results/chunk_<k>.txt` | [translate-redstone#阶段二](../translate-redstone/SKILL.md) + [PRODUCT_FORMATS#s03_plan.md](../../docs/PRODUCT_FORMATS.md) |
+| 翻译（translate） | OWNED 段 + 知识卡 | `_trans_results/chunk_<k>.txt` | [translate-redstone#阶段二](../translate-redstone/SKILL.md) + [PRODUCT_FORMATS#s03_plan.md](../../docs/PRODUCT_FORMATS.md) |
+| 术语扫描（preprocess） | OWNED cue + scan 命中项（按块过滤）+ 知识卡 | `_term_results/chunk_<k>.txt` | [term-scan#术语识别](../term-scan/SKILL.md#术语识别subagent) |
+| 去翻译腔（translate） | 04 全稿/分块 + humanizer 规则 | `_humanize_results/chunk_<k>.txt` | [translate-redstone#阶段二+ 去翻译腔](../translate-redstone/SKILL.md#阶段二去翻译腔可选独立上下文) |
+| 补标点（reflow 步骤 1） | `reflow/chunks/chunk_<k>.txt`（OWNED cue 区间 + 空隙断句标记） | `reflow/r01_results/chunk_<k>.txt` | [PRODUCT_FORMATS#r01_results](../../docs/PRODUCT_FORMATS.md) + [reflow-redstone#步骤 1b](../reflow-redstone/SKILL.md) |
+| 整段翻译（reflow 步骤 2） | `r01_results/` 对应块 + 前后块 CONTEXT + 知识卡 | `reflow/r02_results/chunk_<k>.txt` | [PRODUCT_FORMATS#r02_results](../../docs/PRODUCT_FORMATS.md) + [reflow-redstone#步骤 2](../reflow-redstone/SKILL.md)（humanizer-zh 规则注入见此处） |
+| 分句对应（reflow 步骤 4） | `r01_results/` + `r02_results/` 对应块对照 | `reflow/r03_results/chunk_<k>.txt` | [reflow-redstone#步骤 4](../reflow-redstone/SKILL.md)（r03 整句分组格式，`parse_r03` 解析） |
 
 ## subagent 纪律（生成 prompt 时必须包含）
 
@@ -70,6 +74,7 @@ description: 派发 subagent 处理长视频分块任务的模板与纪律。约
 4. **按规则兜底**：术语按知识卡；知识卡没有的按 `[待审核: 原词]` 标记，不阻塞任务
 5. **不翻阅其它视频历史文件**：只用 prompt 提供的数据与知识卡，不自行读取 `_work/`、`_output/` 下其它视频的文件作参考（见 `translate-redstone`「目录约定」）
 6. **text 类型保留组-片前缀**：结果按 OWNED 单元逐条产出（单元间空行），每单元首行以输入 OWNED 的 `<组>-<片>` 前缀开头（如 `块0-片2\t...`），供 `text_merge.py` 归位拼接；单元数 = 该块 OWNED 单元数
+7. **不运行全局校验脚本**：全局校验（`srt_reflow_check_breaks` / `srt_reflow_check_words` / `check-r03` 块级模式，一次验全部块）是**主会话在所有块产出后的统一动作**；subagent 不调用全局校验、不做全量/他块校对，自查只限于本块格式完整（整段完整、行数正确、字段齐全）
 
 ## 合并（text_merge.py 全自动 + 异常清单，替代主 Agent 手工读头尾）
 

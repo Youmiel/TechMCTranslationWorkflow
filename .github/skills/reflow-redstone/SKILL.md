@@ -130,7 +130,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 #### 步骤 1：合并全文 + 补充标点（语义；硬性断句脚本驱动）
 
-> **两条路径共用前置（1a），随后按 `context_estimate.py` 判定分两条路径**：cue 数超出单次上下文 → **分块路径（1b）**（从 01 分块、逐块补标点、中间不拼全文）；未超 → **不分块路径（1c）**（整段补标点）。机制见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) + [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)。
+> **分块与不分块是同一套处理逻辑，仅块数与产物格式不同**：共用前置（1a），随后按 `context_estimate.py` 判定——cue 数超出单次上下文 → **分块（1b，N>1）**（从 01 分块、逐块补标点、中间不拼全文）；未超 → **不分块（1c，= 单块 N=1）**（整段补标点即唯一一块）。机制见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) + [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)。
 
 ##### 1a 前置（两条路径共用）
 
@@ -148,9 +148,10 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
    - 补标点规则：**仅加标点、不改措辞**
    - 空隙标记处按复核方式强制断句（**不跨空隙合句**）
    - 块内加标点但**不按句分行**（分行会把 ASR 残片孤立成"句子"导致误译）
-   - 结果写 `reflow/r01_results/chunk_<k>.txt`（保留 cue 行前缀）——**中间不拼全文**
-6. **硬性校验（分块路径）**：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md`——逐空隙点查句末标点 `.?!`（复用 r00_gaps 已验证空隙点）；违规默认打回步骤 5 重跑（语义停顿可作受控例外放行，须 r03 不跨空隙成单元）
-7. **措辞校验（分块路径）**：`python scripts/srt_reflow_check_words.py <01> reflow/r01_results/ --chunks reflow/chunks/`——逐块词序列与对应 01 cue 段一致
+   - 结果写 `reflow/r01_results/chunk_<k>.txt`（**整段文字**：把 OWNED cue 文本拼成一段连续英文，块内不按 cue/句分行、**不带 `c<idx>\t时间码\t` 前缀**——逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）——**中间不拼全文**
+   - 每块由 subagent 独立处理，**不交给 subagent 运行全局校验**（第 6/7 步的 `check_breaks`/`check_words` 块级模式一次验全部块，由主会话统一跑；subagent 自查只限本块格式完整）
+6. **硬性校验（分块路径，主会话统一跑）**：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md`——逐空隙点查句末标点 `.?!`（复用 r00_gaps 已验证空隙点）；违规默认打回步骤 5 重跑（语义停顿可作受控例外放行，须 r03 不跨空隙成单元）——**所有块产出后主会话一次执行，勿交 subagent 逐块跑（避免重复全量校对）**
+7. **措辞校验（分块路径，主会话统一跑）**：`python scripts/srt_reflow_check_words.py <01> reflow/r01_results/ --chunks reflow/chunks/`——逐块词序列与对应 01 cue 段一致（同上，主会话统一跑）
 8. 中间产物 `reflow/r01_results/`（各块独立，**不生成 `r01_merged_en.txt`**）
 
 ##### 1c 不分块路径（短视频）
@@ -165,7 +166,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 > - **不分块路径**：整段翻译
 
 1. **分块判定**：若 `reflow/r01_results/` 存在（步骤 1 已走分块路径）→ 步骤 2a；否则按 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) 用 `context_estimate.py` 判定 `r01_merged_en.txt` 是否超阈值——未超 → 不分块路径（整段翻译，步骤 2b）；超 → 从 01 分块（`text_chunk.py <01.srt> --type srt --gaps --out reflow/chunks/`）+ 逐块补标点（回步骤 1b）后走步骤 2a
-2. **2a 分块路径翻译**：逐块派 subagent 整段翻译（每块输入 = `reflow/r01_results/chunk_<k>.txt` + 前后块 CONTEXT 衔接，prompt 见 subagent-dispatch），结果写 `reflow/r02_results/chunk_<k>.txt`（保留 cue 前缀）；**翻译纪律见下**；**中间不拼全文**；`--ctx` 放长（建议 10–20）保证块间衔接连贯
+2. **2a 分块路径翻译**：逐块派 subagent 整段翻译（每块输入 = `reflow/r01_results/chunk_<k>.txt` + 前后块 CONTEXT 衔接，prompt 见 subagent-dispatch；**先验知识必须注入 humanizer-zh 规则**——见第 5 点去翻译腔内联，禁止只写"去口语化/去翻译腔"笼统要求，subagent 看不到主会话加载的规则），结果写 `reflow/r02_results/chunk_<k>.txt`（**整段中文**：与 r01 块一一对应、块内不按 cue/句分行、不编号、**不带 cue 前缀**）；**翻译纪律见下**；**中间不拼全文**；`--ctx` 放长（建议 10–20）保证块间衔接连贯；**不交给 subagent 运行全局校验**（`check-r03` 块级模式验全部块，见步骤 4 第 8 步，主会话统一跑）
 3. **2b 不分块路径翻译**：读取 `r01_merged_en.txt` 整段翻译，产出 `reflow/r02_translation_zh.txt`（翻译纪律见下，同 2a）
 4. **翻译纪律**（分块路径与不分块路径通用）：
    - **不改变句子顺序**（可合并/拆分，顺序不得颠倒）
@@ -206,7 +207,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 5. 输出回填方案 `reflow/r03_plan.md`（**按整句分组**：整句号 + 整句文本 + 组内译文单元（中文 + 英文片段 + 拆/合标注）；结构见 [PRODUCT_FORMATS#r03_plan.md](../../docs/PRODUCT_FORMATS.md)），产出即交用户审核
 6. 拆句子单元用整句号+后缀（`6a/6b`）；合句标 `[19+20]`；**不再手写 cue 集/区间**（精确时间由步骤 5 脚本锚定）
 7. **游离停顿词规则**：单词级游离 cue（so/okay/and）+ 后随大空隙（>5s）必须独立成单元覆盖自身 cue，不得与后句主体合并
-8. **r03 写时即合规预检（必跑，通过才进步骤 5）**：
+8. **r03 写时即合规预检（必跑，通过才进步骤 5；全局校验由主会话统一跑，勿交 subagent）**：
    - **分块路径**：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/ [--cjk-speed 5] [--no-frag] [--no-mismatch]`——逐块六查（锚定缩到块内 cue 区间、ZH 忠实缩到块内 r02）
    - **不分块路径**：`python scripts/srt_reflow.py check-r03 reflow/r03_plan.md <01> reflow/r02_translation_zh.txt [--cjk-speed 5] [--no-frag] [--no-mismatch]`——整段六查
    - 六查：

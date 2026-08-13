@@ -58,6 +58,10 @@
 | caustic | costic | 难缠的（形容物品集） |
 | redstone | resto | 红石（装置） |
 | Louvain | levane | 鲁汶（图聚类算法） |
+| Overworld | overlay | 主世界（音近） |
+| snow golems | stuck ones / snugones | 雪傀儡 |
+| chunk | trunk | 区块（chunk loader 语境高频） |
+| endermite | then dermite | 末影螨 |
 | update suppressor | object suppressor | 更新抑制器（即时红石/更新抑制语境） |
 | ideal | idol | — |
 | higher-end | higherend | — |
@@ -81,7 +85,7 @@
 | shulker | sugar / should / shocker / shoulder / shelter / choker / schulker / shoulders | 潜影贝（本视频最高频误听） |
 | aggro | agreeing / agree on / I grow / agar / Egger engine | 仇恨（潜影贝农场/红石语境） |
 | trash mob | trash Muppets / trash weapons / trash puppets | 垃圾怪（不参与复制的边缘潜影贝） |
-| minecart | mine guards / mine car / Minecraft / my car / cars | 矿车 |
+| minecart | mine guards / mine car / Minecraft / my car / cars / micro | 矿车 |
 | shulker bullet | Bulls / bolts / Ebola | 潜影弹 |
 | peeking | peaking | 开壳（潜影贝） |
 | game tick | game decks / game takes / takes | 游戏刻 |
@@ -148,7 +152,7 @@
 | blocks | logs | 方块（语义+音近，dirt blocks 语境） |
 | cut it | carry | 剪辑用语（"我要切掉这段"） |
 | social aggro | social I grow / social Agro / social like or | 群体仇恨（潜影贝复制机制的仇恨信号，aggro 变体 + social 前缀） |
-| omega long pulse extender | an ilmango um | 欧米伽长脉冲延长器（ilmango 人名误听） |
+| omega long pulse extender | an ilmango um / a ill mango | 欧米伽长脉冲延长器（ilmango 人名误听） |
 
 <!-- 历史单视频专属映射（无法确认归属视频或已不在 _work 追踪）：不参与通用解码。
      清理遵循 AGENTS.md 核心原则 #6，提示用户手动归档到 _work/<视频名>/asr_fixes.md，不自动删。 -->

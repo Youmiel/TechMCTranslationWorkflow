@@ -174,6 +174,8 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 > **独立上下文执行**（原隐含在主会话顺带做，现按 `docs/PIPELINE_ISOLATION.md` 隔离）：本步骤作为**独立一遍**运行——只读 `s04_draft.srt` 全稿 + `humanizer-zh` 规则，独立窗口产出修订稿，不在翻译会话里顺带改。全稿超长时可先分块、各块独立跑（块间用同一规则模板约束，保持风格一致）。
 
+> **分块输出格式**：长稿分块时逐块派 subagent（prompt 见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)），结果写 `_work/<视频名>/_humanize_results/chunk_<k>.txt`：每行 `段号|修订后译文`（可附改动点说明）。
+
 1. 加载 `humanizer-zh` Skill（`.github/skills/humanizer-zh/SKILL.md`），按其 24 种 AI 写作模式清单扫描译文
 2. 重点关注字幕场景常见的：
    - **AI 词汇**：此外、至关重要、深入探讨、增强等
