@@ -49,7 +49,7 @@
 | sorter | sorder / sortter / sortters | 分类器 |
 | multi-item sorter | multi-to solder / are multi-item | 多物品分类器 |
 | dustless | DOSless | 无粉 |
-| MSPT | MPT | 毫秒每刻 |
+| MSPT | MPT / MSP T / msbt / msvt | 毫秒每刻 |
 | hopper counters | copper counters | 漏斗计数器 |
 | copper golems | cup golems | 铜傀儡（快照新生物） |
 | scarpet | scraped / scarpad | Carpet 模组脚本语言 |
@@ -72,12 +72,31 @@
 | farm in creative | farming creative | ASR 漏介词 |
 | convinced | comforted | 确信（"fully convinced"） |
 | obsidian farm | obscene farm | 黑曜石农场 |
-| ender dragon | enemy dragon | 末影龙 |
+| ender dragon | enemy dragon / gender dragon | 末影龙 |
 | end stone farm | start farm | 末地石农场 |
 | we built | we bought | 口语（"built an obsidian farm"） |
 | scared you'll mess my stuff up | scared you my stuff up | ASR 漏词 |
 | kill that wither | feel that wither | 击杀凋灵 |
 | carts | cars / cards | 矿车（minecart） |
+| shulker | sugar / should / shocker / shoulder / shelter / choker / schulker / shoulders | 潜影贝（本视频最高频误听） |
+| aggro | agreeing / agree on / I grow / agar / Egger engine | 仇恨（潜影贝农场/红石语境） |
+| trash mob | trash Muppets / trash weapons / trash puppets | 垃圾怪（不参与复制的边缘潜影贝） |
+| minecart | mine guards / mine car / Minecraft / my car / cars | 矿车 |
+| shulker bullet | Bulls / bolts / Ebola | 潜影弹 |
+| peeking | peaking | 开壳（潜影贝） |
+| game tick | game decks / game takes / takes | 游戏刻 |
+| comparator | comparative | 比较器 |
+| schematic | scam | 投影/原理图 |
+| scaffolding-based | scaffolding by | 脚手架式（农场） |
+| tileability | title ability | 可堆叠性 |
+| redstone coder | red coder | 红石编码器 |
+| placement chute | replacement shoes / replacement shoe | 放置滑道 |
+| loader | TNT leader / lazy leader | 打包机（storage 语境） |
+| kill area | killaria | 击杀区 |
+| lag | light | 卡顿 |
+| Litematica | lymatica | 投影模组 |
+| Tweakeroo | twicroot | 辅助模组 |
+| MiniHUD | midi HUD | 信息显示模组 |
 | farm | phone | 农场 |
 | ritual | rich / original | 仪式 |
 | spyglass | spy glass | 望远镜 |
@@ -119,14 +138,18 @@
 | cubicmetre | cubic meter | 人名（频道名，存储技术） |
 | my old mate | me old mate | 口语语法 |
 | design in snapshot | design snapshot | ASR 漏介词 in |
+| node | note / notes / endnote / i know / red nose / a no | 节点（末影龙寻路机制主题高发） |
+| pathfind | path finds / pat find / path find | 寻路（末影龙寻路机制） |
+| island | iceland | 岛（末地岛） |
+| place blocks | play blocks | 放置方块 |
+| y level | by level | Y 坐标层 |
+| valid path | pallet path | 有效路径（语义+音近） |
+| dirt | third | 泥土（音近） |
+| blocks | logs | 方块（语义+音近，dirt blocks 语境） |
+| cut it | carry | 剪辑用语（"我要切掉这段"） |
+| social aggro | social I grow / social Agro / social like or | 群体仇恨（潜影贝复制机制的仇恨信号，aggro 变体 + social 前缀） |
+| omega long pulse extender | an ilmango um | 欧米伽长脉冲延长器（ilmango 人名误听） |
 
 <!-- 历史单视频专属映射（无法确认归属视频或已不在 _work 追踪）：不参与通用解码。
      清理遵循 AGENTS.md 核心原则 #6，提示用户手动归档到 _work/<视频名>/asr_fixes.md，不自动删。 -->
-
-## 单视频专属（历史，待归档）
-
-| 正确词 | 变体（ASR） | 说明 |
-|--------|------------|------|
-| Red Nomster | Red Knobs / Red Noms / Knobs / Noms | 人名（归属视频待确认） |
-
 

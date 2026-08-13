@@ -5,3 +5,6 @@ backwards extension,,飞行器沿前进反方向延伸的结构模块，可拼�
 instant sideways extension,,可瞬时（同刻内）完成推进的横向延伸模块。,[推断] 来源：22UL5d4G3mY 视频（原文误写 instance，用户确认修正为 instant）；2026-08-07 用户确认,瞬时横向延伸,
 slimeless engine,,不使用黏液块/蜜脾块，仅靠活塞与红石块工作的飞行器引擎。,[推断] 来源：22UL5d4G3mY 视频；2026-08-07 用户确认,无黏液引擎,
 piston worm,,狭义指仅活塞头与活塞头直接相对的可移动飞行器；广义泛指飞行器。,来源：gtmc-articles SlimeTech/Molforte/0a-附录.zh.md（权威）；22UL5d4G3mY 视频；2026-08-07 用户确认,活塞虫,
+engine,,（飞行器/绿萌语境）动力单元，指手动更新引擎/无黏液引擎等驱动结构；单独出现时为手动更新引擎的简称。,[推断：manual update engine 词根] 来源：22UL5d4G3mY 视频；2026-08-07 测试工作流阶段一 §1.3,引擎,
+push limit 2 tech,,以推动上限为 2 的规则为约束的飞行器技术分支,[推断：push limit→推动上限 + tech] 来源：22UL5d4G3mY 视频；2026-08-10 用户审核无意见确认,推动上限 2 技术,
+1.5 engine,,Minecraft Java 1.5 时代的飞行器引擎技术，保留数字，因为当时没有粘液块，飞行器架构与现版本完全不同,[推断：视频上下文，与 1.5 flying machine 同源] 来源：22UL5d4G3mY 视频；2026-08-10 用户审核无意见确认,1.5 引擎,

@@ -23,3 +23,6 @@ single-threaded,,单线程：更新/逻辑按单一顺序逐一处理，无并�
 CPU,,中央处理器：计算机执行指令的核心部件。,[数电常识] 来源：xyw455piBUE 视频；2026-08-06 用户确认,CPU/中央处理器,
 data transfer,,数据在系统各部分之间的传输。,[数电常识] 来源：xyw455piBUE 视频；2026-08-06 用户确认,数据传输,
 synchronized,,同步：多个信号按统一时钟节拍对齐。,[数电常识] 来源：xyw455piBUE 视频；2026-08-06 用户确认,同步,
+hex-to-binary transmission,,十六进制转二进制的信号传输方案（用于减少控制布线）。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c246（字幕原文 translation，简介 transmission）；2026-08-13 用户确认 transmission,十六进制转二进制传输,
+redstone coder,,红石编码器：将按钮/输入编码为红石信号组合的装置（ASR 原文 red coder）,来源：uVOFckoMdIU 视频 00:21:58；2026-08-12 用户确认,红石编码器,
+on-off panel,,合成器开关面板：可单独或组合开启各类型合成器。,[推断：on-off+panel=面板（.cache/glossary/storage.csv）] 来源：QSDpdXT9SPs 视频 c123；2026-08-13 用户确认,开关面板,
