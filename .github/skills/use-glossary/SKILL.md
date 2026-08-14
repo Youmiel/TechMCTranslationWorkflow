@@ -1,5 +1,5 @@
 ---
-name: glossary-usage
+name: use-glossary
 description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、类别预判、加载策略和安全规则。翻译红石内容或检索术语时自动参考。
 ---
 
