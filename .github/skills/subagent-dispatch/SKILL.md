@@ -35,7 +35,7 @@ description: 派发 subagent 处理长视频分块任务的模板与纪律。约
 <知识卡：全量术语表 + 按本块命中词过滤，至少含已确认术语、scan 命中项（按本块 cue 过滤）、陷阱词命中项、ASR 修正映射>
 <各工作流可要求额外注入本任务规则——由主 Agent 按当前工作流组装，通用模板不预置>
 
-## 本块数据（OWNED=负责产出；CONTEXT=只读衔接，见 segment-subtitles）
+## 本块数据（`## BEFORE`=前文 / `## OWNED`=负责产出 / `## AFTER`=后文，只读衔接不产出）
 <chunk_k.txt 内容>
 
 ## 纪律

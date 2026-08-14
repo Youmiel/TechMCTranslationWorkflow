@@ -63,11 +63,8 @@ def parse_chunk_cue_range(chunk_path):
     cids = []
     in_owned = False
     for ln in open(chunk_path, encoding="utf-8").read().split("\n"):
-        if ln.startswith("## OWNED"):
-            in_owned = True
-            continue
-        if ln.startswith("## CONTEXT"):
-            in_owned = False
+        if ln.startswith("## "):
+            in_owned = ln.startswith("## OWNED")
             continue
         if in_owned:
             m = re.match(r"c(\d+)\t", ln)

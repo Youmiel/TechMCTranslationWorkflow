@@ -28,9 +28,8 @@ from collections import OrderedDict
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-CHUNK_HEAD = re.compile(r"^# chunk (\d+)/(\d+)\s+源: (.+?)\s+类型: (srt|text)\s+单位: (.+?)\s+负责: (.+?)\s+上下文: (.+?)$")
-OWNED_LINE = re.compile(r"^## OWNED")
-CTX_LINE = re.compile(r"^## CONTEXT")
+CHUNK_HEAD = re.compile(r"^# CHUNK (\d+)/(\d+)\s+SRC: (.+?)\s+TYPE: (srt|text)\s+UNIT: (.+?)\s+OWN: (.+?)\s+CTX: (.+?)$")
+SECTION_LINE = re.compile(r"^## (BEFORE|OWNED|AFTER)")
 SEG_ROW = re.compile(r"^(\d+)\|c(\d+)(?:-c(\d+))?([~]?)\|(.+)$")   # srt 段行：段号|cue范围|文本
 TEXT_ROW = re.compile(r"^(.+?)\t(.+)$")                              # text 行：组-片\t文本
 
@@ -51,12 +50,9 @@ def parse_chunk_head(path):
                     "type": m.group(4), "unit": m.group(5), "owned": m.group(6),
                     "ctx": m.group(7)}
             continue
-        if OWNED_LINE.match(ln):
-            section = "owned"
-            cur = None
-            continue
-        if CTX_LINE.match(ln):
-            section = "ctx"
+        m2 = SECTION_LINE.match(ln)
+        if m2:
+            section = "owned" if m2.group(1) == "OWNED" else "ctx"
             cur = None
             continue
         if section is None:

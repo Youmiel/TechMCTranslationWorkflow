@@ -182,11 +182,8 @@ def main_block(args, cues, breaks):
         cids = []
         in_owned = False
         for ln in open(fp, encoding="utf-8").read().split("\n"):
-            if ln.startswith("## OWNED"):
-                in_owned = True
-                continue
-            if ln.startswith("## CONTEXT"):
-                in_owned = False
+            if ln.startswith("## "):
+                in_owned = ln.startswith("## OWNED")
                 continue
             if in_owned:
                 mm = re.match(r"c(\d+)\t", ln)

@@ -325,38 +325,48 @@ def main():
                 seen.append(lbl)
         return ", ".join(seen)
 
-    manifest = ["# 分块清单 — %s" % os.path.basename(args.input),
-                "- 类型: %s / 单位: %s / 每块负责: %d / 上下文: %d" % (type_, args.unit if type_ == "text" else "cue", N, M),
-                "- 总最小单位: %d / 总块数: %d" % (len(items), total), ""]
+    manifest = ["# CHUNK MANIFEST - %s" % os.path.basename(args.input),
+                "- TYPE: %s / UNIT: %s / OWNED: %d / CTX: %d" % (type_, args.unit if type_ == "text" else "cue", N, M),
+                "- TOTAL UNITS: %d / CHUNKS: %d" % (len(items), total), ""]
     for k, chunk in enumerate(chunks):
         owned = chunk
         a0, b0 = chunk_ranges[k]
         before = [line for _g, _p, line in items[max(0, a0 - M):a0]]
         after = [line for _g, _p, line in items[b0:min(len(items), b0 + M)]]
-        lines = ["# chunk %d/%d  源: %s  类型: %s  单位: %s  负责: %s  上下文: 前%d 后%d" %
+        lines = ["# CHUNK %d/%d  SRC: %s  TYPE: %s  UNIT: %s  OWN: %s  CTX: BEFORE %d AFTER %d" %
                  (k + 1, total, os.path.basename(args.input), type_,
                   args.unit if type_ == "text" else "cue", owned_desc(owned, k + 1), len(before), len(after))]
 
         if type_ == "text":
             # text 类型：单元间空行分隔，单元首行 = 「组-片\t」前缀，内容可多行（r03 markdown）
-            lines.append("## OWNED（本块负责产出；每单元 = 组-片\t内容，单元间空行）")
+            if before:
+                lines.append("## BEFORE")
+                for line in before:
+                    lines.append(line)
+                    lines.append("")
+            lines.append("## OWNED")
             for line in owned:
                 lines.append(line)
                 lines.append("")
-            lines.append("## CONTEXT（只读衔接，不产出；单元间空行）")
-            for line in before + after:
-                lines.append(line)
-                lines.append("")
+            if after:
+                lines.append("## AFTER")
+                for line in after:
+                    lines.append(line)
+                    lines.append("")
         else:
             # srt 类型：每行一条 cue（行自带 cN\t时间\t文本）
-            lines.append("## OWNED（本块负责产出）")
+            if before:
+                lines.append("## BEFORE")
+                lines.extend(before)
+            lines.append("## OWNED")
             lines.extend(owned)
-            lines.append("## CONTEXT（只读衔接，不产出）")
-            lines.extend(before + after)
+            if after:
+                lines.append("## AFTER")
+                lines.extend(after)
         fname = os.path.join(args.out, "chunk_%03d.txt" % (k + 1))
         with open(fname, "w", encoding="utf-8", newline="\n") as fh:
             fh.write("\n".join(lines) + "\n")
-        manifest.append("- chunk_%03d: 负责 %s" % (k + 1, owned_desc(owned, k + 1)))
+        manifest.append("- chunk_%03d: OWN %s" % (k + 1, owned_desc(owned, k + 1)))
 
     with open(os.path.join(args.out, "manifest.md"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("\n".join(manifest) + "\n")
@@ -392,9 +402,9 @@ def main_inherit(args):
         sys.exit("父块目录下未找到 chunk_*.txt")
     total = max(parent_files)
 
-    manifest = ["# 分块清单（继承 %s）— 内容源 %s" %
+    manifest = ["# CHUNK MANIFEST (INHERIT %s) - SOURCES %s" %
                 (os.path.basename(parent_dir), ", ".join(os.path.basename(c) for c in contents)),
-                "- 继承块数: %d / 内容源数: %d" % (total, len(contents)), ""]
+                "- CHUNKS: %d / SOURCES: %d" % (total, len(contents)), ""]
 
     for k in range(1, total + 1):
         # 读父块头（复用元数据）
@@ -402,7 +412,7 @@ def main_inherit(args):
         with open(parent_files[k], encoding="utf-8") as fh:
             parent_text = fh.read()
         for ln in parent_text.split("\n"):
-            m = re.match(r"^# chunk (\d+)/(\d+)\s+源: (.+?)\s+类型: (srt|text)\s+单位: (.+?)\s+负责: (.+?)\s+上下文: (.+?)$", ln)
+            m = re.match(r"^# CHUNK (\d+)/(\d+)\s+SRC: (.+?)\s+TYPE: (srt|text)\s+UNIT: (.+?)\s+OWN: (.+?)\s+CTX: (.+?)$", ln)
             if m:
                 head = m.groups()
                 break
@@ -410,59 +420,63 @@ def main_inherit(args):
             sys.exit("父块 %d 无有效块头" % k)
         p_total, p_src, p_type, p_unit, p_owned, p_ctx = int(head[1]), head[2], head[3], head[4], head[5], head[6]
 
-        lines = ["# chunk %d/%d  源: %s（继承）  类型: %s  单位: %s  负责: %s  上下文: 前1 后1" %
+        lines = ["# CHUNK %d/%d  SRC: %s  TYPE: %s  UNIT: %s  OWN: %s  CTX: BEFORE 1 AFTER 1" %
                  (k, total, os.path.basename(parent_dir), p_type, p_unit, p_owned)]
         if p_type == "text":
-            lines.append("## OWNED（本块负责产出；内容源对照，保留组-片前缀）")
+            if k > 1:
+                lines.append("## BEFORE")
+                for ci, cdir in enumerate(contents):
+                    bf = os.path.join(cdir, "chunk_%03d.txt" % (k - 1))
+                    if os.path.exists(bf):
+                        if len(contents) > 1:
+                            lines.append("# SOURCE %d: %s" % (ci + 1, os.path.basename(cdir)))
+                        lines.append("--- PREV (chunk_%03d) ---" % (k - 1))
+                        lines.append(open(bf, encoding="utf-8").read().rstrip("\n"))
+            lines.append("## OWNED")
             # 多内容源按顺序排（r03：先英文块后中文块），单内容源（r02）直接一段
             for ci, cdir in enumerate(contents):
                 content_file = os.path.join(cdir, "chunk_%03d.txt" % k)
                 if not os.path.exists(content_file):
-                    sys.exit("内容源缺块: %s" % content_file)
+                    sys.exit("source chunk missing: %s" % content_file)
                 content = open(content_file, encoding="utf-8").read().rstrip("\n")
                 if len(contents) > 1:
-                    lines.append("=== 内容源 %d: %s ===" % (ci + 1, os.path.basename(cdir)))
+                    lines.append("=== SOURCE %d: %s ===" % (ci + 1, os.path.basename(cdir)))
                 lines.append(content)
                 lines.append("")
-            lines.append("## CONTEXT（只读衔接，不产出；前/后块结果）")
-            for ci, cdir in enumerate(contents):
-                ctx_parts = []
-                if k > 1:
-                    bf = os.path.join(cdir, "chunk_%03d.txt" % (k - 1))
-                    if os.path.exists(bf):
-                        ctx_parts.append("--- 前块（chunk_%03d）---" % (k - 1))
-                        ctx_parts.append(open(bf, encoding="utf-8").read().rstrip("\n"))
-                if k < total:
+            if k < total:
+                lines.append("## AFTER")
+                for ci, cdir in enumerate(contents):
                     af = os.path.join(cdir, "chunk_%03d.txt" % (k + 1))
                     if os.path.exists(af):
-                        ctx_parts.append("--- 后块（chunk_%03d）---" % (k + 1))
-                        ctx_parts.append(open(af, encoding="utf-8").read().rstrip("\n"))
-                if ctx_parts and len(contents) > 1:
-                    lines.append("### 内容源 %d: %s" % (ci + 1, os.path.basename(cdir)))
-                lines.extend(ctx_parts)
+                        if len(contents) > 1:
+                            lines.append("# SOURCE %d: %s" % (ci + 1, os.path.basename(cdir)))
+                        lines.append("--- NEXT (chunk_%03d) ---" % (k + 1))
+                        lines.append(open(af, encoding="utf-8").read().rstrip("\n"))
         else:
-            lines.append("## OWNED（本块负责产出）")
+            if k > 1:
+                lines.append("## BEFORE")
+                for ci, cdir in enumerate(contents):
+                    bf = os.path.join(cdir, "chunk_%03d.txt" % (k - 1))
+                    if os.path.exists(bf):
+                        lines.append("--- PREV ---")
+                        lines.append(open(bf, encoding="utf-8").read().rstrip("\n"))
+            lines.append("## OWNED")
             for ci, cdir in enumerate(contents):
                 content_file = os.path.join(cdir, "chunk_%03d.txt" % k)
                 content = open(content_file, encoding="utf-8").read().rstrip("\n")
                 if len(contents) > 1:
-                    lines.append("=== 内容源 %d: %s ===" % (ci + 1, os.path.basename(cdir)))
+                    lines.append("=== SOURCE %d: %s ===" % (ci + 1, os.path.basename(cdir)))
                 lines.append(content)
-            lines.append("## CONTEXT（只读衔接，不产出）")
-            for ci, cdir in enumerate(contents):
-                if k > 1:
-                    bf = os.path.join(cdir, "chunk_%03d.txt" % (k - 1))
-                    if os.path.exists(bf):
-                        lines.append("--- 前块 ---")
-                        lines.append(open(bf, encoding="utf-8").read().rstrip("\n"))
-                if k < total:
+            if k < total:
+                lines.append("## AFTER")
+                for ci, cdir in enumerate(contents):
                     af = os.path.join(cdir, "chunk_%03d.txt" % (k + 1))
                     if os.path.exists(af):
-                        lines.append("--- 后块 ---")
+                        lines.append("--- NEXT ---")
                         lines.append(open(af, encoding="utf-8").read().rstrip("\n"))
         with open(os.path.join(out_dir, "chunk_%03d.txt" % k), "w", encoding="utf-8", newline="\n") as fh:
             fh.write("\n".join(lines) + "\n")
-        manifest.append("- chunk_%03d: 负责 %s" % (k, p_owned))
+        manifest.append("- chunk_%03d: OWN %s" % (k, p_owned))
 
     with open(os.path.join(out_dir, "manifest.md"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("\n".join(manifest) + "\n")

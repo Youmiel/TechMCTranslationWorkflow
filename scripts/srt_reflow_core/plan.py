@@ -267,11 +267,8 @@ def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
         cids = []
         in_owned = False
         for ln in open(chunk_files[k], encoding="utf-8").read().split("\n"):
-            if ln.startswith("## OWNED"):
-                in_owned = True
-                continue
-            if ln.startswith("## CONTEXT"):
-                in_owned = False
+            if ln.startswith("## "):
+                in_owned = ln.startswith("## OWNED")
                 continue
             if in_owned:
                 mm = re.match(r"c(\d+)\t", ln)

@@ -47,7 +47,7 @@
 | 脚本 | 用途 | 用法 |
 |------|------|------|
 | `fetch_wiki.py` | MediaWiki API 直连（兜底，MCP 不可用时） | `python scripts/fetch_wiki.py "页面名" ["页面名" ...]` |
-| `refresh_cache.py` | 统一入口，检查并刷新三类本地缓存 | `python scripts/refresh_cache.py [--force\|--dry-run\|--ttl N]` |
+| `refresh_cache.py` | 统一入口：检查三类缓存；Mojang/TechMC 自动刷新；Wiki 只告警不自动抓取（Agent 按 wiki-tools 降级链按需刷新） | `python scripts/refresh_cache.py [--force\|--dry-run\|--ttl N]` |
 | `check_index_stale.py` | 对比 submodule 当前 commit 与索引记录 commit，报告哪些索引需更新 | `python scripts/check_index_stale.py [--only <repo>]` |
 | `setup_editors.py` | 编辑器适配初始化（跨平台，创建 Claude Code 等所需的 symlink） | `python scripts/setup_editors.py [--force]` |
 

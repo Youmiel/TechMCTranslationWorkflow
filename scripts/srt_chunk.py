@@ -83,16 +83,19 @@ def write_chunk(k, start, end):
     before = units[max(0, start - M):start]
     after = units[end:min(n, end + M)]
     total = (n + N - 1) // N
-    lines = ['# Chunk %d/%d  owned: c%d..c%d  ctx: before=%d after=%d' %
-             (k + 1, total, owned[0][0], owned[-1][0], len(before), len(after))]
-    lines.append('## OWNED（本块负责：对这些 cue 做合并/翻译并产出）')
+    lines = ['# CHUNK %d/%d  SRC: %s  TYPE: srt  UNIT: cue  OWN: c%d-c%d  CTX: BEFORE %d AFTER %d' %
+             (k + 1, total, os.path.basename(args.srt), owned[0][0], owned[-1][0], len(before), len(after))]
+    if before:
+        lines.append('## BEFORE')
+        for idx, s, e, body in before:
+            lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
+    lines.append('## OWNED')
     for idx, s, e, body in owned:
         lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
-    lines.append('## CONTEXT（只读：仅供衔接参考，不产出）')
-    for idx, s, e, body in before:
-        lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
-    for idx, s, e, body in after:
-        lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
+    if after:
+        lines.append('## AFTER')
+        for idx, s, e, body in after:
+            lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
     fname = os.path.join(args.out, 'chunk_%03d.txt' % (k + 1))
     with open(fname, 'w', encoding='utf-8', newline='\n') as fh:
         fh.write('\n'.join(lines) + '\n')

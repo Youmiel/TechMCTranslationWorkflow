@@ -79,9 +79,9 @@ Agent 读缓存时根据 `fidelity` 决定是否回源补精确数据：
 
 ## 刷新策略
 
-- 唯一入口：`python scripts/refresh_cache.py`（统一检查三类缓存）
+- 统一入口：`python scripts/refresh_cache.py`（检查三类缓存；Mojang/TechMC 自动刷新）
 - Wiki 缓存过期判断：基于文件 mtime，TTL 默认 7 天（`--ttl` 可调）
-- 过期页面由 `refresh_cache.py` 调 `fetch_wiki.py` 批量重抓（会降级为 `plain`；如需无损，可重新走 wikitext 通道）
+- **Wiki 缓存只检查过期并告警，不自动抓取**——刷新由 Agent 在查找时按 wiki-tools 降级链按需做（MCP-2 lossless 优先），避免脚本用 `plain` 降级覆盖已有高保真缓存
 - `.cache/metadata.json` **已废弃**：时间戳 / 来源由各文件 front matter 承担
 
 ## 数据源特征备忘（Agent 实测，2026-08-01）

@@ -28,7 +28,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 
 ## 阶段〇：领域预判与准备（翻译前，轻量扫描）
 
-1. **刷新本地知识**：`python scripts/refresh_cache.py`（统一入口；或按需 `glossary_split.py --check`、`glossary_fetch_mojang.py`）
+1. **刷新本地知识**：`python scripts/refresh_cache.py`（统一入口：Mojang/TechMC 自动刷新，**Wiki 只告警不自动抓取**——Wiki 刷新按需走 [wiki-tools](../wiki-tools/SKILL.md) 降级链；或按需 `glossary_split.py --check`、`glossary_fetch_mojang.py`）
 2. **类别预判**：按 [use-glossary#类别预判](../use-glossary/SKILL.md#类别预判翻译前确定领域)——读 `.github/experience/glossary_categories.yaml`，扫描标题/简介 + 前 ~20 句关键词，命中 ≥2 次加载对应分类；**产出领域判断并向用户报告确认**；**无法确定/拿不准时必须列出候选请用户选择，不得静默跳过**（见 [use-glossary#无法判断时的处理](../use-glossary/SKILL.md#无法判断时的处理必须交互配置文件自维护入口)）；确认后如有该分类未收录的高频词，回填 yaml `keywords`
 3. **红石专属补充加载**：`.cache/mojang/redstone.csv`（~100 条，全量）；`.cache/mojang/<类别>.csv`（非红石 ~1400 条不预加载，L1 未命中 grep 按需查）
 4. **加载知识地图**：读 `indexes/knowledge/` + `indexes/repos/_manifest.md`（机制知识卡 `knowledge/02_mechanic/`、外部仓库经索引定位）
