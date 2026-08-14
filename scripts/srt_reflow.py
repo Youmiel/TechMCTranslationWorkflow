@@ -13,7 +13,7 @@
 用法（命令根 = Project_Main/；输出默认写到输入文件 r03/r04 同目录，与 cwd 无关）：
   python scripts/srt_reflow.py reflow r03_plan.md 01_subtitle_asr_fixed.srt [-o r04_draft.srt] [--snap-ms 300] [--cjk-speed 5]
   python scripts/srt_reflow.py attach-en r04_draft.srt r03_plan.md [-o r04_bilingual.srt]
-  python scripts/srt_reflow.py check-r03 r03_plan.md 01_subtitle_asr_fixed.srt r02_translation_zh.txt
+  python scripts/srt_reflow.py check-r03 r03_results/ 01_subtitle_asr_fixed.srt r02_results/ --chunks chunks/   # 块级（--chunks 必填，单块亦适用）
   python scripts/srt_reflow.py check-duration r04_draft.srt r03_plan.md [--min-ms 1000] [--cjk-speed 5]
 
 实现拆分：逻辑在 srt_reflow_core/（io/plan/anchor/allocate/alerts/reflow/attach），本文件只做 CLI 分发。
@@ -63,10 +63,10 @@ def main():
     p2.add_argument("-o", dest="out", default=None, help="输出双语（默认 r04 同目录 r04_bilingual.srt）")
 
     p3 = sub.add_parser("check-r03", help="r03 写时即合规预检（锚定唯一性/拆句互斥/行宽/ZH忠实/碎片/中英失配预警），硬违规退出码 1；r03 为目录时走块级（r03_results/ + --chunks + r02_results/）")
-    p3.add_argument("r03", help="r03_plan.md（整段）或 r03_results 目录（块级）")
+    p3.add_argument("r03", help="r03_results 目录（块级；整段 r03_plan.md 兼容历史）")
     p3.add_argument("srt", help="01_subtitle_asr_fixed.srt（cue 时间戳）")
-    p3.add_argument("r02", help="r02_translation_zh.txt（整段基准）或 r02_results 目录（块级基准）")
-    p3.add_argument("--chunks", default=None, help="块级模式：chunks 骨架目录（解析块↔cue区间）")
+    p3.add_argument("r02", help="r02_results 目录（块级基准；整段 r02_translation_zh.txt 兼容历史）")
+    p3.add_argument("--chunks", default=None, help="块级模式必填：chunks 骨架目录（解析块↔cue区间；单块亦适用）")
     p3.add_argument("--cjk-speed", type=float, default=5.0,
                     help="中文阅读速度（字/秒），用于碎片预检与中英失配预估；0=禁用两者（默认 5.0）")
     p3.add_argument("--no-frag", action="store_true", help="禁用碎片预检（存疑预警）")

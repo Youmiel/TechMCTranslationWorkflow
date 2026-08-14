@@ -144,7 +144,7 @@ def main():
     lines.append("## 校验（补标点后必跑）")
     lines.append("")
     lines.append("```")
-    lines.append(f"python scripts/srt_reflow_check_breaks.py {args.src} reflow/r01_merged_en.txt")
+    lines.append(f"python scripts/srt_reflow_check_breaks.py {args.src} reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md")
     lines.append("```")
     lines.append("")
     lines.append("> 通过 = 每个空隙点两侧 cue 之间已断句；违规 = 存在跨空隙合句，打回步骤 1 重跑（带断句标记输入）。")

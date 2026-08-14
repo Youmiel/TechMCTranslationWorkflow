@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""r01 硬性断句校验（输出层，打回机制）：检查 r01_merged_en.txt 是否跨空隙合句
+"""r01 硬性断句校验（输出层，打回机制）：检查 r01 补标点结果是否跨空隙合句
 
 空隙点 = 01 中相邻 cue gap > 长停顿阈值（与 srt_reflow_gap_scan.py / srt_reflow_breaks.py 一致）；
 非语音标记 cue（[Music] 等，去括号后为空）两侧不参与空隙判定。
@@ -12,8 +12,10 @@ Agent 裁决角色：
 - 违规的处置：默认打回；若判定该空隙为语义停顿（语义本就连贯）可作受控例外放行，但须在 r03 不跨空隙成单元。
 - 通过的复核：断句方式（独立成句 / 分段 / 归前句）由 Agent 复核，影响 r03 游离停顿词归属。
 
+块级模式（产物单轨）：r01 为 r01_results 目录，--chunks 必填（单块亦适用）；整段模式（<r01_merged_en.txt>）保留兼容历史产物。
+
 用法（命令根 = Project_Main/）：
-  python scripts/srt_check_r01_breaks.py <01.srt> <r01_merged_en.txt>
+  python scripts/srt_check_r01_breaks.py <01.srt> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md
 退出码：0 = 全部通过；1 = 存在违规（打回信号）。
 """
 import argparse
@@ -70,10 +72,10 @@ def norm_with_map(raw):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="r01 硬性断句校验：逐空隙点查句末标点，违规退出码 1（打回信号）；支持整段/块级")
+    ap = argparse.ArgumentParser(description="r01 硬性断句校验：逐空隙点查句末标点，违规退出码 1（打回信号）；块级模式（--chunks 必填）")
     ap.add_argument("src", help="01_subtitle_asr_fixed.srt")
-    ap.add_argument("r01", help="r01_merged_en.txt（整段）或 r01_results 目录（块级）")
-    ap.add_argument("--chunks", default=None, help="chunks 目录（块级模式用，解析块↔cue区间）")
+    ap.add_argument("r01", help="r01_results 目录（块级，--chunks 必填；单块亦适用）")
+    ap.add_argument("--chunks", default=None, help="chunks 目录（块级模式必填，解析块↔cue区间；单块亦适用）")
     ap.add_argument("--gaps", default=None, help="r00_gaps.md（可选，空隙点清单；不传则脚本自行探测，但建议复用已验证的 r00_gaps）")
     args = ap.parse_args()
 

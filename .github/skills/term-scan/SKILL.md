@@ -34,8 +34,4 @@ description: 阶段一术语扫描（translate-redstone §1.1）的机制细节�
 
 ## 术语识别（subagent）
 
-- 每块注入：本块命中项（从 `scan_terms.txt` 按 OWNED cue 范围过滤）+ 术语/陷阱词知识卡
-- subagent 职责：命中项强制查词确认、补词形变体（复数/跨行）、排除误报（普通词撞 Mojang 冷门条目）、识别真新词（L3）
-- **时间戳**：决策行（`[ASR 推测]`/`[推断]`/`[待审核]`）附首次时间戳，格式统一 `HH:MM:SS`（不带毫秒）——**从输入 OWNED cue 的时间码精确读取**，输入 cue 自带 `c<idx>\t<时间码>\t<文本>`，直接取该 cue 的 `HH:MM:SS`；**禁止**凭记忆推算或用 cue 编号替代（汇总/确认以时间为准）
-- **块输出格式**（写 `_work/<视频名>/_term_results/chunk_<k>.txt`，每行一条，UTF-8）：`term_en|译名|来源|ASR修正|[标记]`——`[标记]` = `[待查]`/`[待审核]`/`[ASR 推测]`/`[推断]`；决策行在行尾附首次时间戳（如 `@HH:MM:SS`）
-- 派发模板见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)
+> 术语识别 subagent 的**任务 prompt 文件** = `task-term-recognition`（同目录，现成可注入的任务指令：目标 + 规则 + 时间戳纪律 + 输出格式）。派发按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装（任务文件 + 纪律母版 + 知识卡 + 块数据），此处不再重复任务规则。

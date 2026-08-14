@@ -6,14 +6,13 @@
 - 读取某产物只是第一步：后续步骤（翻译输出 / 组装 / 校验 / subagent 汇总）也要占窗口
 - 中间产物**落盘优于会话回顾**（断点恢复、subagent 组装都从文件读）——分块成本低，宁可多分块
 
-阈值：估算 token > 窗口上限 × ratio（默认 0.04）即建议分块——分块阈值按全流程读取次数摊销
-（完整流程 0.04=3.8% 保守、子任务不读 r03/r04 时 0.05=5% 上限，推导见 redstone-conventions 分块）；宁低勿高。
+阈值：估算 token > 窗口上限 × ratio（默认 0.3）即建议分块——**分块阈值 = subagent 单窗口预算**（执行在 subagent，全新上下文、无主会话历史/指令占用：单块材料 + 输出 + 预留 ≤ 窗口；推导见 redstone-conventions 分块）；宁低勿高。
 
 确定性：字符 → token 用固定启发式（去空白字符 / 1.5，中英混合近似），同样输入同样输出。
 
 用法（命令根 = Project_Main/）：
-  python scripts/context_estimate.py <文件> [--window 128000] [--ratio 0.04]
-  输入支持：SRT（额外报 cue 数）与 reflow 非 SRT 产物（r01_merged_en.txt / r02_translation_zh.txt / r03_plan.md 等 txt/md/json）
+  python scripts/context_estimate.py <文件> [--window 128000] [--ratio 0.3]
+  输入支持：SRT（额外报 cue 数）与 reflow 非 SRT 产物（r03_plan.md 等 txt/md/json）
 """
 import argparse
 import json
@@ -59,8 +58,8 @@ def main():
     ap = argparse.ArgumentParser(description="上下文量估算与分块建议（SRT / 任意文本，确定性，替代人工估算）")
     ap.add_argument("file", help="输入文件：SRT 或 reflow 非 SRT 产物（txt/md/json）")
     ap.add_argument("--window", type=int, default=None, help="模型上下文窗口上限（估算 token；默认读 configs/context_window.json，缺失时提示配置）")
-    ap.add_argument("--ratio", type=float, default=0.04,
-                    help="分块阈值 = 窗口上限 × 该比例（默认 0.04 保守=完整流程摊销 3.8%；子任务不读 r03/r04 时用 0.05；推导见 redstone-conventions 分块）")
+    ap.add_argument("--ratio", type=float, default=0.3,
+                    help="分块阈值 = 窗口上限 × 该比例（默认 0.3 保守=subagent 单窗口预算；推导见 redstone-conventions 分块）")
     args = ap.parse_args()
     cfg = load_context_length()
     if args.window is None:
@@ -70,7 +69,7 @@ def main():
             print(f"   请询问用户期望的窗口上限（仅一个值），写入 configs/context_window.json：{{\"context_length\": <值>}}")
 
     if not (0 < args.ratio < 1):
-        sys.exit("--ratio 必须在 (0, 1) 内（建议 ≤0.5：字幕不容压缩、后续步骤也占窗口）")
+        sys.exit("--ratio 必须在 (0, 1) 内（建议 ≤0.4：subagent 单窗口还要容纳输出与预留）")
 
     cues = parse_srt_cues(args.file)
     if cues:
@@ -103,7 +102,7 @@ def main():
             print("     语义单位: r01 用 --unit 段（空隙语义段）；r02 用 --unit 句；r03 用 --unit 整句组；超长单位自动细分（--max-chars，默认 6000）")
         print("     合并: python scripts/text_merge.py <chunk_dir> <结果目录> --out <合并产物>（全自动，异常读 .report.md）")
     else:
-        print("  → 未超阈值：可整段处理（保守起见仍可按语义段分块）")
+        print("  → 未超阈值：空隙组内不分片（仍派 subagent 执行；块数 = 空隙组数 × 组内片数，产物落 r0X_results/）")
 
 
 if __name__ == "__main__":

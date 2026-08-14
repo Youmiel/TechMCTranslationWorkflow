@@ -3,13 +3,10 @@
 
 回填工作流（reflow-redstone）步骤 1：LLM 合并补标点后，词序列必须与 01 一致（只加标点、不改措辞）。
 
-两种模式：
-- 整段：<01.srt> <r01_merged_en.txt>——全文词序列对比
-- 块级：<01.srt> <r01_results目录> --chunks <chunks目录>——逐块对比（块 ↔ 01 cue 区间由 chunks 块头解析）
+块级模式（产物单轨）：<01.srt> <r01_results目录> --chunks <chunks目录>——逐块对比（块 ↔ 01 cue 区间由 chunks 块头解析；单块亦适用）。整段模式（<01.srt> <r01_merged_en.txt>）保留兼容历史产物。
 
 用法（命令根 = Project_Main/）：
-  python scripts/srt_check_r01.py <01.srt> <r01_merged_en.txt>              # 整段
-  python scripts/srt_check_r01.py <01.srt> <r01_results/> --chunks <chunks/>  # 块级
+  python scripts/srt_check_r01.py <01.srt> <r01_results/> --chunks <chunks/>   # 块级（--chunks 必填）
 退出码：0 = 一致；1 = 存在分歧。
 """
 import argparse
@@ -74,10 +71,10 @@ def parse_chunk_cue_range(chunk_path):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="r01 措辞校验：词序列与 01 一致（不得改动措辞）；支持整段/块级") 
+    ap = argparse.ArgumentParser(description="r01 措辞校验：词序列与 01 一致（不得改动措辞）；块级模式（--chunks 必填）")
     ap.add_argument("srt", help="01_subtitle_asr_fixed.srt")
-    ap.add_argument("r01", help="r01_merged_en.txt（整段）或 r01_results 目录（块级）")
-    ap.add_argument("--chunks", default=None, help="chunks 目录（块级模式用，解析块↔cue区间）")
+    ap.add_argument("r01", help="r01_results 目录（块级，--chunks 必填；单块亦适用）")
+    ap.add_argument("--chunks", default=None, help="chunks 目录（块级模式必填，解析块↔cue区间；单块亦适用）")
     args = ap.parse_args()
 
     if os.path.isdir(args.r01):

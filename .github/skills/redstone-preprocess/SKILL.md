@@ -40,7 +40,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 ### 1.1 术语扫描
 > 机制见 [term-scan](../term-scan/SKILL.md)（权威，含术语识别块输出格式）、[use-glossary#四级查找](../use-glossary/SKILL.md#四级查找)；长视频分块见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)（通用机制）。
 
-> **阶段入口 · 报告 subagent 策略**：本阶段是否派 subagent、几个、原因——见 [subagent-dispatch#subagent 决策（阶段级报告）](../subagent-dispatch/SKILL.md#subagent-决策阶段级报告)。
+> **派发边界**：术语识别**一律派 subagent**（每块一个，块数由骨架决定），无需报告策略——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
 
 1. **加载领域知识**：加载阶段〇判定的分类术语文件（L2 按文件名、L1 全量），建立术语映射表
 2. **第一次遍历（英文侧轻量处理）** → 写 `01_subtitle_asr_fixed.srt`：
@@ -48,11 +48,11 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
    - **跨行合并成整句/合并时间戳是阶段二的重活，此处不做**（translate→两遍式断句；reflow→回填步骤 1 合并补标点）
    - **立即校验时间轴**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、保留原时间码、不增删 cue；时间轴错位立即回本步修正（否则一路传最终稿）
 3. **机械查找**：`python scripts/glossary_lookup.py scan <01> --categories <L2 集合> --levels L1,L2 --out scan_terms.txt`，命中项无论像不像术语一律按登记译名处理
-4. **术语识别**：把字幕逐块交 subagent（注入命中项 + 术语/陷阱词知识卡），subagent 强制查词、补词形变体、排误报、识别 L3 新词，输出术语清单
+4. **术语识别（派 subagent）**：每块派一个术语识别 subagent——prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装（任务文件 = `term-scan/task-term-recognition` + 纪律母版 + 知识卡 + 块数据），结果写 `_work/<视频名>/_term_results/chunk_<k>.txt`；N 由 `context_estimate.py` 定（执行一律 subagent，见 conventions「长视频分块」）
 5. **主会话汇总**：按 `term_en` 合并去重；`[ASR 推测]`/`[推断]`/`[待审核]` 行保留**首次时间戳**（格式 `HH:MM:SS`，取字幕时间码精确值）；L3 未命中进 §1.2
 6. **非预期命中记录**：scan 命中项/查词/知识卡若来自**未预判分类**的词汇表 → 记录该分类 + 命中词，阶段末回填 yaml `keywords`（见 [use-glossary#运行中反哺](../use-glossary/SKILL.md#运行中反哺非预期命中--回填-categories)）
 
-> 每块 subagent 要点：命中项强制查词（不判断"像不像"）；**trap_words 清单词**强制走 L1/L2（不论是否已登记入 L1）；怪词先查 asr_fixes，形似已知实体按 `[ASR 推测]` 处理并登记附首次时间戳（`HH:MM:SS`，从输入 cue 时间码精确读取，勿凭 cue 号/记忆推算）。
+> 术语识别 subagent 的任务规则见 `term-scan/task-term-recognition`（现成任务文件；派发配方见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据)）。
 
 ### 1.2 集中补齐（翻译前一次性完成所有网络请求）
 > 缓存命中判定、`fidelity` 回源、降级链、请求频率、保真阶梯、缓存写入见 [wiki-tools](../wiki-tools/SKILL.md)（权威）；数据源选择参考 `docs/SOURCE_COVERAGE.md`。

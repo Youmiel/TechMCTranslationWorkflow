@@ -135,7 +135,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 阶段二：正式翻译
 
-> **阶段入口 · 报告 subagent 策略**：本阶段是否派 subagent（如长视频分块合并/翻译）、几个、原因——见 [subagent-dispatch#subagent 决策（阶段级报告）](../subagent-dispatch/SKILL.md#subagent-决策阶段级报告)。
+> **阶段入口 · 报告 subagent 策略**：本阶段是否派 subagent（如长视频分块合并/翻译）、几个、原因——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)（translate 未重构，保留条件派发报告）。
 
 **产物契约（本阶段输入 / 输出）**：
 - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`（preprocess 产物）
@@ -174,7 +174,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 > **独立上下文执行**（原隐含在主会话顺带做，现按 `docs/PIPELINE_ISOLATION.md` 隔离）：本步骤作为**独立一遍**运行——只读 `s04_draft.srt` 全稿 + `humanizer-zh` 规则，独立窗口产出修订稿，不在翻译会话里顺带改。全稿超长时可先分块、各块独立跑（块间用同一规则模板约束，保持风格一致）。
 
-> **分块输出格式**：长稿分块时逐块派 subagent（prompt 见 [subagent-dispatch#每块 prompt 模板](../subagent-dispatch/SKILL.md#每块-prompt-模板)），结果写 `_work/<视频名>/_humanize_results/chunk_<k>.txt`：每行 `段号|修订后译文`（可附改动点说明）。
+> **分块输出格式**：长稿分块时逐块派 subagent（prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装），结果写 `_work/<视频名>/_humanize_results/chunk_<k>.txt`：每行 `段号|修订后译文`（可附改动点说明）。
 
 1. 加载 `humanizer-zh` Skill（`.github/skills/humanizer-zh/SKILL.md`），按其 24 种 AI 写作模式清单扫描译文
 2. 重点关注字幕场景常见的：

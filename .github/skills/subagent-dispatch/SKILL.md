@@ -1,6 +1,6 @@
 ---
 name: subagent-dispatch
-description: 派发 subagent 处理长视频分块任务的模板与纪律。约束 subagent 不过度思考、不逐句确认、只报结构化结果，并在 prompt 中显式注入先验知识（知识卡）。长视频分块合并/翻译、批量校验等需要拆给 subagent 的任务使用。
+description: subagent 派发规范——派发配方（任务文件+纪律母版+知识卡+块数据的固定组装顺序）、纪律母版（全局纪律单一权威）、任务导航表（任务→任务文件）。约束 subagent 不过度思考、不逐句确认、只报结构化结果。任何需要拆给 subagent 的任务派发时参考。
 ---
 
 # subagent 派发模板
@@ -9,64 +9,52 @@ description: 派发 subagent 处理长视频分块任务的模板与纪律。约
 
 每次派发的 subagent 都是**全新上下文**，看不到主会话已加载的术语/陷阱词/ASR 修正。因此**先验知识必须显式写进 subagent 的 prompt**，不能指望"主流程加载过一次就延续"。
 
-## subagent 决策（阶段级报告）
+## 派发边界（哪些派 subagent / 哪些主会话）
 
-> 原则：**粗粒度、少打扰**——在固定阶段入口报一次，不逐步骤打断；路由由 Agent 自主规划（考量沿用 [PIPELINE_ISOLATION.md §3](../../docs/PIPELINE_ISOLATION.md)，非硬性规定）。
+> 原则：**粗粒度、少打扰**——派发是执行机制，是否派由任务性质决定，**不需逐步骤报告**（考量沿用 [PIPELINE_ISOLATION.md §3](../../docs/PIPELINE_ISOLATION.md)）。
 
-**倾向 subagent（隔离）**：长分块 / 批量任务（术语扫描、分块合并/翻译）；输入可独立（子集产物）、输出可固化（落盘为下一步输入）、规则可外置（Skill/模板）；上下文余量紧张（长视频、步骤重）。
+**一律派 subagent**（reflow 阶段二补标点/翻译/分句、preprocess §1.1 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
 
-**倾向主会话**：需用户交互（术语确认 §1.3、审核循环 阶段二½）——能力约束；需全貌的跨切面决策（如 r03 分句对应、回填判断）；极轻量步骤（隔离收益 < 调度成本）。
+**不派 subagent（主会话）**：需用户交互（术语确认 §1.3、审核循环 阶段二½）——能力约束；需全貌的跨切面决策（如 r03 分句对应、回填判断）。
 
-**报告格式**（各工作流固定阶段入口执行：translate/reflow 阶段二、preprocess §1.1）：
-`本阶段 subagent 策略：用/不用 — N 个 — 原因（长分块 / 依赖全貌 / 需交互 / 极轻量…）`
+**translate（未重构）**：阶段二仍是条件派发（长分块才 subagent），保留阶段入口报告 `本阶段 subagent 策略：用/不用 — N 个 — 原因`；重构后与 reflow 对齐。
 
 ## 派发前主 Agent 准备
 
 1. 生成/读取该视频的**知识卡**（`02_terms.md`：已确认术语 + 陷阱词命中项 + ASR 修正映射）
 2. 用 `scripts/text_chunk.py` 分块（见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)；SRT 与非 SRT 统一，超阈值判定先跑 `context_estimate.py`）
-3. 为每块组装 prompt（模板见下），一次派发一批
+3. 按「派发配方」组装每块 prompt（任务文件 + 纪律母版 + 知识卡 + 块数据），一次派发一批
 
-## 每块 prompt 模板
+## 派发配方（任务文件 + 纪律母版 + 知识卡 + 块数据）
+
+> 每个可派发任务 = 一份**任务 prompt 文件**（放所属 skill 目录，如 `term-scan/task-term-recognition`、`reflow-redstone/task-punctuate`），内容是面向 subagent 的**现成任务指令**（目标 + 行为规则 + 输出契约），主 agent **即读即用、无需理解重组**。任务文件自带「## 先验知识」「## 本块数据」占位，派发时填充；全局纪律**不抄进任务文件**（避免 N 个文件重复），由配方统一追加「纪律母版」。
 
 ```
-任务：对以下第 <k>/<N> 块字幕做 <合并|翻译>。
-
-## 先验知识（必须遵守）
-<知识卡：全量术语表 + 按本块命中词过滤，至少含已确认术语、scan 命中项（按本块 cue 过滤）、陷阱词命中项、ASR 修正映射>
-<各工作流可要求额外注入本任务规则——由主 Agent 按当前工作流组装，通用模板不预置>
-
-## 本块数据（`## BEFORE`=前文 / `## OWNED`=负责产出 / `## AFTER`=后文，只读衔接不产出）
-<chunk_k.txt 内容>
-
-## 纪律
-- 直接执行，不要向用户确认任何步骤；不要复述计划或询问"是否继续"
-- 有歧义时按默认规则处理并在结果里标注，不阻塞
-- 只输出结构化结果（见下），不要描述推理过程
-
-## 输出（写文件，勿返回全文）
-- 将结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`（任务目录 = 下方「各任务输出格式」表，主 Agent 按任务指定）
-- 格式（utf-8，覆盖写本块文件，勿追加、勿碰其它文件）——按本块**类型三选一**（关键行如下，细节权威见各工作流/产物契约）：
-  - **srt 类型（translate merge/翻译）**：每行 `段号|cue范围|<文本>`；`CARRY: c<idx>` 结转标记独立成行（权威 [PRODUCT_FORMATS#s03_plan.md](../../docs/PRODUCT_FORMATS.md)）
-  - **text 类型（术语扫描/去翻译腔/r03 分句）**：单元间空行分隔；每单元首行 `<组>-<片>\t<产出文本>`（保留输入 OWNED 的组-片前缀；内容可多行；单元数 = OWNED 单元数）（权威 [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)）
-  - **reflow 整段文字（r01/r02 块）**：把 OWNED cue 文本按顺序拼成**一段连续文字**输出（补标点后英文 / 整段中文译文）；块内**不按 cue 分行、不按句分行、不带 `c<idx>\t时间码\t` 前缀、不编号**；一个空隙组-片 = 一段（CONTEXT 只读不产出）——逐句/cue 分行会孤立 ASR 残片导致误译，校验脚本按整段解析（权威 [PRODUCT_FORMATS#r01_results / r02_results](../../docs/PRODUCT_FORMATS.md)）
-- 写完后报告 `已写入 <文件名>（N 行）`，不要粘贴结果全文
+subagent prompt = 任务文件内容
+                + 纪律母版（下方，整体追加）
+                + 知识卡（术语/陷阱词/ASR 修正映射，运行时）
+                + 块数据（## BEFORE / ## OWNED / ## AFTER，取自 chunk_<k>.txt）
+                + 写盘/报告约定（输出路径 + 「已写入 <文件名>（N 行）」）
 ```
 
-## 各任务输出格式（导航表）
+## 任务导航表（任务 → 任务文件）
 
-> 各任务输入/输出/格式权威见 [reflow-redstone](../reflow-redstone/SKILL.md)、[translate-redstone](../translate-redstone/SKILL.md)、[term-scan](../term-scan/SKILL.md) 各步骤 + [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)
+> 每个可派发任务的**任务文件**（现成 prompt）与产物输出。任务文件在所属 skill 目录内；格式契约权威见各任务文件 + [PRODUCT_FORMATS](../../docs/PRODUCT_FORMATS.md)。任务文件逐步建立，未建时按各工作流步骤的规则组装。
 
-| 任务 | 输入 | 输出（`_work/<视频名>/`） | 格式权威 |
-|------|------|-------------------------|----------|
-| 合并（translate） | OWNED cue + CONTEXT | `_merge_results/chunk_<k>.txt` | [translate-redstone#阶段二](../translate-redstone/SKILL.md) + [PRODUCT_FORMATS#s03_plan.md](../../docs/PRODUCT_FORMATS.md) |
-| 翻译（translate） | OWNED 段 + 知识卡 | `_trans_results/chunk_<k>.txt` | [translate-redstone#阶段二](../translate-redstone/SKILL.md) + [PRODUCT_FORMATS#s03_plan.md](../../docs/PRODUCT_FORMATS.md) |
-| 术语扫描（preprocess） | OWNED cue + scan 命中项（按块过滤）+ 知识卡 | `_term_results/chunk_<k>.txt` | [term-scan#术语识别](../term-scan/SKILL.md#术语识别subagent) |
-| 去翻译腔（translate） | 04 全稿/分块 + humanizer 规则 | `_humanize_results/chunk_<k>.txt` | [translate-redstone#阶段二+ 去翻译腔](../translate-redstone/SKILL.md#阶段二去翻译腔可选独立上下文) |
-| 补标点（reflow 步骤 1） | `reflow/chunks/chunk_<k>.txt`（OWNED cue 区间 + 空隙断句标记） | `reflow/r01_results/chunk_<k>.txt` | [PRODUCT_FORMATS#r01_results](../../docs/PRODUCT_FORMATS.md) + [reflow-redstone#步骤 1b](../reflow-redstone/SKILL.md) |
-| 整段翻译（reflow 步骤 2） | `r01_results/` 对应块 + 前后块 CONTEXT + 知识卡 | `reflow/r02_results/chunk_<k>.txt` | [PRODUCT_FORMATS#r02_results](../../docs/PRODUCT_FORMATS.md) + [reflow-redstone#步骤 2](../reflow-redstone/SKILL.md)（humanizer-zh 规则注入见此处） |
-| 分句对应（reflow 步骤 4） | `r01_results/` + `r02_results/` 对应块对照 | `reflow/r03_results/chunk_<k>.txt` | [reflow-redstone#步骤 4](../reflow-redstone/SKILL.md)（r03 整句分组格式，`parse_r03` 解析） |
+| 任务 | 任务文件 | 输出（`_work/<视频名>/`） |
+|------|----------|--------------------------|
+| 术语识别（preprocess §1.1） | `term-scan/task-term-recognition` | `_term_results/chunk_<k>.txt` |
+| 补标点（reflow 步骤 1） | `reflow-redstone/task-punctuate` | `reflow/r01_results/chunk_<k>.txt` |
+| 整段翻译（reflow 步骤 2） | `reflow-redstone/task-translate` | `reflow/r02_results/chunk_<k>.txt` |
+| 分句对应（reflow 步骤 4） | `reflow-redstone/task-split` | `reflow/r03_results/chunk_<k>.txt` |
+| 前文摘要（reflow 步骤 2 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
+| 合并（translate 阶段二） | `translate-redstone/task-merge` | `_merge_results/chunk_<k>.txt` |
+| 翻译（translate 阶段二） | `translate-redstone/task-translate` | `_trans_results/chunk_<k>.txt` |
+| 去翻译腔（translate 阶段二+） | `translate-redstone/task-humanize` | `_humanize_results/chunk_<k>.txt` |
 
-## subagent 纪律（生成 prompt 时必须包含）
+## 纪律母版（派发时必须整体追加）
+
+> 全局纪律**单一权威**在此；任务文件不重复内联。派发时随配方整体追加给 subagent。
 
 1. **不过度思考**：不要输出大量分析、备选方案、风险清单；只做被要求的事
 2. **不逐句确认**：不要每步问"这样可以吗""需要我继续吗"；有歧义默认处理 + 标注，交由主 Agent 汇总时统一确认
@@ -92,6 +80,6 @@ description: 派发 subagent 处理长视频分块任务的模板与纪律。约
      - **结转**：`CARRY: c<idx>` 对应产出段，确认未重复未遗漏
      - **片号不连续**（text）→ 查该组是否缺片，补跑
    - 已确认的 ASR 修正（`02_terms.md`）在组装期应用（合并后手动替换或脚本内处理）
-4. 落盘最终产物（`03_segments.md` / `04_translation_draft.srt` / `r01_merged_en.txt` 等，见各工作流）
+4. 落盘最终产物（`s03_plan.md` / `s04_draft.srt` / `r03_plan.md` 等，见各工作流）
 5. **全量机械校验交脚本**（覆盖完整/不重叠/边界⊆原集/格式）-> [segment-subtitles#输出与校验](../segment-subtitles/SKILL.md#输出与校验)；校验报错即回到对应块修复后重跑 `text_merge.py`
 6. 阶段二½ 交用户审核
