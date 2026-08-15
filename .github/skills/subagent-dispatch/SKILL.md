@@ -11,7 +11,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 
 ## 派发边界（哪些派 subagent / 哪些主会话）
 
-> 原则：**粗粒度、少打扰**——派发是执行机制，是否派由任务性质决定，**不需逐步骤报告**（考量沿用 [PIPELINE_ISOLATION.md §3](../../docs/PIPELINE_ISOLATION.md)）。
+> 原则：**粗粒度、少打扰**——派发是执行机制，是否派由任务性质决定，**不需逐步骤报告**（考量沿用 [PIPELINE_ISOLATION.md §3](../../../docs/PIPELINE_ISOLATION.md)）。
 
 **一律派 subagent**（reflow 阶段二补标点/翻译/分句、preprocess §1.1 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
 
@@ -50,7 +50,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 
 ## 任务导航表（任务 → 任务文件）
 
-> 每个可派发任务的**任务文件**（现成 prompt）与产物输出。任务文件在所属 skill 目录内；格式契约权威见各任务文件 + [PRODUCT_FORMATS](../../docs/PRODUCT_FORMATS.md)。任务文件逐步建立，未建时按各工作流步骤的规则组装。
+> 每个可派发任务的**任务文件**（现成 prompt）与产物输出。任务文件在所属 skill 目录内；格式契约权威见各任务文件 + [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)。任务文件逐步建立，未建时按各工作流步骤的规则组装。
 
 | 任务 | 任务文件 | 输出（`_work/<视频名>/`） |
 |------|----------|--------------------------|
@@ -77,7 +77,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 
 ## 合并（text_merge.py 全自动 + 异常清单，替代主 Agent 手工读头尾）
 
-> 分块与合并的格式契约见 [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)。主 Agent **不再手工读每块头尾**——合并交脚本，只读异常报告。
+> 分块与合并的格式契约见 [PRODUCT_FORMATS#通用文本分块](../../../docs/PRODUCT_FORMATS.md)。主 Agent **不再手工读每块头尾**——合并交脚本，只读异常报告。
 
 1. 按 subagent 报告的 `已写入` 确认各块文件齐全（缺块由 `text_merge.py` 异常清单兜底）
 2. **跑合并脚本**：`python scripts/text_merge.py <chunks_dir> <results_dir> --out <合并产物> [--report <报告>] [--window N]`

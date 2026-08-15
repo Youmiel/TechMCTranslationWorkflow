@@ -51,7 +51,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
      - 步骤 4 分句 → `r03_results/chunk_<k>.txt` → 拼 `r03_plan.md`（回填输入，必须合并）
      - 步骤 5/6 回填 + 组装 → `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
 
-> **产物格式/分隔符/标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式；块间分隔一律空行、标记文本仅限脚本生成的 `【强制断句】`。
+> **产物格式/分隔符/标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式；块间分隔一律空行、标记文本仅限脚本生成的 `【强制断句】`。
 3. **阶段二½ 人工审核**（`redstone-review`）——输入 `r03` + `r04` → 用户确认（无新落盘）
 4. **阶段三 数据源总结**（`redstone-finalize`）——`.github/experience/` 追加
 
@@ -85,7 +85,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ### 通用规则
 
-见 [redstone-conventions](../redstone-conventions/SKILL.md) + [AGENTS.md](../../AGENTS.md)（项目原则）。
+见 [redstone-conventions](../redstone-conventions/SKILL.md) + [AGENTS.md](../../../AGENTS.md)（项目原则）。
 
 ### 特有规则（空隙与阈值约定，gap 判定统一参数）
 
@@ -118,7 +118,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 #### 步骤 1：合并全文 + 补充标点（语义；硬性断句脚本驱动）
 
-> 补标点任务文件 = `reflow-redstone/task-punctuate`；`--owned` 定容量见步骤 1b；分块机制见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) + [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)。
+> 补标点任务文件 = `reflow-redstone/task-punctuate`；`--owned` 定容量见步骤 1b；分块机制见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) + [PRODUCT_FORMATS#通用文本分块](../../../docs/PRODUCT_FORMATS.md)。
 
 ##### 1a 前置（共用）
 
@@ -128,16 +128,16 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ##### 1b 定 N + 分块
 
-4. **定容量（`context_estimate.py`）**：`python scripts/context_estimate.py <01>`（窗口/split_ratio 默认读 `configs/context_window.json`，`--window`/`--split-ratio` 可覆盖）——材料 ≤ 窗口×split_ratio → 空隙组内不分片；超 → 组内按 `--owned` 分片。**执行一律 subagent**（统一路径）
+4. **定容量（`context_estimate.py`）**：`python scripts/context_estimate.py <01>`（参数默认读 `configs/context_window.json`、CLI 可覆盖）——双阈值 + 放大协调（见 conventions「长视频分块」）：**单块输入上限 = min(窗口×split_ratio, max_output×output_ratio÷amplification)**（amplification≈5 断句放大）；材料 ≤ 单块输入上限 → 不分片；超 → 按 `--owned` 分片（反推见第 5 点）。执行一律 subagent
 5. **分块（一律跑，产物契约统一）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——chunks/ 恒存在
    - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps` 把 01 按空隙点切成「空隙组」（防跨空隙误译），**每个空隙组至少一块**——块数下限 = 空隙点数+1；仅 01 无空隙点才 1 块
    - **组内按 `--owned` 分片（容量控制）**：空隙组 cue 数 > `--owned` 时组内再拆多片；容量足够（`--owned` ≥ 最大空隙组 cue 数）→ 每组恰一块
-   - **块 = 「空隙组-片」**：块标识「块G-片P」；`--owned` 按 `context_estimate.py` 反推（目标 ≈ 阈值 token×1.5），拿不准默认 100
+   - **块 = 「空隙组-片」**：块标识「块G-片P」；`--owned` 按分句最重反推（见 conventions §4：单块材料 ≈ 阈值 token÷4），默认 **50**
    - `--ctx 10`（每侧衔接 cue 数，约覆盖前块末尾 1–2 句）
 
 ##### 1c 派发补标点 subagent
 
-6. **补标点（逐块）**：每块派一个 subagent——prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装（任务文件 = `reflow-redstone/task-punctuate`），输入 = `reflow/chunks/chunk_<k>.txt`，结果写 `reflow/r01_results/chunk_<k>.txt`（**整段文字**，规则见任务文件）——**中间不拼全文**；每块独立处理，**不交给 subagent 运行全局校验**（校验见 1d，主会话统一跑；subagent 自查只限本块格式完整）
+6. **补标点（逐块）**：每块派一个 subagent——prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装（任务文件 = `reflow-redstone/task-punctuate`），输入 = `reflow/chunks/chunk_<k>.txt`，结果写 `reflow/r01_results/chunk_<k>.txt`（整段文字，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件）——**中间不拼全文**；每块独立处理，**不交给 subagent 运行全局校验**（校验见 1d，主会话统一跑；subagent 自查只限本块格式完整）
 7. 中间产物 `reflow/r01_results/`（各块独立文件）
 
 ##### 1d 校验（主会话统一跑，所有块产出后一次执行）
@@ -151,7 +151,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 > - **humanizer 注入版**：`humanizer-inject.md`（~50 行），**勿注入 humanizer-zh 354 行全量版**（仅主会话/审核深读）——见第 4 点去翻译腔内联，禁止只写"去口语化/去翻译腔"笼统要求（subagent 看不到主会话加载的规则）
 > - **前文摘要注入（可选）**：需跨块长距离语义照应时，先对前文做摘要（派 `task-summary` → `reflow/summary.md`），随先验知识注入本块（见 [task-summary](task-summary.md)）
 
-1. **派发**：每块派一个 subagent（每块输入 = `reflow/r01_results/chunk_<k>.txt` + 前后块 CONTEXT 衔接，`--ctx 10` 保证块间衔接连贯），结果写 `reflow/r02_results/chunk_<k>.txt`（**整段中文**：与 r01 块一一对应、块内不按 cue/句分行、不编号、**不带 cue 前缀**）——**中间不拼全文**；**不交给 subagent 运行全局校验**（`check-r03` 块级模式验全部块，见步骤 4 第 8 步，主会话统一跑）
+1. **派发**：每块派一个 subagent（每块输入 = `reflow/r01_results/chunk_<k>.txt` + 前后块 CONTEXT 衔接，`--ctx 10` 保证块间衔接连贯），结果写 `reflow/r02_results/chunk_<k>.txt`（整段中文，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件）——**中间不拼全文**；**不交给 subagent 运行全局校验**（`check-r03` 块级模式验全部块，见步骤 4 第 8 步，主会话统一跑）
 2. 中间产物 `reflow/r02_results/`（各块独立文件）
 3. **翻译纪律与去翻译腔**：见 `task-translate.md`（翻译纪律 + humanizer 注入版 `humanizer-inject.md`）。**r02 定稿即自然译文**——r03 忠实铁律只许「切」不许「译」，翻译腔若拖到 r04 后只能回 r02 返工（阶段二½ 审核时主会话对照检查）
 4. **语义段**：语义段是步骤 1/4/5 统一分块单位（见 conventions）；翻译时 CONTEXT 注入前块末尾 1–2 句衔接（`--ctx 10`，每侧 10 cue）
@@ -167,7 +167,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 > - 结果写 `r03_results/chunk_<k>.txt` → 全部完成后按块序拼接成完整 `r03_plan.md`（回填输入，**必须合并**）
 > - 每块内保持整句/单元的语义完整性（不跨块拆句；空隙为硬边界，整句不跨空隙块）
 
-分句/语义对应规则（原文分句 / 译文判长短切分 / 1:1·1:n·n:1 对应 / 忠实转写铁律 / 拆合标注 / 游离停顿词）见 `task-split.md`；r03 产物结构（`## S<n>` / EN·ZH·关系 / 子单元）见 [PRODUCT_FORMATS#r03_plan.md](../../docs/PRODUCT_FORMATS.md)。
+分句/语义对应规则（原文分句 / 译文判长短切分 / 1:1·1:n·n:1 对应 / 忠实转写铁律 / 拆合标注 / 游离停顿词）见 `task-split.md`；r03 产物结构（`## S<n>` / EN·ZH·关系 / 子单元）见 [PRODUCT_FORMATS#r03_plan.md](../../../docs/PRODUCT_FORMATS.md)。
 **r03 写时即合规预检（必跑，通过才进步骤 5；全局校验由主会话统一跑，勿交 subagent）**：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/ [--cjk-speed 5] [--no-frag] [--no-mismatch]`——逐块六查（锚定缩到块内 cue 区间、ZH 忠实缩到块内 r02）：
 - ① **整句锚定唯一性**（缩到块内 cue 区间）
 - ② **拆句子单元互斥拼接 == 整句（EN）**

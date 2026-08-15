@@ -9,29 +9,13 @@ import re
 import unicodedata
 from pathlib import Path
 
-TS_RE = re.compile(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})")
-BRACKET_RE = re.compile(r"\[[^\]]*\]")
+from ..srt_reflow_common import parse_time, fmt, BRACKET_RE
+
 LATIN_KEEP_RE = re.compile(r"[^a-z0-9']")
 # 全角块（宽 1.0）：CJK 统一表意 + 扩展 A/B + 假名 + 谚文 + 兼容表意 + 全角标点
 FULLWIDTH_RE = re.compile(r"[\u2e80-\u9fff\uac00-\ud7af\u3040-\u30ff\uf900-\ufaff\uff00-\uffef]")
 LATIN_RE = re.compile(r"[A-Za-z]")
 DIGIT_RE = re.compile(r"[0-9]")
-
-
-def parse_time(s):
-    m = TS_RE.match(s.strip())
-    if not m:
-        raise ValueError(f"bad time: {s}")
-    h, mm, ss, ms = (int(x) for x in m.groups())
-    return h * 3600000 + mm * 60000 + ss * 1000 + ms
-
-
-def fmt(ms):
-    ms = max(0, int(ms))
-    h, ms = divmod(ms, 3600000)
-    m, ms = divmod(ms, 60000)
-    s, ms = divmod(ms, 1000)
-    return "%02d:%02d:%02d,%03d" % (h, m, s, ms)
 
 
 def norm(s):

@@ -37,7 +37,7 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 - 各阶段结束**立即落盘**；恢复时按**最完整产物**跳步
 - 产物契约表（共享前置 `01/02`；translate 阶段二 `s03/s04`；reflow 阶段二 `r00–r04`）见各工作流主 skill
 - **恢复只读产物，禁读对话记录（transcript）**
-  - 中间结果丢失 → 从 `_work/` 产物续（见 [PRODUCT_FORMATS](../../docs/PRODUCT_FORMATS.md)）
+  - 中间结果丢失 → 从 `_work/` 产物续（见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)）
   - **绝不读会话 transcript 找中间结果**——transcript 是历史档案，单个会话数百 KB~数 MB（≈数百 k~M token），读入即爆窗口
 - **数据禁散落临时脚本**（`_work/` 一次性脚本只放逻辑、不放数据）
   - 禁：把数据本体硬编码进临时脚本——大脚本承载数据会脱离产物契约、会话反复读写膨胀（如把整段译文塞进 `_translate_data.py`）
@@ -76,7 +76,12 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
   - **标称 ≠ 实际有效**：填**实际有效窗口**（非标称上限），拿不准按保守 128k 配置
 - **`--split-ratio`（分块阈值 = 单块材料占窗口比例，subagent 单窗口预算）**
   - 取值：**默认读 `configs/context_window.json` 的 `split_ratio`**（单块 OWNED 材料 ≤ 窗口×该比例；config 示例 0.05 → 1M 窗口 ≈ 50k token）；拿不准用默认，宁低勿高；CLI `--split-ratio` 可覆盖
-  - 推导：执行在 subagent（**全新上下文**）；**分句读中英两倍材料**（r01 EN + r02 ZH 对照）为最坏场景——按 config 的 split_ratio（示例 0.05）单语言材料预算 ≈ 窗口×5%，中英两倍后仍可一次处理；0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句两倍处理吃力），取中间值
+  - 推导：执行在 subagent（**全新上下文**）；**分句为最重环节**——读中英两倍材料（r01 EN + r02 ZH 对照）+ 输出 r03 ≈ 对照 2×，单请求 ≈ **4×单语言材料**（短视频实测 4.2×）；故 `split_ratio` 与 `--owned` 反推均以「分句最重」为准（不按补标点/翻译的单语言量）。按 config 的 split_ratio（示例 0.05）单语言材料预算 ≈ 窗口×5%，分句放大 4×后 ≈ 窗口×20%，仍可一次处理；0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句放大后吃力），取中间值
+  - **双阈值 + 放大协调**（`context_estimate.py` 同时报三指标）：
+    - `输入阈值` = `窗口 × split_ratio`——单块输入材料上限
+    - `输出阈值` = `max_output × output_ratio`——单块最大输出文件上限（以模型单次生成上限为基数、留余量）
+    - `amplification` ≈ 5——断句等最重环节预测放大倍数（预测最大输出 = 输入材料 × amplification）
+    - **协调约束**：`单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)`——输入材料同时受窗口预算与「放大后输出不超」约束；min 落到输出侧时降 `split_ratio`/`amplification`
 - **判定时机**：**每阶段派发前跑一次 `context_estimate.py` 定 `--owned`**（材料不落主会话，无「前步全文残留」问题）；字幕翻译**不接受上下文压缩**（压缩→失真），宁低勿高
 - **超阈值即拆片**（块数 >1），不得靠规模直觉直接定 `--owned`（"恰好没超"是运气不是流程保证）
 - **大 JSONL 按行 grep、不整读**（`r03_anchored.jsonl` 等逐行审查型产物）
@@ -87,7 +92,7 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 
 > 工具本身不绑工作流；translate 与 reflow 的分块用法见 §3 / §4。
 
-- **工具**：`python scripts/text_chunk.py <输入> --out <dir> [--type srt|text] [--unit 段|句|整句组] [--owned <每块单位数>] [--ctx <衔接单位数>] [--max-chars <字符>] [--order en-zh|zh-en] [--gaps]`（默认自动判型：`.srt` 为 srt、否则 text；srt 默认 `--owned 100`/`--ctx 6`；text 默认 `--owned 1`/`--ctx 1`；输出统一块格式见 [PRODUCT_FORMATS#通用文本分块](../../docs/PRODUCT_FORMATS.md)）
+- **工具**：`python scripts/text_chunk.py <输入> --out <dir> [--type srt|text] [--unit 段|句|整句组] [--owned <每块单位数>] [--ctx <衔接单位数>] [--max-chars <字符>] [--order en-zh|zh-en] [--gaps]`（默认自动判型：`.srt` 为 srt、否则 text；srt 默认 `--owned 100`/`--ctx 6`；text 默认 `--owned 1`/`--ctx 1`；输出统一块格式见 [PRODUCT_FORMATS#通用文本分块](../../../docs/PRODUCT_FORMATS.md)）
 - **分块根基 = 01_subtitle_asr_fixed.srt（阶段一产物、阶段二入口）**——r01/r02/r03 都是 01 的派生，**从 01 分块**后所有阶段锚定同一套块（块 ↔ cue 区间天然存在），无需中间合并、无需继承边界。**禁止从 r01/r02/r03 文本分块**（那些文本本就需先合并才能切，是弯路）
 - **srt 分块两种模式**：
   - **默认**：每 `--owned` 个 cue 一块，块边界 = 纯 cue 数切（translate 用，见 §3）
@@ -111,14 +116,14 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 > reflow 阶段二（补标点 → 整段翻译 → 分句）：从 01 分块（空隙组优先）→ 逐块独立处理、中间**不拼全文** → **校验逐块化** → 仅 r03/r04 合并。目标：各子块独立处理、按块传递，减少"拼全文→整读→再分块"的反复。
 
 - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps` 把 01 按空隙点切成「空隙组」，**每个空隙组至少一块**——块数下限 = 空隙点数+1；仅 01 无空隙点才 1 块
-- **`--owned` 只控组内拆片（容量，非块数）**：空隙组 cue 数 > `--owned` 时组内再拆多片；块数 = 空隙组数 × 组内片数
+- **`--owned` 只控组内拆片（容量，非块数）**：空隙组 cue 数 > `--owned` 时组内再拆多片；块数 = 空隙组数 × 组内片数。**`--owned` 从头部按最重环节（分句）反推**——分句单请求 ≈ 4×单语言材料（中英对照输入 2× + r03 输出 ≈2×对照），故单块单语言材料目标 ≈ **阈值 token÷4**；各阶段共用同一套块（01 骨架），**块定即全局、无法在分句阶段中途改**，宁小勿大
 - **分块前先验证 gap 准确性（必做）**：跑 `python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md` 得到空隙点清单（长停顿 >5s / 剪辑跳转 >10s），**人工确认后**再用 `--gaps` 分块——`--gaps` 的 `detect_gap_groups` 用同一空隙点算法，与 r00_gaps.md 应一致；**已有 r00_gaps.md 则复用，勿重复探测**（探测结果与人工复核以 r00_gaps.md 为准）
 - **一次分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——块 = 「空隙组-片」（块0 单独、块1 拆多片...），块边界 = 明确 cue 区间；**`--ctx` 建议 10**（每侧衔接 cue 数，约覆盖前块末尾 1–2 句）
 - **各阶段共用同一套块**：r01 补标点读 chunks/ 的 cue 区间、r02 翻译读 r01_results/ 对应块、r03 分句读 r01+r02 对应块——**块边界始终来自 01 分块骨架**，不做链式继承
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态——分块/不分块产物契约统一
 - **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，**不需要先合并全文**；**全局校验（块级模式一次验全部块）由主会话在所有块产出后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)——避免每块 subagent 重复跑全量校对）
 - **必须合并的**：`r03_plan.md`（`srt_reflow.py` 回填输入，各块 r03 方案按块序直接拼接）、`r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）——这两个合并后走全局校验
-- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
+- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；整段**就近折行**（每 ~1000 字符、英文词边界不拆词，单行 ≤1000）——**显示性换行非语义分行**，校验按整段解析不受影响（read_file 可读）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
 - **旧 `--inherit` 已弃用（deprecated）**：仅兼容旧流程，新方案从 01 分块 + 块级独立流转，不再需要继承边界
 
 ### 5. 逐块派发与合并（两工作流共用）

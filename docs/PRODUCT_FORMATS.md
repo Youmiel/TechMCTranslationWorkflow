@@ -75,7 +75,7 @@
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态
 - **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，不需要先合并全文；**全局校验（块级模式一次验全部块）由主会话在所有块产出后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../.github/skills/subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)）
 - **必须合并的**：`r03_plan.md`（`srt_reflow.py` 回填输入，各块 r03 方案按块序直接拼接）、`r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）——这两个合并后走全局校验
-- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
+- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；整段**就近折行**（每 ~1000 字符、英文词边界不拆词，单行 ≤1000 字符）——折行是**显示性换行、非语义分行**，校验按整段解析不受影响（read_file 可读）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
 - **旧 `--inherit` 已弃用（deprecated）**：仅兼容旧流程，新方案从 01 分块 + 块级独立流转，不再需要继承边界
 
 ### subagent 结果文件（`text_merge.py` 输入）
@@ -105,17 +105,27 @@
 
 ### `configs/context_window.json`
 
-- 角色：模型窗口上限 + 分块比例的**单一事实源**（`context_estimate.py` 的 `--window`/`--split-ratio` 默认读它）
-- 格式：`context_length`（整数 = 模型**实际有效**窗口上限，token；非标称上限，见 redstone-conventions「标称 ≠ 实际有效」）+ `split_ratio`（分块阈值比例，须在 (0,1)）
+- 角色：模型窗口 + 分块/输出阈值的**单一事实源**（`context_estimate.py` 的 `--window`/`--split-ratio`/`--output-ratio`/`--max-output`/`--amplification` 默认读它）
+- 格式（五项语义）：
+  - `context_length`：模型**实际有效**窗口上限（整数 token；非标称上限，见 redstone-conventions「标称 ≠ 实际有效」；输入+输出共享）
+  - `max_output`：模型**单次生成最大输出**（整数 token；输出阈值基数，通常远小于窗口）
+  - `split_ratio`：**输入阈值比例** = 窗口 × 该比例 → 单块输入材料上限（须 (0,1)，宁低勿高）
+  - `output_ratio`：**输出阈值比例** = max_output × 该比例 → 单块最大输出文件上限（留余量 <1，建议 0.7–0.9）
+  - `amplification`：**断句等最重环节预测放大倍数**（>1；预测最大输出 = 输入材料 × 该倍数，断句 ≈ 5）
+- **阈值与协调关系**（`context_estimate.py` 同时报三指标）：
+  - 输入阈值 = `context_length × split_ratio`（单块输入材料上限）
+  - 输出阈值 = `max_output × output_ratio`（单块最大输出文件上限，留余量）
+  - 预测最大输出 = 输入材料 × `amplification`（断句放大后仍须 ≤ 输出阈值）
+  - **协调约束**：`单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)`——输入材料受窗口预算与「放大后输出不超」双约束；min 落到输出侧时降 split_ratio/amplification
 
 ```json
-{ "context_length": 128000, "split_ratio": 0.05 }
+{"context_length": 1000000, "max_output": 384000, "split_ratio": 0.05, "output_ratio": 0.8,  "amplification": 5}
 ```
 
 - 约束：
-  - **只放这两个值**，不写模型名等冗余
+  - **只放这五项**，不写模型名等冗余
   - config 缺失/无效 → `context_estimate.py` 降级代码默认并提示 agent 询问用户期望后写入（部署时一次）
-  - 变更需同步：本文件 + `context_estimate.py`（默认值/提示文案）+ `redstone-conventions`（分块 `--window`/`--split-ratio` 口径）
+  - 变更需同步：本文件 + `context_estimate.py`（默认值/提示文案）+ `redstone-conventions`（分块双阈值/放大口径）+ `reflow-redstone`（步骤 1b 定容量）
 
 ---
 
@@ -234,7 +244,7 @@
 
 - 命名：`<工作目录>/reflow/r01_results/chunk_<k>.txt`
 - 生成：Agent（步骤 1 逐块补标点 subagent；各块独立文件，块数 = 空隙组数 × 组内片数）
-- 格式：**整段文字**——每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**；块内加标点但**不按 cue 分行、不按句分行**（逐句/cue 分行会孤立 ASR 残片导致误译）；**不带 `c<idx>\t时间码\t` 前缀**；CONTEXT 只读不产出
+- 格式：**整段文字**——每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**；块内加标点但**不按 cue 分行、不按句分行**（逐句/cue 分行会孤立 ASR 残片导致误译）；**不带 `c<idx>\t时间码\t` 前缀**；**就近折行**：每 ~1000 字符在空格处折（不拆词），**显示性换行非语义分行**、单行 ≤1000 字符（read_file 可读、check_words 按整段解析）；CONTEXT 只读不产出
 - 约束：仅加标点、不改措辞；空隙断句标记处按复核方式断句；词序列与对应 01 cue 段一致（`check_words` 块级模式按整段解析校验）
 - 消费：步骤 2 整段翻译（`r02_results/` 对应块）、`check_breaks`/`check_words` 块级模式
 
@@ -242,7 +252,7 @@
 
 - 命名：`<工作目录>/reflow/r02_results/chunk_<k>.txt`
 - 生成：Agent（步骤 2 逐块整段翻译 subagent，**先验知识注入 humanizer 注入版规则（humanizer-inject）**；各块独立文件，块数 = 空隙组数 × 组内片数）
-- 格式：**整段中文译文**——每块 = 对应 `r01_results/chunk_<k>.txt` 的整段翻译；块内**不按 cue 分行、不按句分行、不编号、不输出原文**；**不带 `c<idx>\t时间码\t` 前缀**；CONTEXT 只读不产出
+- 格式：**整段中文译文**——每块 = 对应 `r01_results/chunk_<k>.txt` 的整段翻译；块内**不按 cue 分行、不按句分行、不编号、不输出原文**；**不带 `c<idx>\t时间码\t` 前缀**；**就近折行**：每 ~1000 字符折行（中文按字符），**显示性换行非语义分行**、单行 ≤1000 字符（read_file 可读、check-r03 按整段作 ZH 忠实基准）；CONTEXT 只读不产出
 - 约束：r02 定稿即自然译文（去翻译腔内联）；`check-r03` 块级模式以本文件整段为 ZH 忠实基准（r03 逐字复用）
 - 消费：步骤 4 分句（`r03_results/` 对应块）、`check-r03` 块级模式
 

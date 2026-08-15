@@ -25,21 +25,19 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+from srt_reflow_common import (
+    auto_wrap_file,
+    collect_chunk_files,
+    is_pure_marker,
+    parse_owned_cue_range,
+    parse_time,
+    MAX_LINE,
+    BRACKET_RE,
+)
+
 LONG_GAP_MS = 5000      # 长停顿阈值（与 srt_gap_scan.py 一致）
 NORM_RE = re.compile(r"[^a-z0-9']")
 SENT_END_RE = re.compile(r"[.?!]")
-BRACKET_RE = re.compile(r"\[[^\]]*\]")
-
-
-def is_pure_marker(text):
-    """纯非语音标记 cue：去掉全部 [xxx] 后无可见字符（[Music]/[Applause] 等）——
-    动态识别、不硬编码枚举；此类 cue 两侧不参与空隙判定"""
-    return BRACKET_RE.sub("", text).strip() == ""
-
-
-def parse_time(s):
-    h, m, rest = s.split(":")
-    return int(h) * 3600000 + int(m) * 60000 + int(rest.replace(",", ".").split(".")[0]) * 1000 + int(rest.replace(",", ".").split(".")[1])
 
 
 def parse_srt(path):
@@ -174,25 +172,22 @@ def main_block(args, cues, breaks):
     if not args.chunks:
         sys.exit("块级模式需要 --chunks <chunks目录>（解析块↔cue区间）")
     # 解析各块的 cue 区间
-    chunk_files = {}
-    for fn in sorted(os.listdir(args.chunks)):
-        m = re.fullmatch(r"chunk_(\d{3})\.txt", fn)
-        if m:
-            chunk_files[int(m.group(1))] = os.path.join(args.chunks, fn)
+    chunk_files = collect_chunk_files(args.chunks)
     block_cues = {}  # k -> (min_c, max_c)
     for k, fp in chunk_files.items():
-        cids = []
-        in_owned = False
-        for ln in open(fp, encoding="utf-8").read().split("\n"):
-            if ln.startswith("## "):
-                in_owned = ln.startswith("## OWNED")
-                continue
-            if in_owned:
-                mm = re.match(r"c(\d+)\t", ln)
-                if mm:
-                    cids.append(int(mm.group(1)))
-        if cids:
-            block_cues[k] = (min(cids), max(cids))
+        rng = parse_owned_cue_range(fp)
+        if rng is not None:
+            block_cues[k] = rng
+
+    # 单行上限处理：超长单行 read_file 不可读 → 就地折行重排（折行非语义分行，校验按整段解析不受影响；不消耗 subagent token）
+    n_wrapped = 0
+    for k in sorted(chunk_files):
+        p = os.path.join(results_dir, "chunk_%03d.txt" % k)
+        if os.path.exists(p) and auto_wrap_file(p, MAX_LINE):
+            n_wrapped += 1
+            print(f"   ↻ 自动折行重排 chunk_{k:03d}")
+    if n_wrapped:
+        print(f"   ✅ 已就地折行 {n_wrapped} 个块文件（显示性换行非语义分行，继续校验）")
 
     print(f"r01_results: {args.r01}  空隙点: {len(breaks)} 处")
     print("-" * 60)

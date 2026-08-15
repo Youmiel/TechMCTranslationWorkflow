@@ -28,6 +28,8 @@ from collections import OrderedDict
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+from srt_reflow_common import wrap_text, collect_chunk_files
+
 CHUNK_HEAD = re.compile(r"^# CHUNK (\d+)/(\d+)\s+SRC: (.+?)\s+TYPE: (srt|text)\s+UNIT: (.+?)\s+OWN: (.+?)\s+CTX: (.+?)$")
 SECTION_LINE = re.compile(r"^## (BEFORE|OWNED|AFTER)")
 SEG_ROW = re.compile(r"^(\d+)\|c(\d+)(?:-c(\d+))?([~]?)\|(.+)$")   # srt 段行：段号|cue范围|文本
@@ -235,17 +237,17 @@ def main():
     ap.add_argument("--out", required=True, help="合并产物路径")
     ap.add_argument("--report", default=None, help="异常清单报告路径（默认 <out>.report.md）")
     ap.add_argument("--window", type=int, default=3, help="异常块头尾窗口行数（默认 3，仅导出异常块）")
+    ap.add_argument("--wrap", type=int, default=None,
+                    help="合并输出就近折行宽度（默认不折行）；text 类型整段产物（r01/r02 全文等）建议 --wrap 1000——"
+                         "每 ~N 字符折行（不拆英文词、中文按字符），显示性换行非语义分行；"
+                         "结构化产物（r03_plan.md 单行值）禁用")
     args = ap.parse_args()
 
     report_path = args.report or (args.out + ".report.md")
     window = max(1, args.window)
 
     # 收集所有块文件，按序号排序
-    chunk_files = {}
-    for fn in sorted(os.listdir(args.chunks_dir)):
-        m = re.fullmatch(r"chunk_(\d{3})\.txt", fn)
-        if m:
-            chunk_files[int(m.group(1))] = os.path.join(args.chunks_dir, fn)
+    chunk_files = collect_chunk_files(args.chunks_dir)
     if not chunk_files:
         sys.exit("chunks_dir 下未找到 chunk_*.txt（需 text_chunk.py 生成）")
     total = max(chunk_files)
@@ -260,6 +262,10 @@ def main():
         merged, issues = merge_srt(chunks, results, report_path)
     else:
         merged, issues = merge_text(chunks, results, report_path)
+
+    # 折行（text 类型 + --wrap 开启；结构化产物如 r03_plan.md 禁用）
+    if args.wrap and type_ == "text" and merged:
+        merged = wrap_text(merged, args.wrap)
 
     # 写合并产物
     with open(args.out, "w", encoding="utf-8", newline="\n") as fh:

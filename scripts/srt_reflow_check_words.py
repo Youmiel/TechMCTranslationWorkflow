@@ -16,6 +16,8 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+from srt_reflow_common import auto_wrap_file, collect_chunk_files, parse_owned_cue_range, MAX_LINE
+
 
 def srt_words(path):
     raw = open(path, encoding="utf-8-sig").read()
@@ -55,21 +57,6 @@ def parse_srt(path):
     return cues
 
 
-def parse_chunk_cue_range(chunk_path):
-    """从 chunks 块文件解析 OWNED 的 cue 区间 → (min_c, max_c)。"""
-    cids = []
-    in_owned = False
-    for ln in open(chunk_path, encoding="utf-8").read().split("\n"):
-        if ln.startswith("## "):
-            in_owned = ln.startswith("## OWNED")
-            continue
-        if in_owned:
-            m = re.match(r"c(\d+)\t", ln)
-            if m:
-                cids.append(int(m.group(1)))
-    return (min(cids), max(cids)) if cids else None
-
-
 def main():
     ap = argparse.ArgumentParser(description="r01 措辞校验：词序列与 01 一致（不得改动措辞）；块级模式（--chunks 必填）")
     ap.add_argument("srt", help="01_subtitle_asr_fixed.srt")
@@ -84,14 +71,19 @@ def main():
         cues = parse_srt(args.srt)
         cue_map = {idx: body for idx, body in cues}
         # 收集块文件
-        chunks = {}
-        for fn in sorted(os.listdir(args.chunks)):
-            m = re.fullmatch(r"chunk_(\d{3})\.txt", fn)
-            if m:
-                chunks[int(m.group(1))] = os.path.join(args.chunks, fn)
+        chunks = collect_chunk_files(args.chunks)
+        # 单行上限处理：超长单行 read_file 不可读 → 就地折行重排（折行非语义分行，校验按整段解析不受影响；不消耗 subagent token）
+        n_wrapped = 0
+        for k in sorted(chunks):
+            p = os.path.join(args.r01, "chunk_%03d.txt" % k)
+            if os.path.exists(p) and auto_wrap_file(p, MAX_LINE):
+                n_wrapped += 1
+                print(f"   ↻ 自动折行重排 chunk_{k:03d}")
+        if n_wrapped:
+            print(f"   ✅ 已就地折行 {n_wrapped} 个块文件（显示性换行非语义分行，继续校验）")
         n_err = 0
         for k in sorted(chunks):
-            rng = parse_chunk_cue_range(chunks[k])
+            rng = parse_owned_cue_range(chunks[k])
             if rng is None:
                 print(f"⚠️ chunk_{k:03d}: 无 OWNED cue，跳过")
                 continue

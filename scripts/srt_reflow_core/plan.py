@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 from .io import norm, text_width, parse_srt, build_full
+from ..srt_reflow_common import auto_wrap_file, collect_chunk_files, parse_owned_cue_range
 from .allocate import (
     cjk_reading_ms,
     estimate_unit_durations,
@@ -245,14 +246,24 @@ def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
     from pathlib import Path
 
     # 收集块文件（按序号），解析块 ↔ cue 区间
-    chunk_files = {}
-    for fn in sorted(os.listdir(chunks_dir)):
-        m = re.fullmatch(r"chunk_(\d{3})\.txt", fn)
-        if m:
-            chunk_files[int(m.group(1))] = os.path.join(chunks_dir, fn)
+    chunk_files = collect_chunk_files(chunks_dir)
     if not chunk_files:
         sys.exit("chunks 目录下未找到 chunk_*.txt（需 text_chunk.py 生成）")
     total = max(chunk_files)
+
+    # 单行上限处理：超长单行 read_file 不可读 → 就地折行重排（折行非语义分行，校验按整段解析不受影响；不消耗 subagent token）
+    n_wrapped = 0
+    for d in (r03_dir, r02_dir):
+        if not os.path.isdir(d):
+            continue
+        for fn in sorted(os.listdir(d)):
+            if not re.fullmatch(r"chunk_\d{3}\.txt", fn):
+                continue
+            if auto_wrap_file(os.path.join(d, fn)):
+                n_wrapped += 1
+                print(f"   ↻ 自动折行重排 {d}{os.sep}{fn}")
+    if n_wrapped:
+        print(f"   ✅ 已就地折行 {n_wrapped} 个块文件（显示性换行非语义分行，继续校验）")
 
     n_block_err = 0
     n_blocks = 0
@@ -264,20 +275,10 @@ def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
             n_block_err += 1
             continue
         # 解析块 cue 区间（OWNED 行 cN 前缀）
-        cids = []
-        in_owned = False
-        for ln in open(chunk_files[k], encoding="utf-8").read().split("\n"):
-            if ln.startswith("## "):
-                in_owned = ln.startswith("## OWNED")
-                continue
-            if in_owned:
-                mm = re.match(r"c(\d+)\t", ln)
-                if mm:
-                    cids.append(int(mm.group(1)))
-        if not cids:
+        cue_range = parse_owned_cue_range(chunk_files[k])
+        if cue_range is None:
             print(f"⚠️ chunk_{k:03d}: 无 OWNED cue 区间，跳过（可能整块为标记）")
             continue
-        cue_range = (min(cids), max(cids))
         r02_text = Path(r02_blk).read_text(encoding="utf-8") if os.path.exists(r02_blk) else None
         print(f"--- chunk_{k:03d} (c{cue_range[0]}-c{cue_range[1]}) ---")
         rc = check_r03(r03_blk, srt_path, r02_path=None, cjk_speed=cjk_speed,

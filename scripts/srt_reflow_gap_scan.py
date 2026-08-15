@@ -16,28 +16,10 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+from srt_reflow_common import is_pure_marker, parse_time, fmt, BRACKET_RE as MARKER_RE
+
 LONG_GAP_MS = 5000      # 长停顿阈值（与步骤 2/5 一致）
 JUMP_GAP_MS = 10000     # 剪辑跳转阈值
-
-MARKER_RE = re.compile(r"\[[^\]]*\]")
-
-
-def is_pure_marker(text):
-    """纯非语音标记 cue：去掉全部 [xxx] 后无可见字符（[Music]/[Applause]/[Laughter] 等）——
-    动态识别、不硬编码枚举；此类 cue 不参与空隙判定与回填，仅保留时间骨架"""
-    return MARKER_RE.sub("", text).strip() == ""
-
-
-def parse_time(s):
-    h, m, rest = s.split(":")
-    return int(h) * 3600000 + int(m) * 60000 + int(rest.replace(",", ".").split(".")[0]) * 1000 + int(rest.replace(",", ".").split(".")[1])
-
-
-def fmt(ms):
-    h, rem = divmod(ms, 3600000)
-    m, rem = divmod(rem, 60000)
-    s, msr = divmod(rem, 1000)
-    return f"{h:02d}:{m:02d}:{s:02d},{msr:03d}"
 
 
 def parse_srt(path):
