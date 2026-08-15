@@ -128,7 +128,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ##### 1b 定 N + 分块
 
-4. **定容量（`context_estimate.py`）**：`python scripts/context_estimate.py <01> [--ratio 0.3]`——材料 ≤ 窗口×ratio → 空隙组内不分片；超 → 组内按 `--owned` 分片。**执行一律 subagent**（统一路径）
+4. **定容量（`context_estimate.py`）**：`python scripts/context_estimate.py <01>`（窗口/split_ratio 默认读 `configs/context_window.json`，`--window`/`--split-ratio` 可覆盖）——材料 ≤ 窗口×split_ratio → 空隙组内不分片；超 → 组内按 `--owned` 分片。**执行一律 subagent**（统一路径）
 5. **分块（一律跑，产物契约统一）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——chunks/ 恒存在
    - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps` 把 01 按空隙点切成「空隙组」（防跨空隙误译），**每个空隙组至少一块**——块数下限 = 空隙点数+1；仅 01 无空隙点才 1 块
    - **组内按 `--owned` 分片（容量控制）**：空隙组 cue 数 > `--owned` 时组内再拆多片；容量足够（`--owned` ≥ 最大空隙组 cue 数）→ 每组恰一块

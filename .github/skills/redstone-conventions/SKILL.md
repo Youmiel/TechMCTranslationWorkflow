@@ -68,15 +68,15 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 
 ### 1. 前置判断（读前必做，脚本确定性判定）
 
-- **判定工具**：读前先跑 `python scripts/context_estimate.py <输入> [--window <窗口>] [--ratio <比例>]`——确定性输出 类型（SRT cue 数 / 非 SRT 全文）/ 字符数 / 估算 token / 当前占窗口比例 / 是否超阈值，**替代人工估算**（cue 数×词数×比例心算易错、易被幻觉误导）；`<输入>` 支持 SRT 与 reflow 非 SRT 产物（`r03_plan.md` 等 txt/md/json）
+- **判定工具**：读前先跑 `python scripts/context_estimate.py <输入> [--window <窗口>] [--split-ratio <比例>]`——确定性输出 类型（SRT cue 数 / 非 SRT 全文）/ 字符数 / 估算 token / 当前占窗口比例 / 是否超阈值，**替代人工估算**（cue 数×词数×比例心算易错、易被幻觉误导）；`<输入>` 支持 SRT 与 reflow 非 SRT 产物（`r03_plan.md` 等 txt/md/json）
 - **`--window`（模型窗口上限）**
-  - 单一事实源 = `configs/context_window.json`（仅 `context_length` 一个值）；`context_estimate.py` 默认读该配置、CLI `--window` 可覆盖
+  - 单一事实源 = `configs/context_window.json`（`context_length` 一个值）；`context_estimate.py` 默认读该配置、CLI `--window` 可覆盖
   - config 缺失 → 询问用户期望的窗口上限并写入（部署时一次，不写模型名等冗余）
   - **不是当前剩余窗口**（剩余受会话历史/压缩影响，agent 无法精确感知）
   - **标称 ≠ 实际有效**：填**实际有效窗口**（非标称上限），拿不准按保守 128k 配置
-- **`--ratio`（分块阈值 = 单块材料占窗口比例，subagent 单窗口预算）**
-  - 取值：**默认 0.3（保守）**（单块 OWNED 材料 ≤ 窗口×30%）；拿不准用 0.3，宁低勿高
-  - 推导：执行在 subagent（**全新上下文，无主会话历史/指令占用**），单窗口构成 = prompt 规则（固定 6–8k）+ 本块材料 M + CONTEXT（≈0.3M，衔接）+ 输出（最坏 r03 分句 ≈1.2M）+ 预留 15–20% → M×(1+0.3+1.2) ≤ 窗口 − 预留 − prompt → 128k 下 M ≈ 38k ≈ **30%**。旧 3.8% 基于「材料承载在主会话、全流程 ~10 次读取摊销」推导，subagent 化后不再成立
+- **`--split-ratio`（分块阈值 = 单块材料占窗口比例，subagent 单窗口预算）**
+  - 取值：**默认读 `configs/context_window.json` 的 `split_ratio`**（单块 OWNED 材料 ≤ 窗口×该比例；config 示例 0.05 → 1M 窗口 ≈ 50k token）；拿不准用默认，宁低勿高；CLI `--split-ratio` 可覆盖
+  - 推导：执行在 subagent（**全新上下文**）；**分句读中英两倍材料**（r01 EN + r02 ZH 对照）为最坏场景——按 config 的 split_ratio（示例 0.05）单语言材料预算 ≈ 窗口×5%，中英两倍后仍可一次处理；0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句两倍处理吃力），取中间值
 - **判定时机**：**每阶段派发前跑一次 `context_estimate.py` 定 `--owned`**（材料不落主会话，无「前步全文残留」问题）；字幕翻译**不接受上下文压缩**（压缩→失真），宁低勿高
 - **超阈值即拆片**（块数 >1），不得靠规模直觉直接定 `--owned`（"恰好没超"是运气不是流程保证）
 - **大 JSONL 按行 grep、不整读**（`r03_anchored.jsonl` 等逐行审查型产物）

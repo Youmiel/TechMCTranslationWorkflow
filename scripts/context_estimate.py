@@ -6,12 +6,13 @@
 - 读取某产物只是第一步：后续步骤（翻译输出 / 组装 / 校验 / subagent 汇总）也要占窗口
 - 中间产物**落盘优于会话回顾**（断点恢复、subagent 组装都从文件读）——分块成本低，宁可多分块
 
-阈值：估算 token > 窗口上限 × ratio（默认 0.3）即建议分块——**分块阈值 = subagent 单窗口预算**（执行在 subagent，全新上下文、无主会话历史/指令占用：单块材料 + 输出 + 预留 ≤ 窗口；推导见 redstone-conventions 分块）；宁低勿高。
+阈值：估算 token > 窗口上限 × split_ratio（默认读 configs/context_window.json 的 split_ratio；config 缺失时降级代码默认）即建议分块——**分块阈值 = subagent 单窗口预算**（执行在 subagent，全新上下文；**分句读中英两倍材料** r01 EN + r02 ZH 对照为最坏场景，按示例 split_ratio=0.05、1M 窗口：单语言 ≈ 50k、中英两倍 ≈ 100k 仍可一次处理；宁低勿高；推导见 redstone-conventions 分块）。
 
 确定性：字符 → token 用固定启发式（去空白字符 / 1.5，中英混合近似），同样输入同样输出。
 
 用法（命令根 = Project_Main/）：
-  python scripts/context_estimate.py <文件> [--window 128000] [--ratio 0.3]
+  python scripts/context_estimate.py <文件> [--window <窗口>] [--split-ratio <比例>]
+  默认读 configs/context_window.json（context_length 窗口 + split_ratio 比例）；CLI 可覆盖
   输入支持：SRT（额外报 cue 数）与 reflow 非 SRT 产物（r03_plan.md 等 txt/md/json）
 """
 import argparse
@@ -23,18 +24,37 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")
 
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "configs" / "context_window.json"
-DEFAULT_WINDOW = 128000
+DEFAULT_WINDOW = 1000000
+DEFAULT_SPLIT_RATIO = 0.05
 
 TS_RE = re.compile(r"(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})")
 
 
-def load_context_length():
-    """模型窗口上限（单一事实源 = configs/context_window.json，仅 context_length 一个值）。
-    缺失/损坏 → None（调用方降级默认并提示询问用户写入）。"""
+def load_config():
+    """读取 configs/context_window.json（单一事实源：context_length 窗口上限 + ratio 分块比例）。
+    缺失/损坏 → {}（调用方降级默认并提示）。"""
     try:
-        v = int(json.loads(CONFIG_PATH.read_text(encoding="utf-8")).get("context_length", 0))
+        d = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def load_context_length():
+    """窗口上限（config 的 context_length）；缺失/无效 → None（调用方降级默认并提示）"""
+    try:
+        v = int(load_config().get("context_length", 0))
         return v if v > 0 else None
-    except (OSError, ValueError, KeyError):
+    except (ValueError, TypeError):
+        return None
+
+
+def load_split_ratio():
+    """分块比例（config 的 split_ratio，须在 (0,1)）；缺失/无效 → None（调用方降级默认并提示）"""
+    try:
+        r = float(load_config().get("split_ratio", 0.0))
+        return r if 0 < r < 1 else None
+    except (ValueError, TypeError):
         return None
 
 
@@ -58,18 +78,24 @@ def main():
     ap = argparse.ArgumentParser(description="上下文量估算与分块建议（SRT / 任意文本，确定性，替代人工估算）")
     ap.add_argument("file", help="输入文件：SRT 或 reflow 非 SRT 产物（txt/md/json）")
     ap.add_argument("--window", type=int, default=None, help="模型上下文窗口上限（估算 token；默认读 configs/context_window.json，缺失时提示配置）")
-    ap.add_argument("--ratio", type=float, default=0.3,
-                    help="分块阈值 = 窗口上限 × 该比例（默认 0.3 保守=subagent 单窗口预算；推导见 redstone-conventions 分块）")
+    ap.add_argument("--split-ratio", type=float, default=None,
+                    help="分块阈值 = 窗口上限 × 该比例（默认读 configs/context_window.json 的 split_ratio，config 缺失时降级代码默认；宁低勿高；推导见 redstone-conventions 分块）")
     args = ap.parse_args()
-    cfg = load_context_length()
     if args.window is None:
-        args.window = cfg or DEFAULT_WINDOW
-        if cfg is None:
+        args.window = load_context_length()
+        if args.window is None:
+            args.window = DEFAULT_WINDOW
             print(f"⚠️ 未配置窗口上限：configs/context_window.json 缺失或无效，暂按 {DEFAULT_WINDOW} 计。")
-            print(f"   请询问用户期望的窗口上限（仅一个值），写入 configs/context_window.json：{{\"context_length\": <值>}}")
+            print(f"   请询问用户期望的窗口上限，写入 configs/context_window.json：{{\"context_length\": <值>, \"split_ratio\": <0-1>}}")
+    if args.split_ratio is None:
+        args.split_ratio = load_split_ratio()
+        if args.split_ratio is None:
+            args.split_ratio = DEFAULT_SPLIT_RATIO
+            print(f"⚠️ 未配置分块比例（split_ratio）：configs/context_window.json 缺失或无效，暂按 {DEFAULT_SPLIT_RATIO} 计。")
+            print(f"   写入 configs/context_window.json：{{\"context_length\": {args.window}, \"split_ratio\": <0-1>}}")
 
-    if not (0 < args.ratio < 1):
-        sys.exit("--ratio 必须在 (0, 1) 内（建议 ≤0.4：subagent 单窗口还要容纳输出与预留）")
+    if not (0 < args.split_ratio < 1):
+        sys.exit("--split-ratio 必须在 (0, 1) 内（建议 ≤0.4：subagent 单窗口还要容纳输出与预留）")
 
     cues = parse_srt_cues(args.file)
     if cues:
@@ -81,7 +107,7 @@ def main():
         desc = "非 SRT 文本（txt/md/json）"
 
     token_est = int(chars / 1.5)          # 固定启发式：去空白字符/1.5（中英混合近似，确定性可复现）
-    threshold = int(args.window * args.ratio)
+    threshold = int(args.window * args.split_ratio)
     pct = token_est * 100.0 / args.window if args.window else 0.0
 
     print("上下文量估算（确定性，非人工估算）:")
@@ -90,7 +116,7 @@ def main():
     print("  去空白字符数: %d" % chars)
     print("  估算 token（字符/1.5）: %d" % token_est)
     print("  窗口上限: %d token" % args.window)
-    print("  分块阈值（window×%.2f）: %d token" % (args.ratio, threshold))
+    print("  分块阈值（window×%.2f）: %d token" % (args.split_ratio, threshold))
     print("  当前占比: %.1f%%" % pct)
     if token_est > threshold:
         print("  → 超阈值：建议分块（字幕不容压缩、后续步骤也占窗口）")

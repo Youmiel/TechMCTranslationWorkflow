@@ -41,6 +41,7 @@
 | `r04_bilingual.srt` | reflow | `srt_reflow.py attach-en` | `srt_check_width.py --order en-zh` |
 | `r04_alerts.md` | reflow | `srt_reflow.py reflow` | Agent 参考 |
 | `r03_anchored.jsonl` | reflow | `srt_reflow.py reflow` | 人工/机器审查 |
+| `prompts/<任务>-chunk_<k>.txt` | 共享（派发存档） | Agent（派发前落盘完整 subagent prompt） | 复盘查阅（无自动校验，规则见 subagent-dispatch「提示词存档」） |
 
 ---
 
@@ -104,17 +105,17 @@
 
 ### `configs/context_window.json`
 
-- 角色：模型窗口上限的**单一事实源**（`context_estimate.py` 的 `--window` 默认读它）
-- 格式：仅 `context_length` 一个字段（整数 = 模型**实际有效**窗口上限，token；非标称上限，见 redstone-conventions「标称 ≠ 实际有效」）
+- 角色：模型窗口上限 + 分块比例的**单一事实源**（`context_estimate.py` 的 `--window`/`--split-ratio` 默认读它）
+- 格式：`context_length`（整数 = 模型**实际有效**窗口上限，token；非标称上限，见 redstone-conventions「标称 ≠ 实际有效」）+ `split_ratio`（分块阈值比例，须在 (0,1)）
 
 ```json
-{ "context_length": 128000 }
+{ "context_length": 1000000, "split_ratio": 0.05 }
 ```
 
 - 约束：
-  - **只放一个值**，不写模型名等冗余
-  - config 缺失/无效 → `context_estimate.py` 降级默认（128000）并提示 agent 询问用户期望窗口后写入（部署时一次）
-  - 变更需同步：本文件 + `context_estimate.py`（默认值/提示文案）+ `redstone-conventions`（分块 `--window` 口径）
+  - **只放这两个值**，不写模型名等冗余
+  - config 缺失/无效 → `context_estimate.py` 降级代码默认并提示 agent 询问用户期望后写入（部署时一次）
+  - 变更需同步：本文件 + `context_estimate.py`（默认值/提示文案）+ `redstone-conventions`（分块 `--window`/`--split-ratio` 口径）
 
 ---
 
@@ -263,6 +264,7 @@
 
 - 头部可加 `> ` 注释（如残片剔除说明）
 - 约束：
+  - **EN/ZH 值单行**：`- EN:`/`- ZH:` 的值各占**恰好一行**，值内禁止换行/折行/空行（`plan.py parse_r03` 按行解析 `- EN:`/`- ZH:` 前缀；跨行破坏解析与忠实校验）
   - 子单元 ZH 拼接（去标点）== 整句 ZH（忠实铁律）；EN 片段互斥拼接 == 整句 EN
   - 拆句用整句号+小写后缀（`6a/6b`）；合句标 `[19+20]`；不手写 cue 集/区间
 - 校验：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/`（锚定唯一 / 互斥 / 行宽 22-26 / ZH 忠实 / 括号引号配对 / 碎片 / 中英失配）

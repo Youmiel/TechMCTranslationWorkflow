@@ -27,7 +27,8 @@ description: 分句 + 语义对应 subagent 任务（reflow）——对照 r01 �
 
 ## 输出（写入 `_work/<视频名>/reflow/r03_results/chunk_<k>.txt`）
 
-- UTF-8，覆盖写本块文件；r03 整句分组格式（`## S<n>`），与 PRODUCT_FORMATS#r03_plan.md 一致：
+- UTF-8，覆盖写本块文件；r03 整句分组格式（`## S<n>`），与 PRODUCT_FORMATS#r03_plan.md 一致
+- **EN/ZH 值必须单行**：`- EN: `/`- ZH: ` 的值（整句与子单元片段）各占**恰好一行**，值内**禁止换行/折行/空行**——跨行会破坏 `plan.py parse_r03` 按行解析与 check-r03 忠实校验
 
 ```markdown
 ## S<n>            （合句为 S<n+m>，如 S19+20）
