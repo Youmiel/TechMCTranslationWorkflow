@@ -109,7 +109,7 @@
 - 格式：`context_length`（整数 = 模型**实际有效**窗口上限，token；非标称上限，见 redstone-conventions「标称 ≠ 实际有效」）+ `split_ratio`（分块阈值比例，须在 (0,1)）
 
 ```json
-{ "context_length": 1000000, "split_ratio": 0.05 }
+{ "context_length": 128000, "split_ratio": 0.05 }
 ```
 
 - 约束：
