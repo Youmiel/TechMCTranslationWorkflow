@@ -34,4 +34,4 @@ description: 阶段一术语扫描（translate-redstone §1.1）的机制细节�
 
 ## 术语识别（subagent）
 
-> 术语识别 subagent 的**任务 prompt 文件** = `task-term-recognition`（同目录，现成可注入的任务指令：目标 + 规则 + 时间戳纪律 + 输出格式）。派发按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装（任务文件 + 纪律母版 + 知识卡 + 块数据），此处不再重复任务规则。
+> 术语识别 subagent 的**任务 prompt 文件** = `task-term-recognition`（同目录，现成可注入的任务指令：目标 + 规则 + 时间戳纪律 + 输出格式）。派发按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装（任务文件 + 纪律母版 + 产物格式约定 + 知识卡 + 块数据），此处不再重复任务规则。

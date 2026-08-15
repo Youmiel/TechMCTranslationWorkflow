@@ -106,7 +106,7 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 > translate 阶段二（合并/断句 → 翻译）：从 01 分块 → 逐块派 subagent → **text_merge 合并全文** → **全局校验**（时间约束跨块，必须合并后验）。
 
 - **分块**：`python scripts/text_chunk.py <01.srt> --type srt --owned <N> --ctx <M> --out <任务chunks目录>`（默认模式，每 N cue 一块；N 按 `context_estimate.py` 反推，默认 100）
-- **逐块派发**：每块 subagent 做合并/断句（`_merge_results/`）或翻译（`_trans_results/`），prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装；CARRY 结转规则见 §5
+- **逐块派发**：每块 subagent 做合并/断句（`_merge_results/`）或翻译（`_trans_results/`），prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装；CARRY 结转规则见 §5
 - **合并**：`python scripts/text_merge.py <chunks目录> <结果目录> --out <合并产物>`（srt 类型：全局段号重排）→ `s03_plan.md` / `s04_draft.srt`
 - **校验**：`srt_check_segments.py`（时间不重叠 / 边界⊆原集 / 覆盖完整）——**跨块约束，必须合并全文后跑**（translate 特有，见 [segment-subtitles#输出与校验](../segment-subtitles/SKILL.md#输出与校验)）
 - **产物**：`s03_plan.md`（断句定稿）、`s04_draft.srt`（双语成稿）
@@ -123,12 +123,12 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态——分块/不分块产物契约统一
 - **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，**不需要先合并全文**；**全局校验（块级模式一次验全部块）由主会话在所有块产出后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)——避免每块 subagent 重复跑全量校对）
 - **必须合并的**：`r03_plan.md`（`srt_reflow.py` 回填输入，各块 r03 方案按块序直接拼接）、`r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）——这两个合并后走全局校验
-- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；整段**就近折行**（每 ~1000 字符、英文词边界不拆词，单行 ≤1000）——**显示性换行非语义分行**，校验按整段解析不受影响（read_file 可读）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
+- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行 / `text_merge --wrap`，subagent 输出不折行）——产物单行 ≤1000 字符（英文词边界不拆词），属**显示性换行、非语义分行**，校验按整段解析不受影响（read_file 可读）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
 - **旧 `--inherit` 已弃用（deprecated）**：仅兼容旧流程，新方案从 01 分块 + 块级独立流转，不再需要继承边界
 
 ### 5. 逐块派发与合并（两工作流共用）
 
-- **每块 prompt（派发配方）**：任务文件 + 纪律母版 + 知识卡 + 块数据，按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装
+- **每块 prompt（派发配方）**：任务文件 + 纪律母版 + 产物格式约定 + 知识卡 + 块数据，按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装
 - **跨块未完成句（结转规则，仅 translate/srt）**：每块只产出语义完整句且其 start cue 落在 OWNED 区；负责区末尾句在可见上下文（OWNED+CONTEXT）内仍不完整则标记 `CARRY: c<起始idx>` 结转、不产出；下一块在 CONTEXT 看到该句开头则正常产出（start 落 CONTEXT 的结转句允许产出）；合并脚本对结转句只采用 start 最早的版本
 - **每块结果由 subagent 直接写独立文件**：subagent 把结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`（translate→`_merge_results/`/`_trans_results/`、term→`_term_results/`、humanize→`_humanize_results/`、reflow→`reflow/r01_results/`/`r02_results/`/`r03_results/`），写后报告文件名+行数、**不返回全文给主会话**（勿只存会话，压缩后恢复极耗时）
 - **合并用脚本（替代主 Agent 手工读头尾组装）**：`python scripts/text_merge.py <chunks_dir> <results_dir> --out <合并产物> [--report <报告>] [--window N]`

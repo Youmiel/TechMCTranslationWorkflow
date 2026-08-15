@@ -137,7 +137,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ##### 1c 派发补标点 subagent
 
-6. **补标点（逐块）**：每块派一个 subagent——prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方任务文件--纪律母版--知识卡--块数据) 组装（任务文件 = `reflow-redstone/task-punctuate`），输入 = `reflow/chunks/chunk_<k>.txt`，结果写 `reflow/r01_results/chunk_<k>.txt`（整段文字，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件）——**中间不拼全文**；每块独立处理，**不交给 subagent 运行全局校验**（校验见 1d，主会话统一跑；subagent 自查只限本块格式完整）
+6. **补标点（逐块）**：每块派一个 subagent——prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装（任务文件 = `reflow-redstone/task-punctuate`），输入 = `reflow/chunks/chunk_<k>.txt`，结果写 `reflow/r01_results/chunk_<k>.txt`（整段文字，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件）——**中间不拼全文**；每块独立处理，**不交给 subagent 运行全局校验**（校验见 1d，主会话统一跑；subagent 自查只限本块格式完整）
 7. 中间产物 `reflow/r01_results/`（各块独立文件）
 
 ##### 1d 校验（主会话统一跑，所有块产出后一次执行）
