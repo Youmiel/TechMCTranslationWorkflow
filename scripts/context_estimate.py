@@ -11,9 +11,11 @@
 确定性：字符 → token 用固定启发式（去空白字符 / 1.5，中英混合近似），同样输入同样输出。
 
 用法（命令根 = Project_Main/）：
-  python scripts/context_estimate.py <文件> [--window <窗口>] [--split-ratio <比例>]
+  python scripts/context_estimate.py <文件> [--window <窗口>] [--split-ratio <比例>] [--no-amplification]
   默认读 configs/context_window.json（context_length 窗口 + split_ratio 比例）；CLI 可覆盖
   输入支持：SRT（额外报 cue 数）与 reflow 非 SRT 产物（r03_plan.md 等 txt/md/json）
+  --no-amplification：不考虑放大协调（单块输入上限 = min(输入阈值, 输出阈值)，不除以 amplification）；
+     默认使用放大协调（单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)）
 """
 import argparse
 import json
@@ -116,6 +118,8 @@ def main():
                     help="模型单次最大输出 token（硬上限；默认读 configs/context_window.json 的 max_output；输出阈值 = max_output×output_ratio，留余量）")
     ap.add_argument("--amplification", type=float, default=None,
                     help="断句等最重环节预测放大倍数（预测最大输出 = 输入材料×该倍数；默认读 configs/context_window.json 的 amplification；断句 ≈ 5）")
+    ap.add_argument("--no-amplification", action="store_true",
+                    help="不考虑放大协调：单块输入上限 = min(输入阈值, 输出阈值)（不除以 amplification）；默认使用放大协调（min(输入阈值, 输出阈值 ÷ amplification)）")
     args = ap.parse_args()
     if args.window is None:
         args.window = load_context_length()
@@ -141,7 +145,7 @@ def main():
             args.max_output = DEFAULT_MAX_OUTPUT
             print(f"⚠️ 未配置 max_output：configs/context_window.json 缺失或无效，暂按 {DEFAULT_MAX_OUTPUT} 计。")
             print(f"   写入 configs/context_window.json：{{\"context_length\": {args.window}, \"max_output\": <输出上限>, \"split_ratio\": <0-1>, \"output_ratio\": <0-1>, \"amplification\": <倍数>}}")
-    if args.amplification is None:
+    if not args.no_amplification and args.amplification is None:
         args.amplification = load_amplification()
         if args.amplification is None:
             args.amplification = DEFAULT_AMPLIFICATION
@@ -154,8 +158,8 @@ def main():
         sys.exit("--output-ratio 必须在 (0, 1) 内（留余量，建议 0.7-0.9）")
     if args.max_output <= 0:
         sys.exit("--max-output 必须为正整数（模型单次最大输出 token）")
-    if args.amplification <= 1:
-        sys.exit("--amplification 必须 > 1（预测放大倍数，断句 ≈ 5）")
+    if not args.no_amplification and args.amplification <= 1:
+        sys.exit("--amplification 必须 > 1（预测放大倍数，断句 ≈ 5；--no-amplification 时忽略）")
 
     cues = parse_srt_cues(args.file)
     if cues:
@@ -179,13 +183,22 @@ def main():
     print("  窗口上限: %d token" % args.window)
     print("  输入阈值（window×%.2f）: %d token" % (args.split_ratio, in_threshold))
     print("  输出阈值（max_output×%.2f）: %d token（max_output=%d 留余量）" % (args.output_ratio, out_threshold, args.max_output))
-    pred_output = int(token_est * args.amplification)      # 预测最大输出 = 输入材料×放大倍数（断句最重环节）
-    print("  预测最大输出（输入×%.1f）: %d token" % (args.amplification, pred_output))
-    out_by_amp = int(out_threshold / args.amplification)      # 输出阈值÷amplification（反推的输入上限）
-    effective_in = min(in_threshold, out_by_amp)              # 单块输入上限 = min(输入阈值, 输出阈值÷amplification)
-    print("  单块输入上限（min(输入阈值, 输出阈值÷%.1f)）: %d token" % (args.amplification, effective_in))
-    if in_threshold > out_by_amp:
-        print(f"  ⚠️ min 落到输出侧：输入阈值（{in_threshold}）> 输出阈值÷amplification（{out_by_amp}）——输出预算被挤压，降 split_ratio 或 amplification")
+    if args.no_amplification:
+        # 不考虑放大：单块输入上限 = min(输入阈值, 输出阈值)——输出侧不除以 amplification
+        out_by_amp = out_threshold
+        pred_output = 0
+        effective_in = min(in_threshold, out_by_amp)
+        print("  未启用放大协调（--no-amplification）：单块输入上限 = min(输入阈值, 输出阈值) = %d token" % effective_in)
+        if in_threshold > out_by_amp:
+            print(f"  ⚠️ 输入阈值（{in_threshold}）> 输出阈值（{out_by_amp}）——输出预算偏紧；术语清单等输出通常远小于输入，可不降")
+    else:
+        pred_output = int(token_est * args.amplification)      # 预测最大输出 = 输入材料×放大倍数（断句最重环节）
+        print("  预测最大输出（输入×%.1f）: %d token" % (args.amplification, pred_output))
+        out_by_amp = int(out_threshold / args.amplification)      # 输出阈值÷amplification（反推的输入上限）
+        effective_in = min(in_threshold, out_by_amp)              # 单块输入上限 = min(输入阈值, 输出阈值÷amplification)
+        print("  单块输入上限（min(输入阈值, 输出阈值÷%.1f)）: %d token" % (args.amplification, effective_in))
+        if in_threshold > out_by_amp:
+            print(f"  ⚠️ min 落到输出侧：输入阈值（{in_threshold}）> 输出阈值÷amplification（{out_by_amp}）——输出预算被挤压，降 split_ratio 或 amplification")
     print("  当前占比: %.1f%%" % pct)
     if token_est > in_threshold:
         print("  → 超输入阈值：建议分块（字幕不容压缩、后续步骤也占窗口）")
@@ -199,11 +212,11 @@ def main():
     else:
         print("  → 未超输入阈值：空隙组内不分片（仍派 subagent 执行；块数 = 空隙组数 × 组内片数，产物落 r0X_results/）")
     if token_est > out_threshold:
-        print("  → 超输出阈值：本产物若为单块最大输出（如 r03 分句方案）已超输出上限——输入分块须更小（预测倍数放大后输出不得超出）")
-    elif pred_output > out_threshold:
+        print("  → 超输出阈值：本产物若为单块最大输出已超输出上限——须更小分块")
+    elif not args.no_amplification and pred_output > out_threshold:
         print(f"  → 超输出阈值（预测放大）：本文件若为单块输入材料，×{args.amplification:.0f} 后预测输出（{pred_output}）> 输出阈值（{out_threshold}）——须更小分块")
     else:
-        print("  → 未超输出阈值：单块输入材料放大后输出可容纳（输入分块按最重环节反推后仍须复核）")
+        print("  → 未超输出阈值：单块输入材料可容纳（放大协调场景按最重环节反推后仍须复核）")
 
 
 if __name__ == "__main__":

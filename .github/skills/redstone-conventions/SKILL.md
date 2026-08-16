@@ -68,20 +68,8 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 
 ### 1. 前置判断（读前必做，脚本确定性判定）
 
-- **判定工具**：读前先跑 `python scripts/context_estimate.py <输入> [--window <窗口>] [--split-ratio <比例>]`——确定性输出 类型（SRT cue 数 / 非 SRT 全文）/ 字符数 / 估算 token / 当前占窗口比例 / 是否超阈值，**替代人工估算**（cue 数×词数×比例心算易错、易被幻觉误导）；`<输入>` 支持 SRT 与 reflow 非 SRT 产物（`r03_plan.md` 等 txt/md/json）
-- **`--window`（模型窗口上限）**
-  - 单一事实源 = `configs/context_window.json`（`context_length` 一个值）；`context_estimate.py` 默认读该配置、CLI `--window` 可覆盖
-  - config 缺失 → 询问用户期望的窗口上限并写入（部署时一次，不写模型名等冗余）
-  - **不是当前剩余窗口**（剩余受会话历史/压缩影响，agent 无法精确感知）
-  - **标称 ≠ 实际有效**：填**实际有效窗口**（非标称上限），拿不准按保守 128k 配置
-- **`--split-ratio`（分块阈值 = 单块材料占窗口比例，subagent 单窗口预算）**
-  - 取值：**默认读 `configs/context_window.json` 的 `split_ratio`**（单块 OWNED 材料 ≤ 窗口×该比例；config 示例 0.05 → 1M 窗口 ≈ 50k token）；拿不准用默认，宁低勿高；CLI `--split-ratio` 可覆盖
-  - 推导：执行在 subagent（**全新上下文**）；**分句为最重环节**——读中英两倍材料（r01 EN + r02 ZH 对照）+ 输出 r03 ≈ 对照 2×，单请求 ≈ **4×单语言材料**（短视频实测 4.2×）；故 `split_ratio` 与 `--owned` 反推均以「分句最重」为准（不按补标点/翻译的单语言量）。按 config 的 split_ratio（示例 0.05）单语言材料预算 ≈ 窗口×5%，分句放大 4×后 ≈ 窗口×20%，仍可一次处理；0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句放大后吃力），取中间值
-  - **双阈值 + 放大协调**（`context_estimate.py` 同时报三指标）：
-    - `输入阈值` = `窗口 × split_ratio`——单块输入材料上限
-    - `输出阈值` = `max_output × output_ratio`——单块最大输出文件上限（以模型单次生成上限为基数、留余量）
-    - `amplification` ≈ 5——断句等最重环节预测放大倍数（预测最大输出 = 输入材料 × amplification）
-    - **协调约束**：`单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)`——输入材料同时受窗口预算与「放大后输出不超」约束；min 落到输出侧时降 `split_ratio`/`amplification`
+- **预检（读前）**：确认 `configs/context_window.json` 存在。若缺失，则询问用户各项参数，并缺省信息填默认值，写入该文件（后续可直接读）。
+- **判定工具**：读前先跑 `python scripts/context_estimate.py <输入> [--window <窗口>] [--split-ratio <比例>] [--no-amplification]`——确定性输出 类型（SRT cue 数 / 非 SRT 全文）/ 字符数 / 估算 token / 当前占窗口比例 / 是否超阈值；`<输入>` 支持 SRT 与 reflow 非 SRT 产物（`r03_plan.md` 等 txt/md/json）；**CLI 参数 / 计算方式 / 算法解释见 [PRODUCT_FORMATS#configs/context_window.json](../../../docs/PRODUCT_FORMATS.md)**
 - **判定时机**：**每阶段派发前跑一次 `context_estimate.py` 定 `--owned`**（材料不落主会话，无「前步全文残留」问题）；字幕翻译**不接受上下文压缩**（压缩→失真），宁低勿高
 - **超阈值即拆片**（块数 >1），不得靠规模直觉直接定 `--owned`（"恰好没超"是运气不是流程保证）
 - **大 JSONL 按行 grep、不整读**（`r03_anchored.jsonl` 等逐行审查型产物）
@@ -116,7 +104,7 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 > reflow 阶段二（补标点 → 整段翻译 → 分句）：从 01 分块（空隙组优先）→ 逐块独立处理、中间**不拼全文** → **校验逐块化** → 仅 r03/r04 合并。目标：各子块独立处理、按块传递，减少"拼全文→整读→再分块"的反复。
 
 - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps` 把 01 按空隙点切成「空隙组」，**每个空隙组至少一块**——块数下限 = 空隙点数+1；仅 01 无空隙点才 1 块
-- **`--owned` 只控组内拆片（容量，非块数）**：空隙组 cue 数 > `--owned` 时组内再拆多片；块数 = 空隙组数 × 组内片数。**`--owned` 从头部按最重环节（分句）反推**——分句单请求 ≈ 4×单语言材料（中英对照输入 2× + r03 输出 ≈2×对照），故单块单语言材料目标 ≈ **阈值 token÷4**；各阶段共用同一套块（01 骨架），**块定即全局、无法在分句阶段中途改**，宁小勿大
+- **`--owned` 只控组内拆片（容量，非块数）**：空隙组 cue 数 > `--owned` 时组内再拆多片；块数 = 空隙组数 × 组内片数。**`--owned` 按最重环节（分句）系数反推**（÷4 的推导见 [PRODUCT_FORMATS#configs/context_window.json](../../../docs/PRODUCT_FORMATS.md)「算法解释·放大倍数」）：**反推公式** `--owned ≈ (单块输入上限 ÷ 4) × 1.5 ÷ 每 cue 平均字符数`——单块输入上限（token，`context_estimate.py` 输出）÷4 → 单块单语言 token、×1.5（token→字符）→ 单块字符预算、再 ÷ 每 cue 平均字符数（拿不准用保守兜底，宁小勿大）；各阶段共用同一套块（01 骨架），**块定即全局、无法在分句阶段中途改**，宁小勿大
 - **分块前先验证 gap 准确性（必做）**：跑 `python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md` 得到空隙点清单（长停顿 >5s / 剪辑跳转 >10s），**人工确认后**再用 `--gaps` 分块——`--gaps` 的 `detect_gap_groups` 用同一空隙点算法，与 r00_gaps.md 应一致；**已有 r00_gaps.md 则复用，勿重复探测**（探测结果与人工复核以 r00_gaps.md 为准）
 - **一次分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——块 = 「空隙组-片」（块0 单独、块1 拆多片...），块边界 = 明确 cue 区间；**`--ctx` 建议 10**（每侧衔接 cue 数，约覆盖前块末尾 1–2 句）
 - **各阶段共用同一套块**：r01 补标点读 chunks/ 的 cue 区间、r02 翻译读 r01_results/ 对应块、r03 分句读 r01+r02 对应块——**块边界始终来自 01 分块骨架**，不做链式继承

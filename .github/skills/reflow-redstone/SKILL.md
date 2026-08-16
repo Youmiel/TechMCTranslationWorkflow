@@ -128,11 +128,11 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ##### 1b 定 N + 分块
 
-4. **定容量（`context_estimate.py`）**：`python scripts/context_estimate.py <01>`（参数默认读 `configs/context_window.json`、CLI 可覆盖）——双阈值 + 放大协调（见 conventions「长视频分块」）：**单块输入上限 = min(窗口×split_ratio, max_output×output_ratio÷amplification)**（amplification≈5 断句放大）；材料 ≤ 单块输入上限 → 不分片；超 → 按 `--owned` 分片（反推见第 5 点）。执行一律 subagent
+4. **定容量（`context_estimate.py`）**：`python scripts/context_estimate.py <01>`（参数默认读 `configs/context_window.json`、CLI 可覆盖）——**预测阈值，使用放大倍数参数**（amplification≈5 断句放大）：**单块输入上限 = min(窗口×split_ratio, max_output×output_ratio÷amplification)**；材料 ≤ 单块输入上限 → 不分片；超 → 按 `--owned` 分片（反推见第 5 点）。执行一律 subagent
 5. **分块（一律跑，产物契约统一）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——chunks/ 恒存在
    - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps` 把 01 按空隙点切成「空隙组」（防跨空隙误译），**每个空隙组至少一块**——块数下限 = 空隙点数+1；仅 01 无空隙点才 1 块
    - **组内按 `--owned` 分片（容量控制）**：空隙组 cue 数 > `--owned` 时组内再拆多片；容量足够（`--owned` ≥ 最大空隙组 cue 数）→ 每组恰一块
-   - **块 = 「空隙组-片」**：块标识「块G-片P」；`--owned` 按分句最重反推（见 conventions §4：单块材料 ≈ 阈值 token÷4），默认 **50**
+   - **块 = 「空隙组-片」**：块标识「块G-片P」；`--owned` 按分句最重反推（见 conventions §4：单块材料 ≈ 阈值 token÷4；**反推公式 `--owned ≈ (单块输入上限÷4)×1.5÷每cue平均字符`**），拿不准用保守兜底默认 **50**
    - `--ctx 10`（每侧衔接 cue 数，约覆盖前块末尾 1–2 句）
 
 ##### 1c 派发补标点 subagent

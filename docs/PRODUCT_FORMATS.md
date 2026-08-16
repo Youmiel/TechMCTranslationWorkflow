@@ -106,27 +106,41 @@
 
 ### `configs/context_window.json`
 
-- 角色：模型窗口 + 分块/输出阈值的**单一事实源**（`context_estimate.py` 的 `--window`/`--split-ratio`/`--output-ratio`/`--max-output`/`--amplification` 默认读它）
-- 格式（五项语义）：
-  - `context_length`：模型**实际有效**窗口上限（整数 token；非标称上限，见 redstone-conventions「标称 ≠ 实际有效」；输入+输出共享）
+模型窗口 + 分块/输出阈值的**单一事实源**；`context_estimate.py` 配置来源。上下文长度估算与分块建议的确定性输出。默认配置：
+
+```json
+{"context_length": 1000000, "max_output": 384000, "split_ratio": 0.05, "output_ratio": 0.8,  "amplification": 10}
+```
+
+- **CLI 参数**（默认读 config、CLI 可覆盖）：
+  - `--window`：模型总窗口上限。默认读 `context_length`
+  - `--split-ratio`：单块材料占用窗口的比例上限。默认读 `split_ratio`
+  - `--amplification`：最重环节预测放大倍数。默认读 `amplification`，CLI 可覆盖
+  - `--no-amplification`：不使用放大倍数参数
+
+- **格式（五项语义）**：
+  - `context_length`：模型**实际有效**窗口上限（整数 token；输入+输出共享；非标称上限——标称 ≠ 实际有效，见下方「算法解释」）
   - `max_output`：模型**单次生成最大输出**（整数 token；输出阈值基数，通常远小于窗口）
   - `split_ratio`：**输入阈值比例** = 窗口 × 该比例 → 单块输入材料上限（须 (0,1)，宁低勿高）
   - `output_ratio`：**输出阈值比例** = max_output × 该比例 → 单块最大输出文件上限（留余量 <1，建议 0.7–0.9）
   - `amplification`：**断句等最重环节预测放大倍数**（>1；预测最大输出 = 输入材料 × 该倍数，断句 ≈ 5）
-- **阈值与协调关系**（`context_estimate.py` 同时报三指标）：
-  - 输入阈值 = `context_length × split_ratio`（单块输入材料上限）
-  - 输出阈值 = `max_output × output_ratio`（单块最大输出文件上限，留余量）
-  - 预测最大输出 = 输入材料 × `amplification`（断句放大后仍须 ≤ 输出阈值）
-  - **协调约束**：`单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)`——输入材料受窗口预算与「放大后输出不超」双约束；min 落到输出侧时降 split_ratio/amplification
 
-```json
-{"context_length": 1000000, "max_output": 384000, "split_ratio": 0.05, "output_ratio": 0.8,  "amplification": 5}
-```
+- **计算方式**（同时报三指标；两种预测阈值算法二选一）：
+  - `输入阈值` = `窗口 × split_ratio`——单块输入材料上限
+  - `输出阈值` = `max_output × output_ratio`——单块最大输出文件上限（以模型单次生成上限为基数、留余量）
+  - `amplification`——最重环节预测放大倍数（预测最大输出 = 输入材料 × amplification）
+  - **使用放大倍数参数**：`单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)`——输入材料同时受窗口预算与「放大后输出不超」约束；min 落到输出侧时降 `split_ratio`/`amplification`
+  - **不使用放大倍数参数**（`--no-amplification`）：`单块输入上限 = min(输入阈值, 输出阈值)`——输出侧不除以 amplification
 
+- **算法解释**：
+  - **双阈值**：字幕翻译**不接受上下文压缩**（压缩丢细节 → 失真），单块材料既不能贴近窗口上限（读约束 = 输入阈值），也不能让放大后输出超模型单次生成上限（写约束 = 输出阈值）——取 `min` 协调、宁低勿高
+  - **放大倍数**：最重环节（分句）读中英两倍材料（r01 EN + r02 ZH 对照）+ 输出 r03 ≈ 对照 2×，单请求 ≈ **4×单语言材料**（实测 4.2×），故需要放大倍数预测最重环节 token 消耗
+  - **`split_ratio` 默认取 0.05**：执行在 subagent（全新上下文）；示例 0.05 → 1M 窗口 ≈ 50k token，分句放大 4× 后 ≈ 窗口×20% 仍可一次处理；0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句放大后吃力），取中间值；拿不准用默认
+  - **为何 `--window` 填实际有效窗口**：**不是当前剩余窗口**（剩余受会话历史/压缩影响，agent 无法精确感知）；**标称 ≠ 实际有效**——填实际有效窗口（非标称上限），拿不准按保守 128k 配置
 - 约束：
   - **只放这五项**，不写模型名等冗余
   - config 缺失/无效 → `context_estimate.py` 降级代码默认并提示 agent 询问用户期望后写入（部署时一次）
-  - 变更需同步：本文件 + `context_estimate.py`（默认值/提示文案）+ `redstone-conventions`（分块双阈值/放大口径）+ `reflow-redstone`（步骤 1b 定容量）
+  - 变更需同步：本文件 + `context_estimate.py`（默认值/提示文案）+ `redstone-conventions`（分块章节引用）+ `reflow-redstone`（步骤 1b 定容量）
 
 ---
 
