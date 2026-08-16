@@ -31,6 +31,7 @@ from srt_reflow_common import (
     is_pure_marker,
     parse_owned_cue_range,
     parse_time,
+    strip_stitch_marks,
     MAX_LINE,
     BRACKET_RE,
 )
@@ -111,7 +112,7 @@ def load_breaks(gaps_path):
 
 def main_whole(args, cues, breaks):
     """整段模式：r01 为完整文本，在全文定位 cue 检查空隙点断句。"""
-    r01_raw = open(args.r01, encoding="utf-8").read()
+    r01_raw = strip_stitch_marks(open(args.r01, encoding="utf-8").read())
     n_r01, idx_map = norm_with_map(r01_raw)
     aligns = []  # 每 cue -> (norm_start, norm_end) 或 None
     cursor = 0
@@ -211,8 +212,8 @@ def main_block(args, cues, breaks):
             n_skip += 1
             print(f"❓ c{ia}→c{ib}: 块结果缺失（chunk_{ka:03d} / chunk_{kb:03d}），跳过")
             continue
-        text_a = open(res_a, encoding="utf-8").read().strip()
-        text_b = open(res_b, encoding="utf-8").read().strip()
+        text_a = strip_stitch_marks(open(res_a, encoding="utf-8").read()).strip()
+        text_b = strip_stitch_marks(open(res_b, encoding="utf-8").read()).strip()
         # 前块末尾最后一个句末标点之后到后块开头：检查块边界处衔接
         # 简化：前块末尾字符 + 后块开头字符拼接，看块边界附近是否断句
         tail = text_a[-30:] if len(text_a) >= 30 else text_a

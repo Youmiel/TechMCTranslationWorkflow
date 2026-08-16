@@ -137,13 +137,14 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ##### 1c 派发补标点 subagent
 
-6. **补标点（逐块）**：每块派一个 subagent——prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装（任务文件 = `reflow-redstone/task-punctuate`），输入 = `reflow/chunks/chunk_<k>.txt`（**数据文件引用**），结果写 `reflow/r01_results/chunk_<k>.txt`（整段文字，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件）——**中间不拼全文**；每块独立处理，**不交给 subagent 运行全局校验**（校验见 1d，主会话统一跑；subagent 自查只限本块格式完整）
-7. 中间产物 `reflow/r01_results/`（各块独立文件）
+6. **补标点（逐块）**：每块派一个 subagent——prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装（任务文件 = `reflow-redstone/task-punctuate`），输入 = `reflow/chunks/chunk_<k>.txt`（**数据文件引用**），结果写 `reflow/r01_results/chunk_<k>.txt`（整段文字，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件）——**中间不拼全文**；每块独立处理，**不交给 subagent 运行全局校验**（校验见 1d，主会话统一跑；subagent 自查只限本块格式完整 + 片边界跨块句补全标记 `【承接句】`/`【延伸句】`）
+7. 中间产物 `reflow/r01_results/`（各块独立文件；块首/块尾跨块句已按 [task-punctuate#规则 4](task-punctuate.md) 补全并标记——相邻块对同一跨块句都补全，待 1d 衔接归位）
 
-##### 1d 校验（主会话统一跑，所有块产出后一次执行）
+##### 1d 校验 + 归位（主会话统一跑，所有块 subagent 全部完成后一次执行）
 
-8. **硬性校验**：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md`——逐空隙点查句末标点 `.?!`（复用 r00_gaps 已验证空隙点；块数为 1 时即单块骨架）；违规默认打回第 6 步重跑（语义停顿可作受控例外放行，须 r03 不跨空隙成单元）——勿交 subagent 逐块跑（避免重复全量校对）
-9. **措辞校验**：`python scripts/srt_reflow_check_words.py <01> reflow/r01_results/ --chunks reflow/chunks/`——逐块词序列与对应 01 cue 段一致（同上，主会话统一跑）
+8. **硬性校验**：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md`——逐空隙点查句末标点 `.?!`（复用 r00_gaps 已验证空隙点；块数为 1 时即单块骨架；脚本先剥离跨块句标记 `【承接句】`/`【延伸句】` 再判，避免标记补全文本干扰空隙断句）；违规默认打回第 6 步重跑（**重跑前先 mv 清理已存在结果**，见 [subagent-dispatch#派发前主 Agent 准备](../subagent-dispatch/SKILL.md#派发前主-agent-准备)）；语义停顿可作受控例外放行，须 r03 不跨空隙成单元——勿交 subagent 逐块跑（避免重复全量校对）
+9. **措辞校验 + 跨块句衔接**：`python scripts/srt_reflow_check_words.py <01> reflow/r01_results/ --chunks reflow/chunks/`——逐块词序列与对应 01 cue 段一致（脚本剥离 `【承接句】`/`【延伸句】` 标记后比对；含跨块句标记的块缺词 → ⚠️ 提示、归位时确认，**不计打回**；无标记块缺词/多词 → 打回）；**跨块句衔接校验**：相邻块 `【延伸句】` ⇔ `【承接句】` 标记互补、两半文本拼接 = 完整句（脚本/人工抽查）——同上，主会话统一跑
+10. **衔接归位（校验通过后、进入步骤 2 前）**：相邻块跨块句重复（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`）——脚本取各块**头尾句**（按标点分句取首/末句；整段归一化 1000 字符/行后取首末句亦可），交 agent 综合吸收：**只在一侧留无标记完整句，另一侧直接不留该句文本**（删去）；归位后每块句子完整、无跨块重复，供步骤 2 整段翻译；**归位后不再跑块级措辞校验**（跨块句已移/删，全局词守恒由 r04 审核兜底）
 
 #### 步骤 2：翻译（整段输出、不分割、不编号；仅极长间隔处分段）
 
@@ -168,7 +169,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 > - 每块内保持整句/单元的语义完整性（不跨块拆句；空隙为硬边界，整句不跨空隙块）
 
 分句/语义对应规则（原文分句 / 译文判长短切分 / 1:1·1:n·n:1 对应 / 忠实转写铁律 / 拆合标注 / 游离停顿词）见 `task-split.md`；r03 产物结构（`## S<n>` / EN·ZH·关系 / 子单元）见 [PRODUCT_FORMATS#r03_plan.md](../../../docs/PRODUCT_FORMATS.md)。
-**r03 统一校验（写时即合规预检，必跑，通过才进步骤 5；与 subagent-dispatch 纪律母版 #9「不运行全局校验」同指一次运行，由主会话统一跑，勿交 subagent）**：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/ [--cjk-speed 5] [--no-frag] [--no-mismatch]`——逐块六查（锚定缩到块内 cue 区间、ZH 忠实缩到块内 r02）：
+**r03 统一校验（写时即合规预检，必跑，通过才进步骤 5；与 subagent-dispatch 纪律母版 #9「不运行全局校验」同指一次运行，由主会话在所有块 subagent 全部完成后统一跑，勿交 subagent）**：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/ [--cjk-speed 5] [--no-frag] [--no-mismatch]`——逐块六查（锚定缩到块内 cue 区间、ZH 忠实缩到块内 r02）：
 - ① **整句锚定唯一性**（缩到块内 cue 区间）
 - ② **拆句子单元互斥拼接 == 整句（EN）**
 - ③ **译文单元行宽 ≤26**（软 22 / 硬 26）

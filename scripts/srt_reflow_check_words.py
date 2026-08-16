@@ -16,7 +16,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import auto_wrap_file, collect_chunk_files, parse_owned_cue_range, MAX_LINE
+from srt_reflow_common import auto_wrap_file, collect_chunk_files, parse_owned_cue_range, strip_stitch_marks, MAX_LINE
 
 
 def srt_words(path):
@@ -35,7 +35,7 @@ def srt_words(path):
 
 
 def txt_words(path):
-    raw = open(path, encoding="utf-8").read()
+    raw = strip_stitch_marks(open(path, encoding="utf-8").read())
     return re.findall(r"[a-z0-9']+", raw.lower())
 
 
@@ -94,15 +94,20 @@ def main():
                 body = cue_map.get(i, "")
                 if body:
                     srt_terms.extend(re.findall(r"[a-z0-9']+", body.lower()))
-            # 块结果文件
+            # 块结果文件（剥离跨块句标记【承接句】/【延伸句】后再提词——标记内容为邻块补全，非本块 OWNED cue）
             res_path = os.path.join(args.r01, "chunk_%03d.txt" % k)
             if not os.path.exists(res_path):
                 print(f"❌ chunk_{k:03d}: 无结果文件")
                 n_err += 1
                 continue
-            r01_terms = re.findall(r"[a-z0-9']+", open(res_path, encoding="utf-8").read().lower())
+            raw = open(res_path, encoding="utf-8").read()
+            has_stitch = ("【承接句】" in raw) or ("【延伸句】" in raw)
+            r01_terms = re.findall(r"[a-z0-9']+", strip_stitch_marks(raw).lower())
             if srt_terms == r01_terms:
                 print(f"✅ chunk_{k:03d} (c{cmin}-c{cmax}): 词序列一致（{len(srt_terms)} 词）")
+            elif has_stitch and len(r01_terms) < len(srt_terms) and all(w in srt_terms for w in r01_terms):
+                print(f"⚠️ chunk_{k:03d} (c{cmin}-c{cmax}): 缺 {len(srt_terms) - len(r01_terms)} 词——"
+                      f"跨块句标记【承接句】/【延伸句】内含本块部分，归位时确认（不计打回）")
             else:
                 n_err += 1
                 print(f"❌ chunk_{k:03d} (c{cmin}-c{cmax}): 词序列分歧（01={len(srt_terms)} r01={len(r01_terms)}）")

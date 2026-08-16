@@ -73,7 +73,7 @@
 - **分块前先验证 gap**：`srt_reflow_gap_scan.py` → `r00_gaps.md` 空隙点清单（长停顿 >5s / 剪辑跳转 >10s）人工确认后作为 `--gaps` 分块的组边界依据；**已有 r00_gaps.md 则复用，勿重复探测**
 - **各阶段共用同一套块**：r01 补标点读 chunks/ 的 cue 区间、r02 翻译读 `r01_results/` 对应块、r03 分句读 `r01_results/` + `r02_results/` 对应块对照——**块边界始终来自 01 分块骨架，不做链式继承**
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态
-- **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，不需要先合并全文；**全局校验（块级模式一次验全部块）由主会话在所有块产出后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../.github/skills/subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)）
+- **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，不需要先合并全文；**全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../.github/skills/subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)）
 - **回填直读 r03_results/（零拼接）**：`srt_reflow.py reflow/attach-en/check-duration` 的 r03 参数接受目录（`parse_r03_dir` 按块序解析 + **S 号全局重编号**）或单文件 r03_plan.md（兼容）——**必须合并的**仅 `r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）；合并后走全局校验
 - **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行 / `text_merge --wrap`，subagent 输出不折行）——产物单行 ≤1000 字符（英文词边界不拆词），属**显示性换行、非语义分行**，校验按整段解析不受影响（read_file 可读）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
 - **旧 `--inherit` 已弃用（deprecated）**：仅兼容旧流程，新方案从 01 分块 + 块级独立流转，不再需要继承边界
@@ -112,10 +112,10 @@
 {"context_length": 1000000, "max_output": 384000, "split_ratio": 0.05, "output_ratio": 0.8,  "amplification": 10}
 ```
 
-- **CLI 参数**（默认读 config、CLI 可覆盖）：
+- **`context_estimate.py` CLI 参数**（默认读 config、CLI 可覆盖）：
   - `--window`：模型总窗口上限。默认读 `context_length`
   - `--split-ratio`：单块材料占用窗口的比例上限。默认读 `split_ratio`
-  - `--amplification`：最重环节预测放大倍数。默认读 `amplification`，CLI 可覆盖
+  - `--amplification`：最重环节预测放大倍数。默认读 `amplification`
   - `--no-amplification`：不使用放大倍数参数
 
 - **格式（五项语义）**：
@@ -123,13 +123,16 @@
   - `max_output`：模型**单次生成最大输出**（整数 token；输出阈值基数，通常远小于窗口）
   - `split_ratio`：**输入阈值比例** = 窗口 × 该比例 → 单块输入材料上限（须 (0,1)，宁低勿高）
   - `output_ratio`：**输出阈值比例** = max_output × 该比例 → 单块最大输出文件上限（留余量 <1，建议 0.7–0.9）
-  - `amplification`：**断句等最重环节预测放大倍数**（>1；预测最大输出 = 输入材料 × 该倍数，断句 ≈ 5）
+  - `amplification`：**断句等最重环节预测放大倍数**（>1；预测最大输出 = 输入材料 × 该倍数）
+  - 计算结果同时受输入阈值和输出阈值限制，提供分块大小依据：
+    - min落到输入侧 = 输入预算成瓶颈，单块输入上限取输入侧值、按此分块
+    - min落到输出侧 = 输出预算成瓶颈，单块输入上限取输出侧值、按此分块
 
 - **计算方式**（同时报三指标；两种预测阈值算法二选一）：
   - `输入阈值` = `窗口 × split_ratio`——单块输入材料上限
   - `输出阈值` = `max_output × output_ratio`——单块最大输出文件上限（以模型单次生成上限为基数、留余量）
   - `amplification`——最重环节预测放大倍数（预测最大输出 = 输入材料 × amplification）
-  - **使用放大倍数参数**：`单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)`——输入材料同时受窗口预算与「放大后输出不超」约束；min 落到输出侧时降 `split_ratio`/`amplification`
+  - **使用放大倍数参数**：`单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)`——输入材料同时受窗口预算与最大预测输出项约束
   - **不使用放大倍数参数**（`--no-amplification`）：`单块输入上限 = min(输入阈值, 输出阈值)`——输出侧不除以 amplification
 
 - **算法解释**：
@@ -259,9 +262,9 @@
 
 - 命名：`<工作目录>/reflow/r01_results/chunk_<k>.txt`
 - 生成：Agent（步骤 1 逐块补标点 subagent；各块独立文件，块数 = 空隙组数 × 组内片数）
-- 格式：**整段文字**——每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**；块内加标点但**不按 cue 分行、不按句分行**（逐句/cue 分行会孤立 ASR 残片导致误译）；**不带 `c<idx>\t时间码\t` 前缀**；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（英文在空格处折、不拆词），属**显示性换行、非语义分行**（read_file 可读、check_words 按整段解析）；CONTEXT 只读不产出
-- 约束：仅加标点、不改措辞；空隙断句标记处按复核方式断句；词序列与对应 01 cue 段一致（`check_words` 块级模式按整段解析校验）
-- 消费：步骤 2 整段翻译（`r02_results/` 对应块）、`check_breaks`/`check_words` 块级模式
+- 格式：**整段文字**——每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**；块内加标点但**不按 cue 分行、不按句分行**（逐句/cue 分行会孤立 ASR 残片导致误译）；**不带 `c<idx>\t时间码\t` 前缀**；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（英文在空格处折、不拆词），属**显示性换行、非语义分行**（read_file 可读、check_words 按整段解析）；CONTEXT 仅作语境，**片边界跨块句允许补全**（见约束）
+- 约束：仅加标点、不改措辞；空隙断句标记处按复核方式断句；词序列与对应 01 cue 段一致（`check_words` 块级模式按整段解析校验）；**跨块句补全（仅片边界）**——OWNED 首句承接前块 → 行首 `【承接句】<完整句>`；末句延伸后块 → 行首 `【延伸句】<完整句>`；相邻块对同一跨块句都补全（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`），主会话「衔接归位」后**只在一侧留无标记完整句、另一侧不留该句文本**；空隙边界不承接
+- 消费：步骤 2 整段翻译（`r02_results/` 对应块）、`check_breaks`/`check_words` 块级模式（`【承接句】`/`【延伸句】` 标记由校验脚本识别、不计入词序列）
 
 ### `r02_results/chunk_<k>.txt`（翻译块）
 

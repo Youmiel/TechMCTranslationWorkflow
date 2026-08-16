@@ -198,7 +198,7 @@ def main():
         effective_in = min(in_threshold, out_by_amp)              # 单块输入上限 = min(输入阈值, 输出阈值÷amplification)
         print("  单块输入上限（min(输入阈值, 输出阈值÷%.1f)）: %d token" % (args.amplification, effective_in))
         if in_threshold > out_by_amp:
-            print(f"  ⚠️ min 落到输出侧：输入阈值（{in_threshold}）> 输出阈值÷amplification（{out_by_amp}）——输出预算被挤压，降 split_ratio 或 amplification")
+            print(f"  ⚠️ min 落到输出侧：输入阈值（{in_threshold}）> 输出阈值÷amplification（{out_by_amp}）——输出预算成瓶颈，单块输入上限取输出侧值（{out_by_amp}），按此反推 --owned 分块大小")
     print("  当前占比: %.1f%%" % pct)
     if token_est > in_threshold:
         print("  → 超输入阈值：建议分块（字幕不容压缩、后续步骤也占窗口）")

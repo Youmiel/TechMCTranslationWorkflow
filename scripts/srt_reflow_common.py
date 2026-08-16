@@ -20,6 +20,10 @@ MAX_LINE = 1000      # 单行字符上限（与折行宽度一致；超限 read_
 BRACKET_RE = re.compile(r"\[[^\]]*\]")   # 方括号非语音标记（[Music]/[Applause] 等）
 TS_RE = re.compile(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})")
 
+# r01 跨块句标记【承接句】/【延伸句】（片边界跨块句补全，见 reflow-redstone task-punctuate 规则 4）
+# 标记内容 = 邻块补全的完整句；剥离到句末标点 / 下一个【 / 结尾。校验剥离用：标记内容不计入词序列与断句判定
+STITCH_RE = re.compile(r"【(?:承接句|延伸句)】.*?(?:[.?!。]|(?=【)|$)")
+
 
 def parse_time(s):
     """SRT 时间码 → 毫秒（严格匹配 HH:MM:SS,mmm）。"""
@@ -43,6 +47,15 @@ def is_pure_marker(text):
     """纯非语音标记 cue：去掉全部 [xxx] 后无可见字符（[Music]/[Applause] 等）——
     动态识别、不硬编码枚举；此类 cue 两侧不参与空隙判定，仅保留时间骨架"""
     return BRACKET_RE.sub("", text).strip() == ""
+
+
+def strip_stitch_marks(text):
+    """剔除 r01 跨块句标记【承接句】/【延伸句】及其补全内容（校验剥离用）。
+
+    跨块句 = OWNED 首/末句被片边界切断，补标点 subagent 用 CONTEXT 补全并标记（task-punctuate 规则 4）；
+    标记内容 = 邻块补全部分，不属于本块 OWNED cue——措辞/断句校验前先剥离，避免邻块词污染词序列与定位。
+    本块 OWNED 的跨块句部分若被包在标记内，剥离后缺失——由调用方（check_words）以「有标记 + 子集」放行。"""
+    return STITCH_RE.sub("", text)
 
 
 def wrap_text(text, width=1000):

@@ -149,16 +149,25 @@ def parse_r03_dir(r03_dir):
         raise ValueError(f"r03 目录 {r03_dir} 下未找到 chunk_*.txt")
     sentences = []
     seen_keys = set()
+    seen_en = set()
     off = 0
+    n_dup = 0
     for k in sorted(chunk_files):
         blk_sents, n = _renumber(parse_r03(chunk_files[k]), off)
         for s in blk_sents:
             if s.key in seen_keys:
                 print(f"⚠️ 重复 ## S<{s.key}>（chunk_{k:03d}）——subagent 未按块内连续编号？")
             seen_keys.add(s.key)
+            en_key = norm(s.en)
+            if en_key in seen_en:
+                # 去重修正：跨块句两侧重复（r01 归位残留 / 同句两块都分句）——仅保留先出现者（只在一侧留整句的兜底）
+                print(f"⚠️ 重复整句 EN（chunk_{k:03d} {s.key}）——去重修正：仅保留先出现者，跳过本重复")
+                n_dup += 1
+                continue
+            seen_en.add(en_key)
             sentences.append(s)
         off += n
-    print(f"r03 目录解析：{len(chunk_files)} 块 / {len(sentences)} 整句（S 号已全局重编号）")
+    print(f"r03 目录解析：{len(chunk_files)} 块 / {len(sentences)} 整句（S 号已全局重编号，去重 {n_dup} 条重复整句）")
     return sentences
 
 
@@ -169,6 +178,39 @@ def parse_r03_any(path_or_dir):
     无需先拼 r03_plan.md（LLM 不读全量、不撞窗口）；r03_plan.md 仅审核/审计时由 join_r03 按需生成。
     """
     return parse_r03_dir(path_or_dir) if Path(path_or_dir).is_dir() else parse_r03(path_or_dir)
+
+
+def _filter_dup_en(block_text, seen_en):
+    """按 `## S<n>` 整句块过滤：EN（`- EN:` 首行，归一化）重复的整句块删除，仅保留先出现者。
+
+    跨块句两侧重复（r01 归位残留 / 同句两块都分句）→ 去重修正；状态跨块共享（seen_en 由调用方持有）。
+    返回 (过滤后文本, 丢弃块数)。子单元 `### S<a>` 随整句块一并处理。"""
+    out = []
+    cur = []
+    cur_en = None
+    dropped = 0
+
+    def flush():
+        nonlocal cur, cur_en, dropped
+        if cur:
+            if cur_en is not None and cur_en in seen_en:
+                dropped += 1
+            else:
+                if cur_en is not None:
+                    seen_en.add(cur_en)
+                out.append("\n".join(cur))
+        cur, cur_en = [], None
+
+    for ln in block_text.split("\n"):
+        if re.match(r"^## S\d", ln):
+            flush()
+        if cur_en is None:
+            m = re.match(r"^- EN:\s?(.*)$", ln)
+            if m:
+                cur_en = norm(m.group(1))
+        cur.append(ln)
+    flush()
+    return "\n".join(out), dropped
 
 
 def join_r03(r03_dir, out_path, chunks_dir=None):
@@ -183,7 +225,9 @@ def join_r03(r03_dir, out_path, chunks_dir=None):
         sys.exit(f"r03 目录 {r03_dir} 下未找到 chunk_*.txt")
     issues = []
     seen_keys = set()
+    seen_en = set()
     n_sents = 0
+    n_dup = 0
     blocks_text = []
     off = 0
     for k in sorted(chunk_files):
@@ -201,6 +245,8 @@ def join_r03(r03_dir, out_path, chunks_dir=None):
             seen_keys.add(s.key)
         raw = _renumber_text(Path(blk).read_text(encoding="utf-8").strip(), off)
         if raw:
+            raw, dr = _filter_dup_en(raw, seen_en)
+            n_dup += dr
             blocks_text.append(raw)
         off += n
     if chunks_dir:
@@ -210,7 +256,7 @@ def join_r03(r03_dir, out_path, chunks_dir=None):
             issues.append(f"缺块: chunk_{k:03d}（chunks 骨架有、r03 结果缺）")
     Path(out_path).parent.mkdir(parents=True, exist_ok=True)
     Path(out_path).write_text("\n\n".join(blocks_text) + "\n", encoding="utf-8", newline="\n")
-    print(f"已写入 {out_path}（{len(chunk_files)} 块 / {n_sents} 整句，S 号已全局重编号）")
+    print(f"已写入 {out_path}（{len(chunk_files)} 块 / {n_sents} 整句，S 号已全局重编号，去重 {n_dup} 条重复整句）")
     if issues:
         print("⚠️ 异常清单（需 Agent 决策）:")
         for i in issues:
