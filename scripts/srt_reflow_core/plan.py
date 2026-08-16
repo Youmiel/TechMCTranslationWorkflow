@@ -43,7 +43,7 @@ def parse_r03(path):
     cur = None
     for line in lines:
         line = line.rstrip()
-        m = re.match(r"^##\s*(S[\d+]+)\s*$", line)
+        m = re.match(r"^##\s*(S\d+(?:\+\d+)*)\s*$", line)
         if m:
             cur = {"key": m.group(1), "en": None, "zh": None, "rel": None, "units": []}
             sentences.append(cur)
@@ -62,7 +62,7 @@ def parse_r03(path):
         if m and cur["rel"] is None:
             cur["rel"] = m.group(1).strip()
             continue
-        m = re.match(r"^###\s*(S[\d+]+[a-z])$", line)
+        m = re.match(r"^###\s*(S\d+(?:\+\d+)*[a-z])$", line)
         if m:
             cur["units"].append({"key": m.group(1), "en": None, "zh": None})
             continue
@@ -87,6 +87,137 @@ def parse_r03(path):
             units.append((u["key"], u["en"], u["zh"]))
         out.append(Sentence(s["key"], s["en"], s["zh"], s["rel"], units))
     return out
+
+
+S_KEY_RE = re.compile(r"^S(\d+)(?:\+(\d+))?([a-z]?)$")
+
+
+def _remap_key(key, off):
+    """S 号全局重映射（块内从 1 连续 → 全局唯一）：S5→S(5+off)；S19+20→S(19+off)+(20+off)；子单元 S6a→S(6+off)a。"""
+    m = S_KEY_RE.match(key)
+    if not m:
+        return key
+    a = int(m.group(1)) + off
+    b = (int(m.group(2)) + off) if m.group(2) else None
+    suf = m.group(3) or ""
+    return f"S{a}" + (f"+{b}" if b else "") + suf
+
+
+def _renumber(sentences, off):
+    """把一块 r03 句子重编号为全局号。返回 (重编号后列表, 块整句数)。
+
+    块整句数 = 该块最大整句号（块内从 1 连续时即整句总数），供下一块累计偏移。
+    修改 Sentence.key 与子单元 key（原地），用于目录解析/校验；join_r03 的文本保真重编号走 _renumber_text。
+    """
+    out = []
+    max_n = 0
+    for s in sentences:
+        m = S_KEY_RE.match(s.key)
+        if m:
+            nums = [int(m.group(1))]
+            if m.group(2):
+                nums.append(int(m.group(2)))
+            max_n = max(max_n, *nums)
+        s.key = _remap_key(s.key, off)
+        s.units = [(_remap_key(u[0], off), u[1], u[2]) for u in s.units]
+        out.append(s)
+    return out, max_n
+
+
+def _renumber_text(text, off):
+    """整块 r03 文本的 S 号全局重编号（保真：只改 `## S`/`### S` 标题行的号，其余文本原样，含 `> ` 注释）。"""
+    out = []
+    for ln in text.split("\n"):
+        m = re.match(r"^(#{2,3}) (S[^\s]*)(.*)$", ln)
+        if m:
+            ln = f"{m.group(1)} {_remap_key(m.group(2), off)}{m.group(3)}"
+        out.append(ln)
+    return "\n".join(out)
+
+
+def parse_r03_dir(r03_dir):
+    """解析 r03_results 目录（块级）：按块序逐块 parse_r03 + **S 号全局重编号** 合并为 [Sentence]。
+
+    - S 号约定：subagent 块内从 1 连续编号（task-split 规则 6），本函数按块序重编号为全局唯一
+      （合句 S<a+b> 重映射为两个新连续号；子单元后缀保留）——r03_anchored.jsonl 的 key 全局可审计
+    - 重编号后仍重复（subagent 未按块内连续编号）→ 打印警告（不抛错，整段 check-r03 锚定会兜底）
+    - 纯注释块（无 `## S<n>`，如 `> 本块无语音整句`）→ parse_r03 返回空列表，跳过
+    - 缺块：以目录实际存在的块为准；需与骨架对比时见 join_r03（--chunks）
+    """
+    chunk_files = collect_chunk_files(r03_dir)
+    if not chunk_files:
+        raise ValueError(f"r03 目录 {r03_dir} 下未找到 chunk_*.txt")
+    sentences = []
+    seen_keys = set()
+    off = 0
+    for k in sorted(chunk_files):
+        blk_sents, n = _renumber(parse_r03(chunk_files[k]), off)
+        for s in blk_sents:
+            if s.key in seen_keys:
+                print(f"⚠️ 重复 ## S<{s.key}>（chunk_{k:03d}）——subagent 未按块内连续编号？")
+            seen_keys.add(s.key)
+            sentences.append(s)
+        off += n
+    print(f"r03 目录解析：{len(chunk_files)} 块 / {len(sentences)} 整句（S 号已全局重编号）")
+    return sentences
+
+
+def parse_r03_any(path_or_dir):
+    """r03 输入统一入口：文件 → parse_r03（整段）；目录（r03_results/）→ parse_r03_dir（块级）。
+
+    供 reflow / attach-en / check-duration 消费端复用——回填直接吃 r03_results/ 目录，
+    无需先拼 r03_plan.md（LLM 不读全量、不撞窗口）；r03_plan.md 仅审核/审计时由 join_r03 按需生成。
+    """
+    return parse_r03_dir(path_or_dir) if Path(path_or_dir).is_dir() else parse_r03(path_or_dir)
+
+
+def join_r03(r03_dir, out_path, chunks_dir=None):
+    """r03_results → r03_plan.md：按块序拼接 + S 号全局重编号 + 结构校验（缺块/重复 S<n>/可解析），供人工审核/审计。
+
+    纯文本拼接（确定性），不消耗 LLM 上下文；回填（reflow/attach-en/check-duration）可直接吃
+    r03_results 目录，本命令**非回填必需**，仅在需要人读完整方案（阶段二½ 审核/审计）时按需生成。
+    异常（缺块/重复/解析失败）返回 1 并打印清单，主会话只读报告。
+    """
+    chunk_files = collect_chunk_files(r03_dir)
+    if not chunk_files:
+        sys.exit(f"r03 目录 {r03_dir} 下未找到 chunk_*.txt")
+    issues = []
+    seen_keys = set()
+    n_sents = 0
+    blocks_text = []
+    off = 0
+    for k in sorted(chunk_files):
+        blk = chunk_files[k]
+        try:
+            sents = parse_r03(blk)
+        except ValueError as e:
+            issues.append(f"chunk_{k:03d}: 解析失败——{e}")
+            continue
+        blk_sents, n = _renumber(sents, off)
+        n_sents += len(blk_sents)
+        for s in blk_sents:
+            if s.key in seen_keys:
+                issues.append(f"重复 ## S<{s.key}>（chunk_{k:03d}）——subagent 未按块内连续编号？")
+            seen_keys.add(s.key)
+        raw = _renumber_text(Path(blk).read_text(encoding="utf-8").strip(), off)
+        if raw:
+            blocks_text.append(raw)
+        off += n
+    if chunks_dir:
+        expect = set(collect_chunk_files(chunks_dir))
+        actual = set(chunk_files)
+        for k in sorted(expect - actual):
+            issues.append(f"缺块: chunk_{k:03d}（chunks 骨架有、r03 结果缺）")
+    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(out_path).write_text("\n\n".join(blocks_text) + "\n", encoding="utf-8", newline="\n")
+    print(f"已写入 {out_path}（{len(chunk_files)} 块 / {n_sents} 整句，S 号已全局重编号）")
+    if issues:
+        print("⚠️ 异常清单（需 Agent 决策）:")
+        for i in issues:
+            print("  " + i)
+        return 1
+    print("✅ 无异常（缺块/重复 S<n> 均无）")
+    return 0
 
 
 def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True, check_mismatch=True,

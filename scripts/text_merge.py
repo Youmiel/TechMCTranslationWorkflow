@@ -133,7 +133,8 @@ def merge_text(chunks, results, report):
         head = chunks[k]
         owned = head["owned"]
         if len(rows) != len(owned):
-            issues.append((k, "块 %d 结果单元数(%d) ≠ OWNED 单元数(%d)——subagent 未按每单元一条产出，需人工核对" %
+            issues.append((k, "块 %d 结果单元数(%d) ≠ OWNED 单元数(%d)——subagent 未按每单元一条产出，需人工核对；"
+                               "若输入为 reflow 整段产物（r01/r02 整段文字、r03 `## S<n>` 结构）或 term，不走 text_merge，勿用本脚本" %
                            (k, len(rows), len(owned))))
             continue
         for own, res in zip(owned, rows):

@@ -130,7 +130,7 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 
 - **每块 prompt（派发配方）**：任务文件 + 纪律母版 + 产物格式约定 + 知识卡 + 块数据，按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装
 - **跨块未完成句（结转规则，仅 translate/srt）**：每块只产出语义完整句且其 start cue 落在 OWNED 区；负责区末尾句在可见上下文（OWNED+CONTEXT）内仍不完整则标记 `CARRY: c<起始idx>` 结转、不产出；下一块在 CONTEXT 看到该句开头则正常产出（start 落 CONTEXT 的结转句允许产出）；合并脚本对结转句只采用 start 最早的版本
-- **每块结果由 subagent 直接写独立文件**：subagent 把结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`（translate→`_merge_results/`/`_trans_results/`、term→`_term_results/`、humanize→`_humanize_results/`、reflow→`reflow/r01_results/`/`r02_results/`/`r03_results/`），写后报告文件名+行数、**不返回全文给主会话**（勿只存会话，压缩后恢复极耗时）
+- **每块结果由 subagent 直接写独立文件**：subagent 把结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`（translate→`_merge_results/`/`_trans_results/`、term→`_term_results/`、humanize→`_humanize_results/`、reflow→`reflow/r01_results/`/`r02_results/`/`r03_results/`），写后报告文件名（**不数行数**，行数/非空由主会话脚本统计）、**不返回全文给主会话**（勿只存会话，压缩后恢复极耗时）
 - **合并用脚本（替代主 Agent 手工读头尾组装）**：`python scripts/text_merge.py <chunks_dir> <results_dir> --out <合并产物> [--report <报告>] [--window N]`
   - **默认全自动**：按块序读结果、归位拼接成完整产物，主 Agent **零读取**（text 同组无缝/组间空行；srt 全局段号重排）
   - **异常时**：脚本产出 `<merged>.report.md` 异常清单（缺块 / 行数不符 / 重复 / 片号不连续 / cue 重叠 / 缺口 / CARRY）+ **异常块头尾窗口**——主 Agent **只读报告**决策即可，不整读中间

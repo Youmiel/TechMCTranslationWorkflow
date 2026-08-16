@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from .io import fmt, text_width, parse_srt
-from .plan import parse_r03
+from .plan import parse_r03_any
 from .allocate import cjk_reading_ms, MIN_FRAG_MS, READING_MISMATCH_RATIO, READING_MIN_GAP_MS
 
 
@@ -116,7 +116,7 @@ def check_duration(r04_path, r03_path, min_ms=MIN_FRAG_MS, cjk_speed=5.0,
 
     退出码：有长句碎片返回 1（提示需处理，Agent 回 r03 调整后重跑）；否则 0。
     """
-    sentences = parse_r03(r03_path)
+    sentences = parse_r03_any(r03_path)
     cues = parse_srt(r04_path)
     units = []
     for s in sentences:

@@ -3,11 +3,11 @@
 import re
 from pathlib import Path
 
-from .plan import parse_r03
+from .plan import parse_r03_any
 
 
 def attach_en(r04_path, r03_path, out_path):
-    sentences = parse_r03(r03_path)
+    sentences = parse_r03_any(r03_path)
     # 全部单元按序
     units = []
     for s in sentences:

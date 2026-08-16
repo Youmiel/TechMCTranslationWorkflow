@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """reflow 主流程编排：r03 方案 + 01 -> r04 时间轴 + r04_alerts + r03_anchored.jsonl"""
 from .io import parse_srt, build_full, norm, fmt
-from .plan import parse_r03
+from .plan import parse_r03_any
 from .anchor import anchor, resolve_shared_cues, unit_anchor_in_sentence
 from .allocate import (
     allocate_unit_cues,
@@ -15,7 +15,7 @@ from .alerts import build_alerts, write_outputs, write_anchored_json
 
 
 def reflow(r03_path, srt_path, out_path, alert_path, anchored_path, snap_ms, cjk_speed=5.0):
-    sentences = parse_r03(r03_path)
+    sentences = parse_r03_any(r03_path)
     cues = parse_srt(srt_path)
     full, mapping, cue_offsets = build_full(cues)
     alerts = []

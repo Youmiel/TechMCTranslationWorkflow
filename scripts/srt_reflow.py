@@ -2,19 +2,21 @@
 """时间轴语义回填（Semantic Timeline Refill）— 回填工作流（reflow-redstone）的确定性时间运算（CLI 入口）
 
 子命令：
-  reflow    r03_plan.md + 01_subtitle_asr_fixed.srt -> r04_draft.srt + r04_alerts.md + r03_anchored.jsonl
+  reflow    r03（r03_results/ 目录 或 r03_plan.md）+ 01_subtitle_asr_fixed.srt -> r04_draft.srt + r04_alerts.md + r03_anchored.jsonl
             整句锚定 -> 单元级 cue 锚定 -> 阅读失配触发中文阅读速度插值（--cjk-speed，倒装/中英时长差）
             -> 分割点就近吸附真实 cue 边界 -> 100ms 取整预测点（兜底）；r04_alerts 含长句碎片检测
-  attach-en r04_draft.srt + r03_plan.md -> 双语 SRT（en-zh，英文行 = r03 英文片段）
-  check-r03 r03_plan.md + 01 + r02 -> 写时即合规预检（锚定唯一性 / 拆句互斥 / 行宽 ≤20 / ZH 忠实），违规退出码 1
+  attach-en r04_draft.srt + r03（目录或文件） -> 双语 SRT（en-zh，英文行 = r03 英文片段）
+  check-r03 r03（文件或目录）+ 01 + r02 -> 写时即合规预检（锚定唯一性 / 拆句互斥 / 行宽 ≤20 / ZH 忠实），违规退出码 1
             r03 为目录时走块级：check-r03 r03_results/ 01 r02_results/ --chunks chunks/（锚定缩块内、ZH 忠实缩块内）
-  check-duration r04_draft.srt + r03_plan.md -> 回填后时长复核（长句碎片/独立短句/阅读失配），长句碎片退出码 1
+  check-duration r04_draft.srt + r03 -> 回填后时长复核（长句碎片/独立短句/阅读失配），长句碎片退出码 1
+  join-r03  r03_results/ -> r03_plan.md（按块序拼接 + 结构校验：缺块/重复 S<n>/可解析，供人工审核/审计；回填非必需，零 token）
 
 用法（命令根 = Project_Main/；输出默认写到输入文件 r03/r04 同目录，与 cwd 无关）：
-  python scripts/srt_reflow.py reflow r03_plan.md 01_subtitle_asr_fixed.srt [-o r04_draft.srt] [--snap-ms 300] [--cjk-speed 5]
-  python scripts/srt_reflow.py attach-en r04_draft.srt r03_plan.md [-o r04_bilingual.srt]
+  python scripts/srt_reflow.py reflow r03_results/ 01_subtitle_asr_fixed.srt [-o r04_draft.srt] [--snap-ms 300] [--cjk-speed 5]
+  python scripts/srt_reflow.py attach-en r04_draft.srt r03_results/ [-o r04_bilingual.srt]
   python scripts/srt_reflow.py check-r03 r03_results/ 01_subtitle_asr_fixed.srt r02_results/ --chunks chunks/   # 块级（--chunks 必填，单块亦适用）
-  python scripts/srt_reflow.py check-duration r04_draft.srt r03_plan.md [--min-ms 1000] [--cjk-speed 5]
+  python scripts/srt_reflow.py check-duration r04_draft.srt r03_results/ [--min-ms 1000] [--cjk-speed 5]
+  python scripts/srt_reflow.py join-r03 r03_results/ [-o r03_plan.md] [--chunks chunks/]
 
 实现拆分：逻辑在 srt_reflow_core/（io/plan/anchor/allocate/alerts/reflow/attach），本文件只做 CLI 分发。
 语义判断（分句对应、拆/合、切分位置）由 Agent 写入 r03 方案，脚本只做确定性时间运算。
@@ -39,7 +41,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.srt_reflow_core.reflow import reflow
 from scripts.srt_reflow_core.attach import attach_en
-from scripts.srt_reflow_core.plan import check_r03, check_r03_blocks
+from scripts.srt_reflow_core.plan import check_r03, check_r03_blocks, join_r03
 from scripts.srt_reflow_core.alerts import check_duration
 
 
@@ -48,7 +50,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p1 = sub.add_parser("reflow")
-    p1.add_argument("r03", help="r03_plan.md（回填方案）")
+    p1.add_argument("r03", help="r03 方案：r03_results/ 目录（块级，推荐，零拼接）或 r03_plan.md（整段，兼容）")
     p1.add_argument("srt", help="01_subtitle_asr_fixed.srt（cue 时间戳）")
     p1.add_argument("-o", dest="out", default=None, help="输出 r04（默认 r03 同目录 r04_draft.srt）")
     p1.add_argument("--alert", dest="alert", default=None, help="告警清单（默认 r03 同目录 r04_alerts.md）")
@@ -59,7 +61,7 @@ def main():
 
     p2 = sub.add_parser("attach-en")
     p2.add_argument("r04", help="r04_draft.srt（回填后单语）")
-    p2.add_argument("r03", help="r03_plan.md（英文片段）")
+    p2.add_argument("r03", help="r03（英文片段）：r03_results/ 目录或 r03_plan.md")
     p2.add_argument("-o", dest="out", default=None, help="输出双语（默认 r04 同目录 r04_bilingual.srt）")
 
     p3 = sub.add_parser("check-r03", help="r03 写时即合规预检（锚定唯一性/拆句互斥/行宽/ZH忠实/碎片/中英失配预警），硬违规退出码 1；r03 为目录时走块级（r03_results/ + --chunks + r02_results/）")
@@ -74,10 +76,15 @@ def main():
 
     p4 = sub.add_parser("check-duration", help="回填后时长复核（长句碎片/独立短句/阅读失配），长句碎片退出码 1")
     p4.add_argument("r04", help="r04_draft.srt（回填后时间轴）")
-    p4.add_argument("r03", help="r03_plan.md（回填方案）")
+    p4.add_argument("r03", help="r03（回填方案）：r03_results/ 目录或 r03_plan.md")
     p4.add_argument("--min-ms", type=int, default=1000, help="长句碎片阈值（默认 1000ms）")
     p4.add_argument("--cjk-speed", type=float, default=5.0, help="中文阅读速度（字/秒），0=禁用（默认 5.0）")
     p4.add_argument("--min-gap-ms", type=int, default=300, help="显著阅读失配最小毫秒数（默认 300ms）")
+
+    p5 = sub.add_parser("join-r03", help="r03_results → r03_plan.md：按块序拼接 + 结构校验（缺块/重复 S<n>/可解析），供人工审核/审计；回填非必需")
+    p5.add_argument("r03_dir", help="r03_results 目录（块级）")
+    p5.add_argument("-o", dest="out", default=None, help="输出 r03_plan.md（默认 r03 目录上级 reflow/r03_plan.md）")
+    p5.add_argument("--chunks", default=None, help="chunks 骨架目录（可选，缺块检测）")
 
     args = ap.parse_args()
     if args.cmd == "reflow":
@@ -97,6 +104,9 @@ def main():
                            check_frag=not args.no_frag, check_mismatch=not args.no_mismatch))
     elif args.cmd == "check-duration":
         sys.exit(check_duration(args.r04, args.r03, args.min_ms, args.cjk_speed, min_gap_ms=args.min_gap_ms))
+    elif args.cmd == "join-r03":
+        out = args.out or str(Path(args.r03_dir).parent / "r03_plan.md")
+        sys.exit(join_r03(args.r03_dir, out, args.chunks))
 
 
 if __name__ == "__main__":
