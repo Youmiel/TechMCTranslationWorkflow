@@ -120,3 +120,45 @@ def parse_owned_cue_range(chunk_path):
             if m:
                 cids.append(int(m.group(1)))
     return (min(cids), max(cids)) if cids else None
+
+
+# ---- 告警定位（统一约定：问题项带「文件:行号 + 行上下文」；通过项只计数） ----
+# 定位 = 块级产物 chunk_<k>.txt:行<l>（行号 = 该块文件内 1-based 物理行）/ 空隙点 c<ia>→c<ib>
+#        / r03 整句（## S<n> 所在行）。上下文 = 该行截断片段（~55 字符），供 Agent 直接核对编辑。
+
+
+def offset_to_line(text, offset):
+    """文本内偏移 → (1-based 行号, 该行起始偏移, 该行文本)；offset 越界时夹取到有效范围。"""
+    if not text:
+        return 1, 0, ""
+    offset = max(0, min(offset, len(text)))
+    lines = text.split("\n")
+    line_no = 1
+    start = 0
+    for i, ln in enumerate(lines):
+        if start <= offset <= start + len(ln):
+            line_no = i + 1
+            return line_no, start, ln
+        start += len(ln) + 1  # +1 换行符
+    return len(lines), start, lines[-1]
+
+
+def ctx_snippet(text, offset, radius=55):
+    """偏移 → 行号 + 该行上下文片段（'…前置<命中>后置…'，命中处用 <> 标记）。
+    供告警直接核对：Agent 按返回行号 read_file 定位编辑，无需全文件扫。"""
+    line_no, start, ln = offset_to_line(text, offset)
+    rel = offset - start
+    a = max(0, rel - radius)
+    b = min(len(ln), rel + radius)
+    frag = ln[a:b]
+    if a > 0:
+        frag = "…" + frag
+    if b < len(ln):
+        frag = frag + "…"
+    return line_no, frag
+
+
+def loc_of(path):
+    """告警位置前缀：短文件名（basename）。"""
+    import os
+    return os.path.basename(path)

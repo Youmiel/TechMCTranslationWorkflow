@@ -1,6 +1,6 @@
 ---
 name: task-split
-description: 分句 + 语义对应 subagent 任务（reflow）——对照 r01 英文块与 r02 中文块，按整句分组 + 译文单元切分 + 语义对应（1:1/1:n/n:1），输出 r03_results/chunk_<k>.txt。reflow 步骤 4 派发分句 subagent 时作为任务 prompt 文件使用。
+description: 分句 + 语义对应 subagent 任务（reflow）——对照 r01 英文块与 r02 中文块，按整句分组 + 译文单元切分 + 语义对应（1:1/1:n/n:1），输出 r03_results/chunk_<k>.txt。reflow 步骤 5 派发分句 subagent 时作为任务 prompt 文件使用。
 ---
 
 # 分句 + 语义对应 subagent 任务（reflow）

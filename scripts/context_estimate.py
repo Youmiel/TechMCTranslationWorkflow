@@ -13,9 +13,9 @@
 用法（命令根 = Project_Main/）：
   python scripts/context_estimate.py <文件> [--window <窗口>] [--split-ratio <比例>] [--no-amplification]
   默认读 configs/context_window.json（context_length 窗口 + split_ratio 比例）；CLI 可覆盖
-  输入支持：SRT（额外报 cue 数）与 reflow 非 SRT 产物（r03_plan.md 等 txt/md/json）
-  --no-amplification：不考虑放大协调（单块输入上限 = min(输入阈值, 输出阈值)，不除以 amplification）；
-     默认使用放大协调（单块输入上限 = min(输入阈值, 输出阈值 ÷ amplification)）
+  输入支持：SRT（额外报 cue 数 + 每 cue 平均字符 + --owned 建议）与 reflow 非 SRT 产物（r03_plan.md 等 txt/md/json）
+  --no-amplification：不考虑放大协调（单块容量上限 = min(输入阈值, 输出阈值)，不除以 amplification）；
+     默认使用放大协调（单块容量上限 = min(输入阈值, 输出阈值 ÷ amplification)）
 """
 import argparse
 import json
@@ -119,7 +119,7 @@ def main():
     ap.add_argument("--amplification", type=float, default=None,
                     help="断句等最重环节预测放大倍数（预测最大输出 = 输入材料×该倍数；默认读 configs/context_window.json 的 amplification；断句 ≈ 5）")
     ap.add_argument("--no-amplification", action="store_true",
-                    help="不考虑放大协调：单块输入上限 = min(输入阈值, 输出阈值)（不除以 amplification）；默认使用放大协调（min(输入阈值, 输出阈值 ÷ amplification)）")
+                    help="不考虑放大协调：单块容量上限 = min(输入阈值, 输出阈值)（不除以 amplification）；默认使用放大协调（min(输入阈值, 输出阈值 ÷ amplification)）")
     args = ap.parse_args()
     if args.window is None:
         args.window = load_context_length()
@@ -162,9 +162,16 @@ def main():
         sys.exit("--amplification 必须 > 1（预测放大倍数，断句 ≈ 5；--no-amplification 时忽略）")
 
     cues = parse_srt_cues(args.file)
+    eff_count = 0
+    avg_char = 0.0
     if cues:
         chars = sum(len(re.sub(r"\s", "", body)) for _i, body in cues)
         desc = "%d cue（SRT）" % len(cues)
+        eff = [body for _i, body in cues if re.sub(r"\s", "", re.sub(r"\[[^\]]*\]", "", body))]
+        eff_count = len(eff)
+        if eff:
+            eff_chars = sum(len(re.sub(r"\s", "", b)) for b in eff)
+            avg_char = eff_chars / len(eff)
     else:
         raw = open(args.file, encoding="utf-8-sig").read()
         chars = len(re.sub(r"\s", "", raw))
@@ -178,6 +185,8 @@ def main():
     print("上下文量估算（确定性，非人工估算）:")
     print("  输入: %s" % args.file)
     print("  类型: %s" % desc)
+    if cues and eff_count:
+        print("  每 cue 平均字符（有效文本 cue %d 条，剔除纯标记）: %.2f" % (eff_count, avg_char))
     print("  去空白字符数: %d" % chars)
     print("  估算 token（字符/1.5）: %d" % token_est)
     print("  窗口上限: %d token" % args.window)
@@ -188,7 +197,7 @@ def main():
         out_by_amp = out_threshold
         pred_output = 0
         effective_in = min(in_threshold, out_by_amp)
-        print("  未启用放大协调（--no-amplification）：单块输入上限 = min(输入阈值, 输出阈值) = %d token" % effective_in)
+        print("  未启用放大协调（--no-amplification）：单块容量上限 = min(输入阈值, 输出阈值) = %d token" % effective_in)
         if in_threshold > out_by_amp:
             print(f"  ⚠️ 输入阈值（{in_threshold}）> 输出阈值（{out_by_amp}）——输出预算偏紧；术语清单等输出通常远小于输入，可不降")
     else:
@@ -196,10 +205,16 @@ def main():
         print("  预测最大输出（输入×%.1f）: %d token" % (args.amplification, pred_output))
         out_by_amp = int(out_threshold / args.amplification)      # 输出阈值÷amplification（反推的输入上限）
         effective_in = min(in_threshold, out_by_amp)              # 单块输入上限 = min(输入阈值, 输出阈值÷amplification)
-        print("  单块输入上限（min(输入阈值, 输出阈值÷%.1f)）: %d token" % (args.amplification, effective_in))
+        print("  单块容量上限（min(输入预算, 输出预算÷%.1f)，已含放大）: %d token" % (args.amplification, effective_in))
         if in_threshold > out_by_amp:
-            print(f"  ⚠️ min 落到输出侧：输入阈值（{in_threshold}）> 输出阈值÷amplification（{out_by_amp}）——输出预算成瓶颈，单块输入上限取输出侧值（{out_by_amp}），按此反推 --owned 分块大小")
+            print(f"  ⚠️ min 落到输出侧：输入预算（{in_threshold}）> 输出预算÷amplification（{out_by_amp}）——输出预算成瓶颈，单块容量上限取输出侧值（{out_by_amp}），按此反推 --owned 分块大小")
     print("  当前占比: %.1f%%" % pct)
+    if cues and eff_count and avg_char > 0:
+        # --owned 反推：单块容量上限（min 统一、已含放大——输入预算靠 split_ratio 隐含分句余量、输出预算÷amplification 显式）直接换算每块 cue 数，不再额外 ÷放大
+        owned = int(effective_in * 1.5 / avg_char)
+        if owned < 1:
+            owned = 50
+        print("  --owned 建议（单块容量上限 %d ×1.5 ÷ %.2f）: %d（拿不准用默认 50）" % (effective_in, avg_char, owned))
     if token_est > in_threshold:
         print("  → 超输入阈值：建议分块（字幕不容压缩、后续步骤也占窗口）")
         # 给可执行建议（非 SRT 按语义单位、SRT 按 cue）

@@ -104,10 +104,10 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 > reflow 阶段二（补标点 → 整段翻译 → 分句）：从 01 分块（空隙组优先）→ 逐块独立处理、中间**不拼全文** → **校验逐块化** → 仅 r03/r04 合并。目标：各子块独立处理、按块传递，减少"拼全文→整读→再分块"的反复。
 
 - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps` 把 01 按空隙点切成「空隙组」，**每个空隙组至少一块**——块数下限 = 空隙点数+1；仅 01 无空隙点才 1 块
-- **`--owned` 只控组内拆片（容量，非块数）**：空隙组 cue 数 > `--owned` 时组内再拆多片；块数 = 空隙组数 × 组内片数。**`--owned` 按最重环节（分句）系数反推**（÷4 的推导见 [PRODUCT_FORMATS#configs/context_window.json](../../../docs/PRODUCT_FORMATS.md)「算法解释·放大倍数」）：**反推公式** `--owned ≈ (单块输入上限 ÷ 4) × 1.5 ÷ 每 cue 平均字符数`——单块输入上限（token，`context_estimate.py` 输出）÷4 → 单块单语言 token、×1.5（token→字符）→ 单块字符预算、再 ÷ 每 cue 平均字符数（拿不准用保守兜底，宁小勿大）；各阶段共用同一套块（01 骨架），**块定即全局、无法在分句阶段中途改**，宁小勿大
+- **`--owned` 只控组内拆片（容量，非块数）**：空隙组 cue 数 > `--owned` 时组内再拆多片；块数 = 空隙组数 × 组内片数。**`--owned` 按最重环节（分句）由 `context_estimate.py` 反推**（推导见 [PRODUCT_FORMATS#configs/context_window.json](../../../docs/PRODUCT_FORMATS.md)「算法解释·放大倍数」）：**反推公式** `--owned ≈ 单块容量上限 × 1.5 ÷ 每 cue 平均字符数`——单块容量上限（token，`context_estimate.py` 输出 = min(输入预算, 输出预算÷amplification)，**经 min 统一、已含分句放大**）×1.5（token→字符）→ 单块字符预算、再 ÷ 每 cue 平均字符数（拿不准用保守兜底，宁小勿大）；各阶段共用同一套块（01 骨架），**块定即全局、无法在分句阶段中途改**，宁小勿大
 - **分块前先验证 gap 准确性（必做）**：跑 `python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md` 得到空隙点清单（长停顿 >5s / 剪辑跳转 >10s），**人工确认后**再用 `--gaps` 分块——`--gaps` 的 `detect_gap_groups` 用同一空隙点算法，与 r00_gaps.md 应一致；**已有 r00_gaps.md 则复用，勿重复探测**（探测结果与人工复核以 r00_gaps.md 为准）
 - **一次分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——块 = 「空隙组-片」（块0 单独、块1 拆多片...），块边界 = 明确 cue 区间；**`--ctx` 建议 10**（每侧衔接 cue 数，约覆盖前块末尾 1–2 句）
-- **各阶段共用同一套块**：r01 补标点读 chunks/ 的 cue 区间、r02 翻译读 r01_results/ 对应块、r03 分句读 r01+r02 对应块——**块边界始终来自 01 分块骨架**，不做链式继承
+- **各阶段共用同一套块**：：r01 合并文本读 `chunks/`、r01 补标点读 `r01_normalized/`、r02 翻译读 `r01_results/` 对应块、r03 分句读 `r01_results/` + `r02_results/` 对应块对照——**块边界始终来自 01 分块骨架，不做链式继承**
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态——分块/不分块产物契约统一
 - **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，**不需要先合并全文**；**全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)——避免每块 subagent 重复跑全量校对）
 - **必须合并的**：`r03_plan.md`（`srt_reflow.py` 回填输入，各块 r03 方案按块序直接拼接）、`r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）——这两个合并后走全局校验

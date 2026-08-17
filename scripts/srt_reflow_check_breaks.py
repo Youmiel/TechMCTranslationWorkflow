@@ -28,6 +28,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 from srt_reflow_common import (
     auto_wrap_file,
     collect_chunk_files,
+    ctx_snippet,
     is_pure_marker,
     parse_owned_cue_range,
     parse_time,
@@ -76,6 +77,7 @@ def main():
     ap.add_argument("r01", help="r01_results 目录（块级，--chunks 必填；单块亦适用）")
     ap.add_argument("--chunks", default=None, help="chunks 目录（块级模式必填，解析块↔cue区间；单块亦适用）")
     ap.add_argument("--gaps", default=None, help="r00_gaps.md（可选，空隙点清单；不传则脚本自行探测，但建议复用已验证的 r00_gaps）")
+    ap.add_argument("--verbose", action="store_true", help="展开打印全部通过项（默认折叠计数）")
     args = ap.parse_args()
 
     cues = parse_srt(args.src)
@@ -145,12 +147,17 @@ def main_whole(args, cues, breaks):
         b_text = cues[ib - 1]["text"]
         if SENT_END_RE.search(between):
             n_pass += 1
-            print(f"✅ c{ia}→c{ib}（{gap/1000:.1f}s）: 已断句  `…{a_text[-20:]}` [句末标点] `{b_text[:20]}…`")
-            print(f"   复核: 断句方式是否合理（独立成句 / 分段 / 归前句）——影响 r03 游离停顿词归属，见 r01_breaks.md 复核清单")
+            if args.verbose:
+                print(f"✅ c{ia}→c{ib}（{gap/1000:.1f}s）: 已断句  `…{a_text[-20:]}` [句末标点] `{b_text[:20]}…`")
+                print(f"   复核: 断句方式是否合理（独立成句 / 分段 / 归前句）——影响 r03 游离停顿词归属，见 r01_breaks.md 复核清单")
         else:
             n_violate += 1
             gap_snippet = between.strip()
+            la, fa = ctx_snippet(r01_raw, max(0, raw_a_end))
+            lb, fb = ctx_snippet(r01_raw, raw_b_start)
             print(f"❌ c{ia}→c{ib}（{gap/1000:.1f}s）: 跨空隙合句（两锚间无句末标点，仅 {repr(gap_snippet[:60])}）")
+            print(f"   {os.path.basename(args.r01)} 行 {la}｜{fa}")
+            print(f"   {os.path.basename(args.r01)} 行 {lb}｜{fb}")
             print(f"   前 cue c{ia}: `{a_text}`")
             print(f"   后 cue c{ib}: `{b_text}`")
             print(f"   → 默认处置: 打回步骤 1，用 r01_breaks.md 的补标点输入文本重跑（空隙标记处强制断句）")
@@ -205,32 +212,33 @@ def main_block(args, cues, breaks):
             n_skip += 1
             print(f"❓ c{ia}→c{ib}（{gap/1000:.1f}s）: 未找到含该 cue 的块（块↔cue 映射缺失），跳过")
             continue
-        # 读前块结果末尾 + 后块结果开头
+        # 读前块结果末尾 + 后块结果开头（保留原始折行定位行号）
         res_a = os.path.join(results_dir, "chunk_%03d.txt" % ka)
         res_b = os.path.join(results_dir, "chunk_%03d.txt" % kb)
         if not os.path.exists(res_a) or not os.path.exists(res_b):
             n_skip += 1
             print(f"❓ c{ia}→c{ib}: 块结果缺失（chunk_{ka:03d} / chunk_{kb:03d}），跳过")
             continue
-        text_a = strip_stitch_marks(open(res_a, encoding="utf-8").read()).strip()
-        text_b = strip_stitch_marks(open(res_b, encoding="utf-8").read()).strip()
-        # 前块末尾最后一个句末标点之后到后块开头：检查块边界处衔接
-        # 简化：前块末尾字符 + 后块开头字符拼接，看块边界附近是否断句
-        tail = text_a[-30:] if len(text_a) >= 30 else text_a
-        head = text_b[:30] if len(text_b) >= 30 else text_b
-        boundary = tail + "\n" + head
+        raw_a = strip_stitch_marks(open(res_a, encoding="utf-8").read())
+        raw_b = strip_stitch_marks(open(res_b, encoding="utf-8").read())
+        text_a = raw_a.strip()
+        text_b = raw_b.strip()
         a_text = cues[ia - 1]["text"]
         b_text = cues[ib - 1]["text"]
         # 块级：空隙点应在块边界处（块边界优先在空隙点）；检查前块是否以句末标点结尾
         ends_punct = bool(SENT_END_RE.search(text_a.rstrip()[-8:])) if text_a else False
         if ends_punct:
             n_pass += 1
-            print(f"✅ c{ia}→c{ib}（{gap/1000:.1f}s）: 前块以句末标点结尾（chunk_{ka:03d}→chunk_{kb:03d}）  `…{a_text[-20:]}` | `{b_text[:20]}…`")
+            if args.verbose:
+                print(f"✅ c{ia}→c{ib}（{gap/1000:.1f}s）: 前块以句末标点结尾（chunk_{ka:03d}→chunk_{kb:03d}）  `…{a_text[-20:]}` | `{b_text[:20]}…`")
         else:
             n_violate += 1
+            la, fa = ctx_snippet(raw_a, max(0, len(raw_a.rstrip()) - 1))
+            lb, fb = ctx_snippet(raw_b, 0)
             print(f"❌ c{ia}→c{ib}（{gap/1000:.1f}s）: 前块末尾无句末标点（chunk_{ka:03d}→chunk_{kb:03d}）")
+            print(f"   前块 {os.path.basename(res_a)} 行 {la}｜{fa}")
+            print(f"   后块 {os.path.basename(res_b)} 行 {lb}｜{fb}")
             print(f"   前 cue c{ia}: `{a_text}`  |  后 cue c{ib}: `{b_text}`")
-            print(f"   边界片段: ...{repr(tail[-20:])} | {repr(head[:20])}...")
             print(f"   → 默认处置: 打回该块重跑（空隙标记处强制断句）；语义停顿可作受控例外，须 r03 不跨空隙成单元")
     print("-" * 60)
     print(f"结果: 通过 {n_pass} / 违规 {n_violate} / 未定位 {n_skip}（共 {len(breaks)}）")

@@ -28,24 +28,27 @@ def zh_content(s):
 class Sentence:
     """r03 整句组：S<n>（或合句 S<n+m>）"""
 
-    def __init__(self, key, en, zh, rel, units):
+    def __init__(self, key, en, zh, rel, units, line=None, src=None, unit_lines=None):
         self.key = key          # 如 S1 / S19+20
         self.en = en            # 整句英文全文（锚定用）
         self.zh = zh            # 整句中文（对照）
         self.rel = rel          # 1:1 / 1:n / n:1
         self.units = units      # [(unit_key, en_frag, zh_frag), ...]
+        self.line = line        # 整句标题（## S<n>）所在行号（1-based；告警定位用）
+        self.src = src          # 来源文件 basename（块级=chunk_XXX.txt；整段=文件名）
+        self.unit_lines = unit_lines or {}   # 子单元标题（### S<n>a）行号 {unit_key: line}（告警精确定位用）
 
 
 def parse_r03(path):
-    """解析 r03_plan.md → [Sentence]"""
+    """解析 r03_plan.md → [Sentence]；记录每个整句 `## S<n>` 标题的行号（line，1-based，告警定位用）。"""
     lines = Path(path).read_text(encoding="utf-8").splitlines()
     sentences = []
     cur = None
-    for line in lines:
+    for lineno, line in enumerate(lines, 1):
         line = line.rstrip()
         m = re.match(r"^##\s*(S\d+(?:\+\d+)*)\s*$", line)
         if m:
-            cur = {"key": m.group(1), "en": None, "zh": None, "rel": None, "units": []}
+            cur = {"key": m.group(1), "en": None, "zh": None, "rel": None, "units": [], "_line": lineno}
             sentences.append(cur)
             continue
         if cur is None:
@@ -65,6 +68,7 @@ def parse_r03(path):
         m = re.match(r"^###\s*(S\d+(?:\+\d+)*[a-z])$", line)
         if m:
             cur["units"].append({"key": m.group(1), "en": None, "zh": None})
+            cur.setdefault("unit_lines", {})[m.group(1)] = lineno
             continue
         if cur["units"]:
             u = cur["units"][-1]
@@ -85,7 +89,8 @@ def parse_r03(path):
             if u["en"] is None or u["zh"] is None:
                 raise ValueError(f"r03 解析失败（子单元缺 EN/ZH）: {u['key']}")
             units.append((u["key"], u["en"], u["zh"]))
-        out.append(Sentence(s["key"], s["en"], s["zh"], s["rel"], units))
+        out.append(Sentence(s["key"], s["en"], s["zh"], s["rel"], units, line=s["_line"],
+                            src=Path(path).name, unit_lines=s.get("unit_lines", {})))
     return out
 
 
@@ -284,6 +289,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
     有硬违规输出清单并返回 1（打回 r03 改写），仅存疑预警则通过并打印提示（Agent 智能判断）。全部通过返回 0。
     """
     sentences = parse_r03(r03_path)
+    base = Path(r03_path).name   # 告警定位：r03 文件 + 整句标题行号（## S<n> 所在行）
     cues = parse_srt(srt_path)
     if cue_range:
         cmin, cmax = cue_range
@@ -298,11 +304,11 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
         n = norm(s.en)
         pos = full.find(n)
         if pos == -1:
-            problems.append(f"❌ 整句 {s.key} 锚定失败（{'块内 c%d-c%d' % cue_range if cue_range else '01 全文'}未找到）——回填将走顺序兜底，须修正措辞")
+            problems.append(f"❌ 整句 {s.key}（{base}:行{s.line}）锚定失败（{'块内 c%d-c%d' % cue_range if cue_range else '01 全文'}未找到）——回填将走顺序兜底，须修正措辞")
             anchors.append(None)
         else:
             if full.find(n, pos + 1) != -1:
-                problems.append(f"⚠️ 整句 {s.key} 非唯一命中（{'块内' if cue_range else '01 全文'}出现 ≥2 次）——回填将取第一处，须保证唯一或接受")
+                problems.append(f"⚠️ 整句 {s.key}（{base}:行{s.line}）非唯一命中（{'块内' if cue_range else '01 全文'}出现 ≥2 次）——回填将取第一处，须保证唯一或接受")
             anchors.append({
                 "key": s.key,
                 "start": cues[mapping[pos]]["start"],
@@ -315,24 +321,26 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
         if s.rel == "1:n" and s.units:
             joined = "".join(norm(u[1]) for u in s.units)
             if joined != n:
-                problems.append(f"❌ 拆句 {s.key} 子单元 EN 拼接 ≠ 整句 EN（互斥性破坏）——双语英文行将错位")
+                problems.append(f"❌ 拆句 {s.key}（{base}:行{s.line}）子单元 EN 拼接 ≠ 整句 EN（互斥性破坏）——双语英文行将错位")
         units = s.units or [(s.key, s.en, s.zh)]
         for u in units:
             w = text_width(u[2])
+            ul = s.unit_lines.get(u[0], s.line)
             if w > 26:
-                problems.append(f"📏 行宽 {w:.1f}（>26 硬）{u[0]}: {u[2]}")
+                problems.append(f"📏 行宽 {w:.1f}（>26 硬）{u[0]}（{base}:行{ul}）: {u[2]}")
 
     # 括号/引号配对预警（存疑，不阻断）：单元内不成对 = 括号被拆 / 引号归属漂移（S24/S61e/S70c 类）
     for s in sentences:
         units = s.units or [(s.key, s.en, s.zh)]
         for u in units:
             zh = u[2]
+            ul = s.unit_lines.get(u[0], s.line)
             for o, c in (("（", "）"), ("(", ")")):
                 if zh.count(o) != zh.count(c):
-                    warnings.append(f"🧩 括号不配对 {u[0]}: 「{zh}」含 {o}×{zh.count(o)}/{c}×{zh.count(c)}——括号整体应归同一单元（可能被切在括号中间）")
+                    warnings.append(f"🧩 括号不配对 {u[0]}（{base}:行{ul}）: 「{zh}」含 {o}×{zh.count(o)}/{c}×{zh.count(c)}——括号整体应归同一单元（可能被切在括号中间）")
                     break
             if zh.count('"') % 2 == 1 or zh.count("“") != zh.count("”"):
-                warnings.append(f"🧩 引号不配对 {u[0]}: 「{zh}」引号不成对——引号归属可能漂移（整句中间的引号随其后中文文本归属，不得丢失/错位）")
+                warnings.append(f"🧩 引号不配对 {u[0]}（{base}:行{ul}）: 「{zh}」引号不成对——引号归属可能漂移（整句中间的引号随其后中文文本归属，不得丢失/错位）")
 
     # 跨整句共享 cue 切分（预估贴近回填：相邻整句共享 cue 时末单元被裁到共享切分点，S6/S7 实证）
     resolve_shared_cues([a for a in anchors if a is not None], cues, cue_offsets, [])
@@ -352,9 +360,10 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
             total = sum(weights) or 1
             for u, w in zip(units, weights):
                 est = span * w / total
+                ul = s.unit_lines.get(u[0], s.line)
                 if est < MIN_FRAG_MS:
                     warnings.append(
-                        f"🔪 碎片预检 {u[0]}: 整句 {s.key} span {span}ms 按阅读比例约 {est:.0f}ms"
+                        f"🔪 碎片预检 {u[0]}（{base}:行{ul}）: 整句 {s.key} span {span}ms 按阅读比例约 {est:.0f}ms"
                         f" <{MIN_FRAG_MS}ms——建议在 r03 合并相邻单元或调整切分点（长句不碎）"
                     )
         # 中英失配预估：单元级 cue 锚定 + 共享 cue 切分预估实际时长，对比中文阅读所需
@@ -367,10 +376,11 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
                     for u, est in zip(units, ests):
                         d = int(est[1] - est[0])
                         need = cjk_reading_ms(u[2], cjk_speed)
+                        ul = s.unit_lines.get(u[0], s.line)
                         if need > 0 and d < need * READING_MISMATCH_RATIO \
                                 and (need * READING_MISMATCH_RATIO - d) >= READING_MIN_GAP_MS:
                             warnings.append(
-                                f"📖 中英失配预估 {u[0]}: 中文「{u[2]}」阅读需 {need}ms，英文 cue 预估仅 {d}ms"
+                                f"📖 中英失配预估 {u[0]}（{base}:行{ul}）: 中文「{u[2]}」阅读需 {need}ms，英文 cue 预估仅 {d}ms"
                                 f"（<阅读所需×{READING_MISMATCH_RATIO}，失配 {int(need * READING_MISMATCH_RATIO - d)}ms）"
                                 f"——倒装/时长不均，整句 {s.key}：可调整 r03 切分点或依赖回填阅读插值"
                             )
@@ -381,7 +391,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
             whole = zh_content(s.zh)
             if joined != whole:
                 problems.append(
-                    f"❌ 拆句 {s.key} 子单元 ZH 拼接 ≠ 整句 ZH（断句不得改写译文）"
+                    f"❌ 拆句 {s.key}（{base}:行{s.line}）子单元 ZH 拼接 ≠ 整句 ZH（断句不得改写译文）"
                     f"——子单元「{joined}」vs 整句「{whole}」"
                 )
     # ZH 忠实性：r03 整句 ZH（s.zh）与 r02 定稿做字符多集比较

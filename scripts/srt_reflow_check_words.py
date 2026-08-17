@@ -16,7 +16,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import auto_wrap_file, collect_chunk_files, parse_owned_cue_range, strip_stitch_marks, MAX_LINE
+from srt_reflow_common import auto_wrap_file, collect_chunk_files, ctx_snippet, parse_owned_cue_range, strip_stitch_marks, MAX_LINE
 
 
 def srt_words(path):
@@ -62,6 +62,7 @@ def main():
     ap.add_argument("srt", help="01_subtitle_asr_fixed.srt")
     ap.add_argument("r01", help="r01_results 目录（块级，--chunks 必填；单块亦适用）")
     ap.add_argument("--chunks", default=None, help="chunks 目录（块级模式必填，解析块↔cue区间；单块亦适用）")
+    ap.add_argument("--verbose", action="store_true", help="展开打印全部通过项（默认折叠计数）")
     args = ap.parse_args()
 
     if os.path.isdir(args.r01):
@@ -82,6 +83,7 @@ def main():
         if n_wrapped:
             print(f"   ✅ 已就地折行 {n_wrapped} 个块文件（显示性换行非语义分行，继续校验）")
         n_err = 0
+        n_ok = 0
         for k in sorted(chunks):
             rng = parse_owned_cue_range(chunks[k])
             if rng is None:
@@ -104,21 +106,44 @@ def main():
             has_stitch = ("【承接句】" in raw) or ("【延伸句】" in raw)
             r01_terms = re.findall(r"[a-z0-9']+", strip_stitch_marks(raw).lower())
             if srt_terms == r01_terms:
-                print(f"✅ chunk_{k:03d} (c{cmin}-c{cmax}): 词序列一致（{len(srt_terms)} 词）")
+                n_ok += 1
+                if args.verbose:
+                    print(f"✅ chunk_{k:03d} (c{cmin}-c{cmax}): 词序列一致（{len(srt_terms)} 词）")
             elif has_stitch and len(r01_terms) < len(srt_terms) and all(w in srt_terms for w in r01_terms):
-                print(f"⚠️ chunk_{k:03d} (c{cmin}-c{cmax}): 缺 {len(srt_terms) - len(r01_terms)} 词——"
-                      f"跨块句标记【承接句】/【延伸句】内含本块部分，归位时确认（不计打回）")
+                n_ok += 1
+                if args.verbose:
+                    print(f"✅ chunk_{k:03d} (c{cmin}-c{cmax}): 缺 {len(srt_terms) - len(r01_terms)} 词——"
+                          f"跨块句标记【承接句】/【延伸句】内含本块部分，归位时确认")
             else:
                 n_err += 1
                 print(f"❌ chunk_{k:03d} (c{cmin}-c{cmax}): 词序列分歧（01={len(srt_terms)} r01={len(r01_terms)}）")
-                for i, (a, b) in enumerate(zip(srt_terms, r01_terms)):
-                    if a != b:
-                        print(f"    第 {i} 词: 01=[{a}] r01=[{b}]")
-                        break
+                diff_i = next((i for i, (a, b) in enumerate(zip(srt_terms, r01_terms)) if a != b),
+                              min(len(srt_terms), len(r01_terms)))
+                a = srt_terms[diff_i] if diff_i < len(srt_terms) else "—"
+                b = r01_terms[diff_i] if diff_i < len(r01_terms) else "—"
+                print(f"    第 {diff_i} 词: 01=[{a}] r01=[{b}]")
+                # r01 定位：分歧词在 r01 原文中的行号 + 上下文（供直接编辑）
+                anchor = b if b != "—" else a
+                pos = raw.lower().find(anchor)
+                if pos != -1:
+                    ln, frag = ctx_snippet(raw, pos)
+                    print(f"    {os.path.basename(res_path)} 行 {ln}｜{frag}")
+                else:
+                    print(f"    {os.path.basename(res_path)}: 未定位到分歧词（缺词/改写，需打开块核对）")
+                # 01 定位：分歧词对应 cue
+                if diff_i < len(srt_terms):
+                    c = None
+                    for cc in range(cmin, cmax + 1):
+                        body = cue_map.get(cc, "")
+                        if body and srt_terms[:diff_i + 1][-1] in re.findall(r"[a-z0-9']+", body.lower()):
+                            c = cc
+                            break
+                    if c:
+                        print(f"    01 cue c{c}: `{cue_map.get(c, '')}`")
         if n_err:
             print(f"\n❌ 块级措辞校验失败：{n_err} 块异常（打回）")
             sys.exit(1)
-        print("\n✅ 块级措辞校验通过：全部块词序列一致")
+        print(f"\n✅ 块级措辞校验通过：{n_ok} 块词序列一致（含跨块句标记块）")
         return
 
     # 整段模式

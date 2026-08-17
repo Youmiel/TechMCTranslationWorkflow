@@ -34,6 +34,7 @@
 | `s04_draft.srt` | translate | Agent（逐段翻译） | `srt_check_segments.py`、`srt_check_width.py` |
 | `r00_gaps.md` | reflow | `srt_reflow_gap_scan.py` | Agent 参考 |
 | `r01_breaks.md` | reflow | `srt_reflow_breaks.py` + Agent 回填 | `srt_reflow_check_breaks.py` |
+| `r01_normalized/chunk_<k>.txt` | reflow（块数 = 空隙组×片数） | 脚本 `srt_reflow_normalize.py`（一次性全目录） | Agent（补标点 subagent 输入） |
 | `r01_results/chunk_<k>.txt` | reflow（块数 = 空隙组×片数） | Agent（补标点 subagent） | `srt_reflow_check_breaks.py`、`srt_reflow_check_words.py`（块级模式） |
 | `r02_results/chunk_<k>.txt` | reflow（块数 = 空隙组×片数） | Agent（整段翻译 subagent） | `check-r03`（ZH 忠实基准） |
 | `r03_plan.md` | reflow | 脚本 `join-r03`（按需，审核/审计用；回填直读 `r03_results/`） | `plan.py parse_r03`、`check-r03` |
@@ -71,7 +72,7 @@
 
 - **一次分块（从 01）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——块 = 「空隙组-片」（**空隙点强制切块=语义硬边界**、组内按 `--owned` 分片=容量控制）；块边界 = 明确 cue 区间
 - **分块前先验证 gap**：`srt_reflow_gap_scan.py` → `r00_gaps.md` 空隙点清单（长停顿 >5s / 剪辑跳转 >10s）人工确认后作为 `--gaps` 分块的组边界依据；**已有 r00_gaps.md 则复用，勿重复探测**
-- **各阶段共用同一套块**：r01 补标点读 chunks/ 的 cue 区间、r02 翻译读 `r01_results/` 对应块、r03 分句读 `r01_results/` + `r02_results/` 对应块对照——**块边界始终来自 01 分块骨架，不做链式继承**
+- **各阶段共用同一套块**：：r01 合并文本读 `chunks/`、r01 补标点读 `r01_normalized/`、r02 翻译读 `r01_results/` 对应块、r03 分句读 `r01_results/` + `r02_results/` 对应块对照——**块边界始终来自 01 分块骨架，不做链式继承**
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态
 - **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，不需要先合并全文；**全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../.github/skills/subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)）
 - **回填直读 r03_results/（零拼接）**：`srt_reflow.py reflow/attach-en/check-duration` 的 r03 参数接受目录（`parse_r03_dir` 按块序解析 + **S 号全局重编号**）或单文件 r03_plan.md（兼容）——**必须合并的**仅 `r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）；合并后走全局校验
@@ -137,7 +138,7 @@
 
 - **算法解释**：
   - **双阈值**：字幕翻译**不接受上下文压缩**（压缩丢细节 → 失真），单块材料既不能贴近窗口上限（读约束 = 输入阈值），也不能让放大后输出超模型单次生成上限（写约束 = 输出阈值）——取 `min` 协调、宁低勿高
-  - **放大倍数**：最重环节（分句）读中英两倍材料（r01 EN + r02 ZH 对照）+ 输出 r03 ≈ 对照 2×，单请求 ≈ **4×单语言材料**（实测 4.2×），故需要放大倍数预测最重环节 token 消耗
+  - **放大倍数**：最重环节（分句）读中英两倍材料（r01 EN + r02 ZH 对照）+ 输出 r03 ≈ 对照 2×，单请求 ≈ **4×单语言材料**（实测 4.2×），故需要放大倍数预测最重环节 token 消耗——放大已并入「单块容量上限」：输入预算靠 `split_ratio` 隐含分句余量（示例 0.05 → 分句放大 4× 后 ≈ 窗口×20%）、输出预算靠 `÷amplification` 显式，二者经 min 统一后 **`--owned ≈ 单块容量上限 × 1.5 ÷ 每 cue 平均字符数`，不再额外除以放大常数**
   - **`split_ratio` 默认取 0.05**：执行在 subagent（全新上下文）；示例 0.05 → 1M 窗口 ≈ 50k token，分句放大 4× 后 ≈ 窗口×20% 仍可一次处理；0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句放大后吃力），取中间值；拿不准用默认
   - **为何 `--window` 填实际有效窗口**：**不是当前剩余窗口**（剩余受会话历史/压缩影响，agent 无法精确感知）；**标称 ≠ 实际有效**——填实际有效窗口（非标称上限），拿不准按保守 128k 配置
 - 约束：
@@ -257,6 +258,15 @@
 ```
 
 - 约束：`【强制断句】` 行是**空隙标记**，仅在本文档「补标点输入文本」内，由脚本注入
+
+### `r01_normalized/chunk_<k>.txt`（归一化输入）
+
+- 命名：`<工作目录>/reflow/r01_normalized/chunk_<k>.txt`
+- 生成：脚本 `srt_reflow_normalize.py`（`python scripts/srt_reflow_normalize.py reflow/chunks/ -o reflow/r01_normalized/`）——**一次性处理整个 chunks/ 目录**，每块独立合并、互不影响，命令只运行一次
+- 格式：**保留分区结构 + 合并连续文本**——每块与 `chunks/chunk_<k>.txt` 同构（块头 `# CHUNK` + `## BEFORE`/`## OWNED`/`## AFTER` 分区），但**各分区内 cue 文本已预先合并**为一段连续文字（剔除 `[Music]`/`[Applause]` 等纯标记 cue）、经 `wrap_text` 折行 ≤1000 字符/行（英文空格处折、不拆词；中文按字符折）
+- 定位：补标点 subagent 输入（替代直接读 `chunks/` 的 cue 结构，subagent 无需再自行拼接 OWNED 文本）——**仅作补标点输入，非校验基准**（校验仍读 `chunks/` 的 cue 区间 + `r01_results/`）
+- 约束：折行为**显示性换行、非语义分行**——subagent 按整段解析、**忽略行尾换行**；纯标记块（无语音 cue）输出空块注释（`> 本块无语音 cue`），对应补标点产物为空块、校验跳过
+- 消费：步骤 3 补标点 subagent（`r01_results/` 对应块）
 
 ### `r01_results/chunk_<k>.txt`（补标点块）
 

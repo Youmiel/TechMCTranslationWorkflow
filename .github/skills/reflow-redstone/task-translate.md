@@ -1,6 +1,6 @@
 ---
 name: task-translate
-description: 整段翻译 subagent 任务（reflow）——对给定 r01 英文块整段翻译为自然中文（术语严格、去翻译腔、ASR 残片剔除），输出到 r02_results/chunk_<k>.txt。reflow 步骤 2 派发翻译 subagent 时作为任务 prompt 文件使用。
+description: 整段翻译 subagent 任务（reflow）——对给定 r01 英文块整段翻译为自然中文（术语严格、去翻译腔、ASR 残片剔除），输出到 r02_results/chunk_<k>.txt。reflow 步骤 4 派发翻译 subagent 时作为任务 prompt 文件使用。
 ---
 
 # 整段翻译 subagent 任务（reflow）

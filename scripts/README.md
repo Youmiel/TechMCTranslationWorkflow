@@ -39,6 +39,8 @@
 | `srt_reflow_breaks.py` | r01 硬性断句输入：断句点清单（含 Agent 复核字段）+ 注入【强制断句】标记的补标点输入文本 → `r01_breaks.md` | `python scripts/srt_reflow_breaks.py <01> [-o reflow/r01_breaks.md]` |
 | `srt_reflow_check_breaks.py` | r01 硬性断句校验：逐空隙点查句末标点 `.?!`；违规退出码 1（打回信号，受控例外 Agent 裁决）；块级模式（`--chunks <chunks目录> --gaps r00_gaps.md`，复用已验证空隙点清单；N=1 为单块骨架） | `python scripts/srt_reflow_check_breaks.py <01> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md` |
 | `srt_reflow_check_words.py` | r01 措辞校验：词序列与 01 一致（不得改动措辞）；块级模式（`--chunks <chunks目录>`，逐块对比块↔cue 区间词序列；N=1 为单块骨架） | `python scripts/srt_reflow_check_words.py <01> <r01_results/> --chunks <chunks/>` |
+| `srt_reflow_normalize.py` | chunks 块文件归一化：每块 `## BEFORE/OWNED/AFTER` 分区 cue 文本预先合并为连续文本 + 折行 ≤1000 字符/行（英文不拆词、中文按字符）→ `r01_normalized/`（补标点 subagent 输入；一次性全目录，命令只运行一次） | `python scripts/srt_reflow_normalize.py <chunks/> -o reflow/r01_normalized/` |
+| `srt_reflow_check_terms.py` | r02 术语全量核对：逐条遍历 02_terms.md——01 定位原文出现块 → 该块 r02 译文须含确认译名（变体容错/长术语覆盖）；⚠️/ℹ️ 带文件行号 + 上下文供 Agent 直接核对编辑；退出码 1 = 有未命中（复核后才放行） | `python scripts/srt_reflow_check_terms.py <01> <02_terms.md> <r02_results/> --chunks <chunks/> [--verbose]` |
 
 > `srt_reflow_core/` 是 `srt_reflow.py` 的实现包（io / plan / anchor / allocate / alerts / reflow / attach），**非独立工具，勿直接调用**；入口只有 `srt_reflow.py`。
 

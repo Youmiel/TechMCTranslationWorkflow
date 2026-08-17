@@ -22,29 +22,36 @@ def _unit_span_index(anchored):
 
 
 def build_alerts(alerts, timeline, anchored, cues):
-    """回填告警：时长分布/超长极短/长句碎片/内部空隙/剪辑跳转/预测点/行宽（追加到 alerts）"""
+    """回填告警：时长分布/超长极短/长句碎片/内部空隙/剪辑跳转/预测点/行宽（追加到 alerts）。
+
+    告警统一带 r03 定位（{src}:行{line}，单元所属整句标题行），供 Agent 直接核对编辑；汇总计数不逐项。
+    """
     durs = sorted(t[2] - t[1] for t in timeline)
     median = durs[len(durs) // 2] if durs else 0
     alerts.append(f"单元数: {len(timeline)}  时长中位: {median}ms")
     long_th = max(15000, 2 * median)
     sent_count, sent_key = _unit_span_index(anchored)
+    unit_loc = {u[0]: (a["s"].src, a["s"].unit_lines.get(u[0], a["s"].line)) for a in anchored
+                for u in (a["s"].units or [(a["s"].key, a["s"].en, a["s"].zh)])}
     n_frag = 0
     for t in timeline:
         d = t[2] - t[1]
+        loc = unit_loc.get(t[0], ("", ""))
+        loc_s = f"{loc[0]}:行{loc[1]}" if loc[0] else ""
         if d > long_th:
-            alerts.append(f"⏱️ 超长单元 {t[0]} {d}ms（>{long_th}ms）: {t[3]}")
+            alerts.append(f"⏱️ 超长单元 {t[0]} {d}ms（>{long_th}ms, r03 {loc_s}）: {t[3]}")
         elif d < 300:
-            alerts.append(f"⏱️ 极短单元 {t[0]} {d}ms: {t[3]}")
+            alerts.append(f"⏱️ 极短单元 {t[0]} {d}ms（r03 {loc_s}）: {t[3]}")
         elif d < MIN_FRAG_MS:
             n = sent_count.get(t[0], 1)
             if n >= 2:
                 n_frag += 1
                 alerts.append(
                     f"🔪 长句碎片 {t[0]} {d}ms（整句 {sent_key.get(t[0], '?')} 切成 {n} 段，"
-                    f"此段 <{MIN_FRAG_MS}ms）: {t[3]} —— 回报 Agent 裁决（合并 / 调整切分点 / 接受）"
+                    f"此段 <{MIN_FRAG_MS}ms, r03 {loc_s}）: {t[3]} —— 回报 Agent 裁决（合并 / 调整切分点 / 接受）"
                 )
             else:
-                alerts.append(f"⏱️ 短句单元 {t[0]} {d}ms: {t[3]}（独立短句，人工复核可接受性）")
+                alerts.append(f"⏱️ 短句单元 {t[0]} {d}ms（r03 {loc_s}）: {t[3]}（独立短句，人工复核可接受性）")
 
     # 单元内 gap > 5s（锚定 cue 范围内相邻 cue 间隔）
     for a in anchored:
@@ -78,7 +85,9 @@ def build_alerts(alerts, timeline, anchored, cues):
     for t in timeline:
         w = text_width(t[3])
         if w > 22:
-            alerts.append(f"📏 行宽 {w:.1f}（>22 软预警）{t[0]}: {t[3]}")
+            loc = unit_loc.get(t[0], ("", ""))
+            loc_s = f"{loc[0]}:行{loc[1]}" if loc[0] else ""
+            alerts.append(f"📏 行宽 {w:.1f}（>22 软预警）{t[0]}（r03 {loc_s}）: {t[3]}")
 
 
 def write_outputs(timeline, alerts, out_path, alert_path):
@@ -132,27 +141,31 @@ def check_duration(r04_path, r03_path, min_ms=MIN_FRAG_MS, cjk_speed=5.0,
             sent_key[u[0]] = s.key
 
     frags, shorts, mism = [], [], []
+    sent_src = {u[0]: (s.src, s.unit_lines.get(u[0], s.line))
+                for s in sentences for u in (s.units or [(s.key, s.en, s.zh)])}
     for c, u in zip(cues, units):
         d = c["end"] - c["start"]
         n = sent_count.get(u[0], 1)
+        loc = sent_src.get(u[0], ("", ""))
+        loc_s = f"{loc[0]}:行{loc[1]}" if loc[0] else ""
         if d < min_ms:
             (frags if n >= 2 else shorts).append(
-                (u[0], d, c["text"], n, sent_key.get(u[0], "?")))
+                (u[0], d, c["text"], n, sent_key.get(u[0], "?"), loc_s))
         need = cjk_reading_ms(c["text"], cjk_speed)
         if cjk_speed > 0 and need > 0 and d < need * mismatch_ratio \
                 and (need * mismatch_ratio - d) >= min_gap_ms:
-            mism.append((u[0], d, need, c["text"]))
+            mism.append((u[0], d, need, c["text"], loc_s))
 
     print(f"r04: {r04_path}  r03: {r03_path}  单元数: {len(units)}")
     print(f"阈值: 长句碎片 <{min_ms}ms；阅读失配 < 阅读所需×{mismatch_ratio} 且失配 ≥{min_gap_ms}ms（{cjk_speed} 字/秒）")
     print("-" * 60)
-    for uk, d, txt, n, sk in frags:
-        print(f"🔪 长句碎片 {uk} {d}ms（整句 {sk} 切成 {n} 段）: {txt}")
+    for uk, d, txt, n, sk, loc_s in frags:
+        print(f"🔪 长句碎片 {uk} {d}ms（整句 {sk} 切成 {n} 段, r03 {loc_s}）: {txt}")
         print(f"    → 裁决: 合并到相邻单元 / 调整 r03 切分点 / 接受（独立语义块但读得快）")
-    for uk, d, txt, n, sk in shorts:
-        print(f"⏱️ 独立短句 {uk} {d}ms: {txt}（单单元句，语义自足，复核可接受性）")
-    for uk, d, need, txt in mism:
-        print(f"📖 阅读失配 {uk} {d}ms < 阅读所需×{mismatch_ratio}（需 {need}ms）: {txt}")
+    for uk, d, txt, n, sk, loc_s in shorts:
+        print(f"⏱️ 独立短句 {uk} {d}ms: {txt}（单单元句，语义自足，复核可接受性, r03 {loc_s}）")
+    for uk, d, need, txt, loc_s in mism:
+        print(f"📖 阅读失配 {uk} {d}ms < 阅读所需×{mismatch_ratio}（需 {need}ms, r03 {loc_s}）: {txt}")
         print(f"    → 建议: 回填走阅读插值（--cjk-speed）或人工调切分点（倒装语序/中英时长差）")
     print("-" * 60)
     print(f"结果: 长句碎片 {len(frags)} / 独立短句 {len(shorts)} / 阅读失配 {len(mism)}")
