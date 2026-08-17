@@ -49,7 +49,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
      - 步骤 2 确定块大小 + 分块 → `chunks/`（从 01 `--gaps` 分块：空隙点强制切块，块数下限 = 空隙点数+1）
      - 步骤 3 归一化 → `r01_normalized/chunk_<k>.txt`（脚本一次性全目录合并折行）；补标点 → `r01_results/chunk_<k>.txt`（每块独立）
      - 步骤 4 翻译（含术语全量核对）→ `r02_results/chunk_<k>.txt`（每块独立）
-     - 步骤 5 分句 → `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号）——**回填输入 = 目录直读**（步骤 6 `parse_r03_dir` 按块序解析 + 全局重编号，零拼接）；`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
+     - 步骤 5 归一化 → `r02_normalized/chunk_<k>.txt`（r02 复制折行副本）；分句 → `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号）——**回填输入 = 目录直读**（步骤 6 `parse_r03_dir` 按块序解析 + 全局重编号，零拼接）；`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
      - 步骤 6/7 回填 + 组装 → `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
 
 > **产物格式/分隔符/标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式；块间分隔一律空行、标记文本仅限脚本生成的 `【强制断句】`。
@@ -66,9 +66,10 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 6. 有 `reflow/r01_normalized/`（归一化输入）→ 步骤 3 逐块补标点续
 7. 有 `reflow/r01_results/`（逐块中间产物）→ 步骤 3 校验（从补标点校验续）
 8. 有 `reflow/r02_results/`（逐块中间产物）→ 步骤 4 第 1 步（从逐块翻译续）
-9. 有 `reflow/r03_results/`（逐块中间产物）→ 步骤 5 第 1 步（从分句续；回填直读 r03_results/，无需拼接）
-10. 有 `r03_plan.md`（仅审核/审计产物，非回填输入）→ 不设独立恢复点，回填以 r03_results/ 为准
-11. 有 `r04_draft.srt` → 步骤 6 开头（重新回填）
+9. 有 `reflow/r02_normalized/`（r02 折行副本）→ 步骤 5 归一化（从复制折行续）
+10. 有 `reflow/r03_results/`（逐块中间产物）→ 步骤 5 第 1 步（从分句续；回填直读 r03_results/，无需拼接）
+11. 有 `r03_plan.md`（仅审核/审计产物，非回填输入）→ 不设独立恢复点，回填以 r03_results/ 为准
+12. 有 `r04_draft.srt` → 步骤 6 开头（重新回填）
 
 > 各阶段结束**立即落盘**（conventions「断点恢复」）；中间产物是工作底稿，**禁止自动删除**（AGENTS.md #6）。
 
@@ -231,17 +232,19 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 2. **跨步骤兜底**：步骤 5 check-r03 ④ ZH 忠实（拦截译文改写）→ 阶段二½ 人工对照检查
 
 
-#### 步骤 5：分句 + 语义对应（翻译后）
+#### 步骤 5：分句 + 语义对应
 
 ##### 归一化
 
-1. 无
+1. **r02 译文折行副本（复制 + 长度限制）**：`python scripts/srt_reflow_normalize.py reflow/r02_results/ -o reflow/r02_normalized/`
+  - 把 r02 译文**复制为折行副本**（≤1000 字符/行，中文按字符折；显示性换行非语义分行），**不改 r02 原稿**（ZH 忠实/术语核对基准不变）；一次性全目录跑完
+  - 产物：`reflow/r02_normalized/chunk_<k>.txt`——分句 subagent 读此副本，避免超长单行（r02 原稿可能未折行）
 
 ##### 处理（派发分句 subagent）
 
 1. **派发**：每块派一个 subagent
   - **prompt 组装（任务文件）**：`reflow-redstone/task-split`（同一套 01 分块骨架）
-  - **输入（材料配对——分句语义对应是需全貌的跨切面决策）**：每块输入 = `r01_results/chunk_<k>.txt` + `r02_results/chunk_<k>.txt` 对照 + 前后块 CONTEXT（**数据文件引用**）
+  - **输入（材料配对——分句语义对应是需全貌的跨切面决策）**：每块输入 = `r01_results/chunk_<k>.txt` + `r02_normalized/chunk_<k>.txt`（r02 折行副本）对照 + 前后块 CONTEXT（**数据文件引用**）
   - **分句/语义对应规则**：原文分句 / 译文判长短切分 / 1:1·1:n·n:1 对应 / 忠实转写铁律 / 拆合标注 / 游离停顿词——见 `task-split.md`；r03 产物结构（`## S<n>` / EN·ZH·关系 / 子单元）见 [PRODUCT_FORMATS#r03_plan.md](../../../docs/PRODUCT_FORMATS.md)
   - **产物**：`r03_results/chunk_<k>.txt`（**S 号块内从 1 连续编号**，见 task-split 规则 6）→ **`r03_results/` 即回填输入**（步骤 6 目录直读，脚本自动全局重编号，**无需拼接**）；`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
 2. **注意事项**：每块内保持整句/单元的语义完整性（不跨块拆句；空隙为硬边界，整句不跨空隙块）
