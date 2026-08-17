@@ -37,7 +37,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 - `<工作目录>/../_output/<文件名>.reflow.srt`，默认双语 en-zh（英文行 = 分句原文，中文行 = 对应译文），时间轴 = 以原轴为基础局部合并/切分
 - 输出变体（`bilingual` 默认 / `zh-only` / `annotated`）见 [redstone-conventions#语言顺序与输出变体](../redstone-conventions/SKILL.md#语言顺序与输出变体)
 
-### 中间产物与断点恢复（按产物路由）
+### 中间产物与断点恢复
 
 **全流程各阶段（子 skill）的输入与产物**：
 
@@ -52,7 +52,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
      - 步骤 5 归一化 → `r02_normalized/chunk_<k>.txt`（r02 复制折行副本）；分句 → `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号）——**回填输入 = 目录直读**（步骤 6 `parse_r03_dir` 按块序解析 + 全局重编号，零拼接）；`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
      - 步骤 6/7 回填 + 组装 → `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
 
-> **产物格式/分隔符/标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式；块间分隔一律空行、标记文本仅限脚本生成的 `【强制断句】`。
+> **产物格式/分隔符/标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式；块间分隔一律空行、手写标记仅限跨块句补全的 `【承接句】`/`【延伸句】`（`【强制断句】` 为空隙标记、非产物文本，经复核注入补标点先验知识）。
 3. **阶段二½ 人工审核**（`redstone-review`）——输入 `r03` + `r04` → 用户确认（无新落盘）
 4. **阶段三 数据源总结**（`redstone-finalize`）——`.github/experience/` 追加
 
@@ -73,7 +73,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 > 各阶段结束**立即落盘**（conventions「断点恢复」）；中间产物是工作底稿，**禁止自动删除**（AGENTS.md #6）。
 
-## 依赖（扩展 Skill 地图）
+## 依赖
 
 | 话题 | 权威 Skill |
 |------|-----------|
@@ -91,16 +91,10 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 见 [redstone-conventions](../redstone-conventions/SKILL.md) + [AGENTS.md](../../../AGENTS.md)（项目原则）。
 
-### 特有规则（空隙与阈值约定，gap 判定统一参数）
+### 特有规则
 
-- **长停顿阈值 5s**：三处引用同一值——① 步骤 4 极长间隔分语义段；② 步骤 6 单元内部空隙告警；③ 游离停顿词归属（大空隙 > 5s 前最后 cue **时间层归前句句尾**——r01 复核时文本归前句、r03 分句时仍独立成单元覆盖自身 cue，两层不冲突，见 task-split 规则 5）
-- **剪辑跳转阈值 10s**：相邻单元边界间隔 > 10s 视为剪辑跳转点，输出清单人工确认
-- **超长单元阈值 15s 或 > 2×中位时长**（时长分布报告双向告警）
-- **单句时长 ≥ 1s（长句碎片）**：单条字幕时长通常不能短于一秒；同一整句拆出的 <1s 单元 =「长句碎片」，脚本检测（`r04_alerts.md` 的 🔪 与 `check-duration`）**回报 Agent 裁决**（合并 / 调整 r03 切分点 / 接受）；独立短句（语义自足，如「好吗。」）可接受、仅复核
-- **中文阅读速度 5 字/秒（阅读插值）**：倒装语序 / 中英时长差异大时**不能仅匹配英文 cue**——`reflow --cjk-speed 5` 按中文阅读所需时长比例在整句区间内重分配（切分点就近吸附真实 cue 边界，无则 100ms 预测点）；触发条件 = 长句碎片（<1s）或显著失配（< 阅读所需×0.7 且失配 ≥300ms）
-- **时间边界规则**：允许预测点（100ms 取整、不入原边界集）——与 translate（边界 ⊆ 原集合）不同；阅读插值触发的整句会引入必要预测点（倒装语义必须，见步骤 6）
-- **回填严格脚本化**：只做断句 + 时间运算，禁止任何二次翻译/改写（译文在 r02 定稿后不改）；断句暴露译文问题 → 回 r02/r03 改，不在回填阶段擅自改写
 - **输出门禁**：`_output/` 只收阶段二½ 用户确认后的正式稿（见 `redstone-review`）
+- **定点修复（校验打回统一处置）**：硬违规先定点修正（`task-fix` 整批派发，见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正surgical-fix校验打回先小规模修不整块重派)）；多轮尝试或违规严重、定点修不了才打回「处理」重跑（重跑前先 mv 清理已存在结果）；勿在主会话进行全量校对
 
 ## 固定工作流指令
 
@@ -108,13 +102,13 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ---
 
-### 阶段〇 / 阶段一：领域预判 + 术语补齐（复用）
+### 阶段〇 / 阶段一：领域预判 + 术语补齐
 
 按 [redstone-preprocess](../redstone-preprocess/SKILL.md) 原样执行（阶段〇 预判 / §1.1 扫描 → `01_subtitle_asr_fixed.srt` / §1.2 补齐 / §1.3 确认 → `02_terms.md` / §1.4 入库）。`--cue-exact` 校验保留（保护原轴骨架）。**阶段门禁：`01`/`02` 交用户确认后才进入阶段二，不得擅自跨阶段**（阶段间确认是本工作流的流程控制）。
 
 ---
 
-### 阶段二：语义回填（核心流程）
+### 阶段二：语义回填
 
 > 语义工作（合并补标点 / 翻译 / 分句对应 / 回填判断）由 Agent 承担；确定性时间运算由 `scripts/srt_reflow*.py` 承担（见各步骤）。
 
@@ -131,7 +125,12 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 ##### 处理
 
 1. **空隙探测（先验证 gap 准确性）**：`python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md`——空隙点清单（长停顿 >5s / 剪辑跳转 >10s）即分块组边界依据；**已有 r00_gaps.md 则复用，勿重复探测**；探测结果人工确认后作为 `--gaps` 分块的空隙点集
-2. **硬性断句输入**：`python scripts/srt_reflow_breaks.py <01> -o reflow/r01_breaks.md`——断句点清单（含 Agent 复核字段）+ 注入【强制断句】标记的补标点输入文本
+  - **统一阈值参数（全流程引用同一值）**：
+    - 长停顿 **5s** / 剪辑跳转 **10s**：
+      - ① 步骤 2 `--gaps` 分块空隙组（空隙点 = 长停顿 >5s / 剪辑跳转 >10s）；
+      - ② 步骤 6 单元内部空隙告警（`gap > 5s` / 跳转 `> 10s`）；
+      - ③ 游离停顿词归属（大空隙 > 5s 前最后 cue **时间层归前句句尾**——r01 复核时文本归前句、r03 分句时仍独立成单元覆盖自身 cue，两层不冲突，见 task-split 规则 5）
+2. **硬性断句输入**：`python scripts/srt_reflow_breaks.py <01> -o reflow/r01_breaks.md`——断句点清单（含 Agent 复核字段），供复核回填 + 补标点先验知识注入（`【强制断句】` 空隙标记，见 task-punctuate）
 
 ##### 校验
 
@@ -144,7 +143,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 输入： `01_subtitle_asr_fixed.srt` + `r00_gaps.md`（空隙点集）
 
-##### 归一化（无——输入已就绪）
+##### 归一化
 
 1. 无——直接使用 `01_subtitle_asr_fixed.srt` 字幕
 
@@ -188,8 +187,6 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 **任务**：主会话统一跑，所有块 subagent 全部完成后一次执行；三项校验逐条跑，问题统一走「定点修复」。
 
 **告警定位约定**（reflow 校验脚本通用）：问题项统一带「文件:行号 + 行上下文」（如 `chunk_008.txt:行28`），Agent 按行号直接 read_file 定位核对/编辑；通过项只汇总计数不逐项（`--verbose` 展开）。
-
-**定点修复（统一）**：硬违规先定点修正（使用 `task-fix` 整批派发修正，见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正surgical-fix校验打回先小规模修不整块重派)）；多轮尝试或违规严重，定点修不了才打回「处理」重跑（重跑前先 mv 清理已存在结果）；勿在主会话进行全量校对。
 
 1. **硬性校验**（任务：逐空隙点查句末标点 `.?!`）
   - 脚本：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md`
@@ -240,7 +237,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
   - 把 r02 译文**复制为折行副本**（≤1000 字符/行，中文按字符折；显示性换行非语义分行），**不改 r02 原稿**（ZH 忠实/术语核对基准不变）；一次性全目录跑完
   - 产物：`reflow/r02_normalized/chunk_<k>.txt`——分句 subagent 读此副本，避免超长单行（r02 原稿可能未折行）
 
-##### 处理（派发分句 subagent）
+##### 处理
 
 1. **派发**：每块派一个 subagent
   - **prompt 组装（任务文件）**：`reflow-redstone/task-split`（同一套 01 分块骨架）
@@ -249,7 +246,9 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
   - **产物**：`r03_results/chunk_<k>.txt`（**S 号块内从 1 连续编号**，见 task-split 规则 6）→ **`r03_results/` 即回填输入**（步骤 6 目录直读，脚本自动全局重编号，**无需拼接**）；`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
 2. **注意事项**：每块内保持整句/单元的语义完整性（不跨块拆句；空隙为硬边界，整句不跨空隙块）
 
-##### 校验（写时即合规预检，必跑，通过才进步骤 6）
+##### 校验
+
+**本步是回填前的写时预检，不可跳过**：`check-r03` 通过才进步骤 6（回填）——把"步骤 6 跑完才发现"提前到分句阶段拦截。
 
 1. **r03 统一校验**：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/ [--cjk-speed 5] [--no-frag] [--no-mismatch]`——逐块六查（锚定缩到块内 cue 区间、ZH 忠实缩到块内 r02；主会话统一跑，勿交 subagent——与 subagent-dispatch 纪律母版 #9「不运行全局校验」同指一次运行）
   - ① **整句锚定唯一性**（缩到块内 cue 区间）
@@ -262,31 +261,34 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
   - **处置**：
     1. 硬违规（①②③④）：**先统一派发定点修正**，错误太大，定点修不了才打回改写后重跑
     2. 存疑预警（⑤⑥⑦）：Agent 智能判断——⑤⑥ 独立开关 `--no-frag` / `--no-mismatch`（预警过多、效果不佳时可单独关一项降噪）
-  - **目的**：把"步骤 6 跑完才发现"变成"写时即合规"（事后返工主因，见反馈）
 
 
-#### 步骤 6：回填（合并 / 切分 / 预测 / 阅读插值；脚本化）
+#### 步骤 6：回填
 
-##### 处理（脚本回填 + agent 时间分配）
+##### 处理
 
-1. **运行回填脚本（脚本任务）**：`python scripts/srt_reflow.py reflow reflow/r03_results/ <01> -o reflow/r04_draft.srt [--anchored reflow/r03_anchored.jsonl] [--snap-ms 300] [--cjk-speed 5]`
+**时间边界规则（reflow 特有）**：允许预测点（100ms 取整、不入原边界集）——与 translate（边界 ⊆ 原集合）不同；阅读插值触发的整句会引入必要预测点（倒装语义必须）。
+
+1. **运行回填脚本（脚本任务，唯一动作）**：`python scripts/srt_reflow.py reflow reflow/r03_results/ <01> -o reflow/r04_draft.srt [--anchored reflow/r03_anchored.jsonl] [--snap-ms 300] [--cjk-speed 5]`
   - 输入：r03 传 **`r03_results/` 目录**（或 r03_plan.md，兼容）；目录模式按块序解析 + **S 号全局重编号**，无需先拼全文（LLM 不读全量、不撞窗口）
-  - 处理方式（脚本内）：
+  - 处理方式（**脚本内一次性完成，主代理零读取**）：整句锚定 + 单元级时间分配 + 阅读插值——
     - **整句锚定**：脚本以 r03 整句文本在 01 全文唯一性搜索 → 锚定时间范围 `[start, end]`
-    - **锚定明细**：同步落盘 `r03_anchored.jsonl`（JSONL，每行一整句）——逐整句锚定状态（unique / non-unique / failed）、分配方式（`alloc`: cue/reading/ratio）、每单元 cue 命中情况（hit + 起止 cue 号）；可逐行审查哪些句非唯一/失败、哪些单元走了字数兜底（hit=false）、哪些走了阅读插值（alloc=reading）
+    - **单元级 cue 锚定**：组内各单元文本在整句区间内顺序搜索，直接取自身 cue 区间；首末单元裁剪到整句边界；分割点**就近吸附真实 cue 边界**（非"空隙优先"吸附空隙后沿）
+    - **共享 cue 中间断句**：真实 cue 内部需估算切分时按两侧字符比例（受控例外，人工抽查）
+    - **字数比例降级兜底**：文本未命中时按字数比例 + 就近吸附；仍无边界则 **100ms 取整预测点**（不入原边界集）
+    - **阅读感知插值（倒装/中英时长差）**：单元 cue 锚定后若任一单元「时长 <1s（长句碎片）」或「显著失配（< 阅读所需×0.7 且失配 ≥300ms）」——触发该整句按中文阅读速度（`--cjk-speed 5`）在整句区间内重分配并就近吸附真实 cue 边界（无则 100ms 预测点）；**不机械匹配英文 cue**（倒装语序下英文 cue 长短与中文阅读量不匹配）
+    - **锚定明细**：同步落盘 `r03_anchored.jsonl`（JSONL，每行一整句）——逐整句锚定状态（unique / non-unique / failed）、分配方式（`alloc`: cue/reading/ratio）、每单元 cue 命中情况（hit + 起止 cue 号）
   - 产物：`r04_draft.srt`（预览，止步 `_work/`）
-2. **agent 处理任务（脚本运行后）**：单元级时间分配 + 阅读插值
-  - **单元级 cue 锚定**：组内各单元文本在整句区间内顺序搜索，直接取自身 cue 区间；首末单元裁剪到整句边界；分割点**就近吸附真实 cue 边界**（非"空隙优先"吸附空隙后沿）
-  - **共享 cue 中间断句**：真实 cue 内部需估算切分时按两侧字符比例（受控例外，人工抽查）
-  - **字数比例降级兜底**：文本未命中时按字数比例 + 就近吸附；仍无边界则 **100ms 取整预测点**（不入原边界集）
-  - **阅读感知插值（倒装/中英时长差）**：单元 cue 锚定后若任一单元「时长 <1s（长句碎片）」或「显著失配（< 阅读所需×0.7 且失配 ≥300ms）」——触发该整句按中文阅读速度（`--cjk-speed 5`）在整句区间内重分配并就近吸附真实 cue 边界（无则 100ms 预测点）；**不机械匹配英文 cue**（倒装语序下英文 cue 长短与中文阅读量不匹配）
+2. **agent 复核（脚本运行后，按需，不读全量）**：主代理**不参与时间分配**（脚本已全自动完成，无需读 r03_results/ 或 01 全文）；只按需审查——
+  - `r03_anchored.jsonl`：**按行 grep** 关注锚定状态（non-unique / failed）、分配方式（alloc）、单元命中（hit=false）——整读约 27k token，见 conventions「大 JSONL 按行 grep」
+  - `r04_alerts.md` 告警处置 + `check-duration` 长句碎片复核（见下方「校验」段）
 
-##### 校验（告警处置 + 脚本校验）
+##### 校验
 
 1. **告警**：输出 `r04_alerts.md`——
-  - 时长分布（极短 <300ms / 超长 >15s 或 >2×中位）
-  - 🔪 长句碎片（同一整句拆出的 <1s 单元，**回报 Agent 裁决**）
-  - ⏱️ 独立短句（<1s 语义自足，仅复核）
+  - 时长分布（极短 <300ms / 超长 >15s 或 >2×中位时长，双向告警）
+  - 🔪 长句碎片（单条字幕时长须 ≥1s；同一整句拆出的 <1s 单元 =「长句碎片」，**回报 Agent 裁决**：合并 / 调整 r03 切分点 / 接受）
+  - ⏱️ 独立短句（<1s 语义自足，如「好吗。」）可接受、仅复核
   - 📖 阅读插值（触发整句清单）
   - 单元内 gap > 5s、剪辑跳转 > 10s、预测点清单、行宽 > 22
 2. **动作规则**：
@@ -295,18 +297,18 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
   - 时长超限不单独触发
   - [Music] 等非语音 cue 跳过
   - n:1 合句超长找"语义分割 + 有 cue"处切
-3. **预览止步 `_work/`**，未经确认禁止写入 `_output/`；严格脚本化禁二次翻译
+3. **预览止步 `_work/`**，未经确认禁止写入 `_output/`；**回填严格脚本化**：只做断句 + 时间运算，禁止任何二次翻译/改写（译文在 r02 定稿后不改）；断句暴露译文问题 → 回 r02/r03 改，不在回填阶段擅自改写
 4. **校验**：`srt_check_segments.py <输出> --orig <01>`（不启用 cue-exact，cue 数已变）——时间不重叠、语义完整、区间不逆
 5. **长句碎片复核（必跑）**：`python scripts/srt_reflow.py check-duration reflow/r04_draft.srt reflow/r03_results/`——逐条长句碎片（<1s 拆句单元）**回报 Agent 裁决**（合并 / 调整 r03 切分点 / 接受）；插值已修复（≥1s）的碎片不在此列
 
 
-#### 步骤 7：组装输出（双语）
+#### 步骤 7：组装输出
 
 ##### 归一化——预留
 
 1. 无——`r04_draft.srt` + `r03_results/` 已就绪，直接组装
 
-##### 处理（脚本组装双语）
+##### 处理
 
 1. **组装**：`python scripts/srt_reflow.py attach-en reflow/r04_draft.srt reflow/r03_results/ -o reflow/r04_bilingual.srt`（r03 目录或文件均可）
   - 中文行 = 对应译文单元；英文行 = r03 的**英文片段**（拆句子单元取各自互斥片段，**不得复用整句原文**）
@@ -319,10 +321,10 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ---
 
-### 阶段二½：人工审核循环（复用）
+### 阶段二½：人工审核循环
 
 按 [redstone-review](../redstone-review/SKILL.md) 执行（循环机制 + 输出门禁）。**审核对象：回填方案 + 最终 SRT**（r03 = `r03_results/` 目录直读，或 `join-r03` 生成的 `r03_plan.md` 完整稿 + `r04_draft.srt`），重点核对语义对应是否判对（拆/合关系、切分位置）。**审核中发现 AI 味 / 翻译腔 → 回 r02 改整句、r03 同步**（受忠实铁律约束，不得在 r04 单侧改写），红石术语译名不受影响。
 
-### 阶段三：数据源效果总结（复用）
+### 阶段三：数据源效果总结
 
 按 [redstone-finalize](../redstone-finalize/SKILL.md) 原样执行（coverage_log 流水 + source_experience 经验提炼）。

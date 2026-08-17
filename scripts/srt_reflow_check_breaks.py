@@ -160,7 +160,7 @@ def main_whole(args, cues, breaks):
             print(f"   {os.path.basename(args.r01)} 行 {lb}｜{fb}")
             print(f"   前 cue c{ia}: `{a_text}`")
             print(f"   后 cue c{ib}: `{b_text}`")
-            print(f"   → 默认处置: 打回步骤 1，用 r01_breaks.md 的补标点输入文本重跑（空隙标记处强制断句）")
+            print(f"   → 默认处置: 打回步骤 1，复核 r01_breaks.md 断句点清单后按空隙标记（【强制断句】先验知识注入补标点 subagent）重跑")
             print(f"   受控例外: 若你判定该空隙为语义停顿（非剪辑跳转、语义本就连贯），可放行——")
             print(f"   但须在 r03 分句对应时确保不跨空隙成单元，并在 r04 告警对照中记录（与 r00_gaps.md 对照）")
     print("-" * 60)

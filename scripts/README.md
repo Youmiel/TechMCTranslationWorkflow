@@ -36,7 +36,7 @@
 |------|------|------|
 | `srt_reflow.py` | 语义回填确定性时间运算：`reflow`（r03 方案 + 01 → r04 时间轴 + `r03_anchored.jsonl` 锚定明细（JSONL 每行一整句）；整句锚定 + 单元级 cue 锚定 + 分割点就近吸附真实边界 + 100ms 预测点）、`attach-en`（双语组装，英文行 = r03 互斥英文片段）、`check-r03`（r03 写时即合规预检：锚定唯一性 / 拆句互斥 / 行宽 ≤26（软 22 硬 26） / ZH 忠实，违规退出码 1 打回） | `python scripts/srt_reflow.py reflow <r03> <01> [-o r04_draft.srt] [--anchored r03_anchored.jsonl]` / `... attach-en <r04> <r03> [-o r04_bilingual.srt]` / `... check-r03 <r03_results/> <01> <r02_results/> --chunks <chunks/>` |
 | `srt_reflow_gap_scan.py` | 空隙探测（长停顿 >5s / 剪辑跳转 >10s）→ `r00_gaps.md` | `python scripts/srt_reflow_gap_scan.py <01> [-o reflow/r00_gaps.md]` |
-| `srt_reflow_breaks.py` | r01 硬性断句输入：断句点清单（含 Agent 复核字段）+ 注入【强制断句】标记的补标点输入文本 → `r01_breaks.md` | `python scripts/srt_reflow_breaks.py <01> [-o reflow/r01_breaks.md]` |
+| `srt_reflow_breaks.py` | r01 硬性断句输入：断句点清单（含 Agent 复核字段）→ `r01_breaks.md` | `python scripts/srt_reflow_breaks.py <01> [-o reflow/r01_breaks.md]` |
 | `srt_reflow_check_breaks.py` | r01 硬性断句校验：逐空隙点查句末标点 `.?!`；违规退出码 1（打回信号，受控例外 Agent 裁决）；块级模式（`--chunks <chunks目录> --gaps r00_gaps.md`，复用已验证空隙点清单；N=1 为单块骨架） | `python scripts/srt_reflow_check_breaks.py <01> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md` |
 | `srt_reflow_check_words.py` | r01 措辞校验：词序列与 01 一致（不得改动措辞）；块级模式（`--chunks <chunks目录>`，逐块对比块↔cue 区间词序列；N=1 为单块骨架） | `python scripts/srt_reflow_check_words.py <01> <r01_results/> --chunks <chunks/>` |
 | `srt_reflow_normalize.py` | 块目录归一化（两种输入形态自动检测）：chunks 模式（步骤 3，`## 分区` cue 文本合并 + 折行 → `r01_normalized/`）、纯文本模式（步骤 5，r02 译文**复制 + 折行** → `r02_normalized/`）；折行 ≤1000 字符/行（英文不拆词、中文按字符），一次跑完整个目录，命令只运行一次 | `python scripts/srt_reflow_normalize.py <chunks/> -o reflow/r01_normalized/` / `<r02_results/> -o reflow/r02_normalized/` |
