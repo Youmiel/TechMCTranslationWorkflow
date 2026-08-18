@@ -4,8 +4,9 @@
 回填工作流（reflow-redstone）两类归一化共用本脚本：
 - **chunks 模式（步骤 3）**：`chunks/`（cue 结构）→ `r01_normalized/`——把每块 `## BEFORE/OWNED/AFTER`
   分区内 cue 文本预先合并成连续文本（subagent 无需自行拼接），供补标点 subagent 输入
-- **纯文本模式（步骤 5）**：`r02_results/`（整段译文）→ `r02_normalized/`——**复制 + 长度限制**：
-  把译文复制为折行副本（不改 r02 原稿——ZH 忠实/术语核对基准不变），供分句 subagent 输入避免超长单行
+- **纯文本模式（步骤 5）**：~~`r02_results/`（整段译文）→ `r02_normalized/`~~ **已停用（2026-08-18）**——
+  r02 折行副本由预分句标号取代（`srt_reflow_presplit.py` → `r03_normalized_2/`：脚本直读 r02_results 原稿，
+  预分句输出已逐句折行，折行副本不再需要）；本模式保留作通用工具，reflow 流程不再调用
 
 自动检测：块文件首行 `# CHUNK` → chunks 模式（解析分区、合并 cue、保留分区结构）；
 无块头 → 纯文本模式（整段 wrap_text 折行，内容不变仅限制单行长度）。
@@ -18,7 +19,7 @@
 
 用法（命令根 = Project_Main/）：
   python scripts/srt_reflow_normalize.py <chunks_dir> -o reflow/r01_normalized/    # 步骤 3（合并）
-  python scripts/srt_reflow_normalize.py <r02_results_dir> -o reflow/r02_normalized/  # 步骤 5（复制+折行）
+  python scripts/srt_reflow_normalize.py <r02_results_dir> -o reflow/r02_normalized/  # （已停用：预分句取代，见 srt_reflow_presplit.py）
 退出码：0 = 全部块归一化完成；1 = 有块解析失败。
 """
 import argparse
@@ -73,7 +74,7 @@ def parse_plain(path):
 def main():
     ap = argparse.ArgumentParser(description="块目录归一化：chunks 模式（合并 cue + 折行）或纯文本模式（复制 + 折行），输出 ≤1000 字符/行")
     ap.add_argument("src", help="输入目录：chunks/（步骤 3 合并）或 r02_results/（步骤 5 复制+折行）")
-    ap.add_argument("-o", "--out", required=True, help="输出目录（如 reflow/r01_normalized/ 或 reflow/r02_normalized/）")
+    ap.add_argument("-o", "--out", required=True, help="输出目录（如 reflow/r01_normalized/；纯文本复制折行模式已停用，见 docstring）")
     ap.add_argument("--verbose", action="store_true", help="展开打印每块细节")
     args = ap.parse_args()
 
