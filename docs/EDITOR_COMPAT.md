@@ -32,7 +32,7 @@
 
 ### 模型配置（execution_model，单一事实源）
 
-`configs/subagent_model.yaml` 的 `execution_model` 字段 = 执行型 subagent（reflow-worker 类）运行的 **no-think 模型名**。**因人而异**，按你当前编辑器里可用的模型名填写（VS Code：模型选择器中的名称；Claude Code：模型标识；等）。**所有 skill / 文档不硬编码模型名**，派发时从该文件读取：
+`configs/subagent_model.yaml` 的 `execution_model` 字段 = 执行型 subagent（reflow-worker 类）运行的 **no-think 模型名**。**因人而异**，按你当前编辑器里可用的模型名填写（VS Code：模型选择器中的名称；Claude Code：模型标识；等）。**所有 skill / 文档不硬编码模型名**——**agent 派发 reflow-worker 时必须读取本文件，把 `execution_model` 的值「照原样」填入 subagent 派发参数**（不得改动 / 推断 / 凭记忆臆造；文件缺失或未配置 → 停下请使用者填写），见「各编辑器派发 subagent 命令表」。
 
 ```yaml
 # 执行型 subagent 运行的 no-think 模型名——因人而异，按你当前编辑器可用的模型名填写
@@ -52,7 +52,7 @@ execution_model: "<你的 no-think 模型名>"
 | **Gemini CLI** | subagent 工具 | `.gemini/agents/*.md` | agent 定义内模型字段 |
 | **其它** | 以官方文档为准 | 以官方文档为准 | 以官方文档为准 |
 
-> 派发时若编辑器支持**调用时指定模型**，优先传 `configs/subagent_model.yaml` 的 `execution_model`；否则在 agent 定义 frontmatter 模型字段填入（见「agent 定义适配」模型行）。
+> **派发 reflow-worker 时（权威）**：agent **必须读取 `configs/subagent_model.yaml`**，把 `execution_model` 的值**「照原样」填入 subagent 派发参数**——「照原样」= **逐字复用配置文件中的值，不得改动 / 推断 / 凭记忆或上下文臆造模型名**；若编辑器支持**调用时指定模型**（如 `runSubagent` 的 `model` 参数）即传入该值，否则填入 agent frontmatter `model`（见「agent 定义适配」模型行）；文件缺失或未配置 → **停下请使用者填写 `execution_model`，不自行决定**。
 
 ## 约定文件机制（通用性说明）
 
@@ -69,7 +69,7 @@ execution_model: "<你的 no-think 模型名>"
 
 - **位置 / 格式**：`.github/agents/reflow-worker.agent.md`，GitHub Copilot `.agent.md` 格式（frontmatter `name` / `description` / `tools` / `user-invocable`；正文 = 系统提示词）
 - **能力**：系统提示词覆盖——从根源替代宿主通用提示词（「创造性思考 / 探索工作区」等），内联覆盖声明对抗系统层不可靠
-- **模型**：frontmatter **不写 `model`**（因人而异），统一读 `configs/subagent_model.yaml` 的 `execution_model`，派发时按编辑器方式传入；如需 agent 自带模型，个人自行在 frontmatter 填 `model`
+- **模型**：frontmatter **不写 `model`**（因人而异），统一读 `configs/subagent_model.yaml` 的 `execution_model` 并**照原样**填入派发参数（权威见「各编辑器派发 subagent 命令表」）；如需 agent 自带模型，个人自行在 frontmatter 填 `model`
 - **兜底**：纪律母版 #0 与其同源，派发时随 prompt 整体追加（编辑器无 agent 机制 / 未 adapt 时起效）
 - **迁移**：其它编辑器从该文件 adapt（见下方「agent 定义适配」）
 
