@@ -1,0 +1,5 @@
+# 执行型 subagent（reflow-worker 类任务）运行的 no-think 模型名。
+# 因人而异——按你当前编辑器里可用的模型名填写：
+#   VS Code：模型选择器中的名称；Claude Code：模型标识；其它：对应模型标识。
+# 脚本无法自动探测，见 docs/EDITOR_COMPAT.md「手动配置」「各编辑器派发 subagent 命令表」。
+execution_model: "Deepseek V4 Flash"

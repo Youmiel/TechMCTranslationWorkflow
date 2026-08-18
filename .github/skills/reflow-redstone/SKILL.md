@@ -112,7 +112,8 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 > 语义工作（合并补标点 / 翻译 / 分句对应 / 回填判断）由 Agent 承担；确定性时间运算由 `scripts/srt_reflow*.py` 承担（见各步骤）。
 
-> **派发边界**：本阶段补标点/翻译/分句**一律派 subagent**（每任务按骨架块数派发），无需报告策略——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。**派发载体 = `reflow-worker` 自定义 agent**（见 [subagent-dispatch#派发载体](../subagent-dispatch/SKILL.md#派发载体自定义-agent)）。
+> **派发边界**：本阶段补标点/翻译/分句**一律派 subagent**（每任务按骨架块数派发），无需报告策略——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
+> **执行型纪律与模型**：纪律母版 #0 内联执行型纪律；**派发入口 / 运行模型名不在 skill 硬编码**——见 [EDITOR_COMPAT#各编辑器派发 subagent 命令表](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml`）。
 
 > **行文结构**：本阶段各步骤按「1. 归一化 → 2. 处理 → 3. 校验」三段标题组织（无归一化环节的步骤标注「无」预留位）；步骤 1 空隙探测+硬性断句 / 步骤 2 定 N+分块 为前置步骤，与后续补标点、翻译、分句、回填、组装并列。
 
