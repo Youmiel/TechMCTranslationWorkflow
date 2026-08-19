@@ -1,21 +1,18 @@
 # -*- coding: utf-8 -*-
-"""srt_reflow 基础 I/O 与语言无关工具：时间解析/格式化/归一化/01 解析/全文拼接/视觉宽度。
+"""srt_reflow 基础 I/O 与语言无关工具：时间解析/格式化/归一化/01 解析/全文拼接。
 
 多语言扩展（短期已落地）：norm 按拉丁语系归一化（NFKD 去重音 é→e + 小写 + 去非字母数字撇号，
-覆盖 en/fr/de/es 等）；text_width 按 Unicode 块通用（全角=1.0 / 拉丁=0.5 / 数字=0.5 / 空格=0.5，
-含假名/谚文/扩展表意）。中期/长期扩展见 srt_reflow.py 顶部 docstring「多语言扩展」。
+覆盖 en/fr/de/es 等）；**text_width（视觉宽度）已上移至 srt_reflow_common**（Unicode 块通用，
+全角=1.0 / 拉丁=0.5 / 数字=0.5 / 空格=0.5，含假名/谚文/扩展表意），本模块 re-export 供
+check-r03 / reflow / presplit 机械化断句复用。中期/长期扩展见 srt_reflow.py 顶部 docstring「多语言扩展」。
 """
 import re
 import unicodedata
 from pathlib import Path
 
-from ..srt_reflow_common import parse_time, fmt, BRACKET_RE
+from ..srt_reflow_common import parse_time, fmt, BRACKET_RE, text_width
 
 LATIN_KEEP_RE = re.compile(r"[^a-z0-9']")
-# 全角块（宽 1.0）：CJK 统一表意 + 扩展 A/B + 假名 + 谚文 + 兼容表意 + 全角标点
-FULLWIDTH_RE = re.compile(r"[\u2e80-\u9fff\uac00-\ud7af\u3040-\u30ff\uf900-\ufaff\uff00-\uffef]")
-LATIN_RE = re.compile(r"[A-Za-z]")
-DIGIT_RE = re.compile(r"[0-9]")
 
 
 def norm(s):
@@ -65,26 +62,3 @@ def build_full(cues):
         mapping.extend([ci] * len(n))
         off += len(n)
     return "".join(full_chars), mapping, cue_offsets
-
-
-def text_width(s):
-    """视觉宽度（半角/全角标准，2026-08-11 修正：拉丁/数字由 1.5/1.0 改为 0.5，此前虚高把带英文行推成长句）：
-    全角=1.0 / 拉丁=0.5 / 数字=0.5 / 空格=0.5。
-
-    已按 Unicode 块通用化（含假名/谚文/扩展表意），不再只认 CJK——将来加书写系统
-    只需扩展 FULLWIDTH_RE 等判定，权重不改。被 check-r03 / reflow 行宽告警复用：
-    权重按真实显示（拉丁/数字为半角，≈0.5 汉字），改权重会改变阈值语义，需同步各引用处。
-    """
-    w = 0.0
-    for ch in s:
-        if FULLWIDTH_RE.match(ch):
-            w += 1.0
-        elif LATIN_RE.match(ch):
-            w += 0.5
-        elif DIGIT_RE.match(ch):
-            w += 0.5
-        elif ch == " ":
-            w += 0.5
-        else:
-            w += 1.0
-    return w
