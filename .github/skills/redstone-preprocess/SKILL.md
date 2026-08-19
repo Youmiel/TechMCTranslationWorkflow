@@ -11,7 +11,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 
 | 产物 | 时机 | 内容 | 恢复价值 |
 |------|------|------|----------|
-| `<工作目录>/01_subtitle_asr_fixed.srt` | §1.1 第一次遍历后 | ASR 修正 + 游离单词归位的英文字幕（保留原时间码、不增删 cue） | 避免重复 ASR 解码 |
+| `<工作目录>/01_subtitle_asr_fixed.srt` | §1.1 第一次遍历后（subagent 分块派发 + 合并） | ASR 修正 + 游离单词归位的英文字幕（保留原时间码、不增删 cue） | 避免重复 ASR 解码 |
 | `<工作目录>/02_terms.md` | §1.3 用户确认后 | 确认后的术语映射表（时间戳/原文/译名/来源/ASR 修正） | 翻译唯一译名依据，跳过整个阶段一 |
 
 > 产物结构/格式/标记约定（单一权威）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)；处理前先查对应节，勿现查代码猜格式。
@@ -38,31 +38,41 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 ## 阶段一：术语扫描与知识补齐
 
 ### 1.1 术语扫描
-> 机制见 [term-scan](../term-scan/SKILL.md)（权威，含术语识别块输出格式）、[use-glossary#四级查找](../use-glossary/SKILL.md#四级查找)；长视频分块见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)（通用机制）。
 
-> **派发边界**：术语识别**一律派 subagent**（每块一个，块数由骨架决定），无需报告策略——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
+> 机制见 [term-scan](../term-scan/SKILL.md)（权威：子任务拆法 + 任务文件导航；术语识别块输出格式在 `task-term-recognition.md`）、[use-glossary#四级查找](../use-glossary/SKILL.md#四级查找)；长视频分块见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)（通用机制）。
+
+> **派发边界**：第一次遍历（英文预整理）与术语识别**一律派 subagent**（每块一个，块数由骨架决定），无需报告策略——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。主会话只做：定 N（`context_estimate.py`）、分块（`text_chunk.py`）、渲染 prompt（`render_preprocess_prompt.py`）、派发、合并、校验、汇总。
 
 1. **加载领域知识**：加载阶段〇判定的分类术语文件（L2 按文件名、L1 全量），建立术语映射表
-2. **第一次遍历（英文侧轻量处理）** → 写 `01_subtitle_asr_fixed.srt`：
-   - ASR 修正（注入 asr_fixes + 领域术语集）+ 游离单词归位（见 [segment-subtitles#英文预整理](../segment-subtitles/SKILL.md#英文预整理游离单词归位)）
-   - **跨行合并成整句/合并时间戳是阶段二的重活，此处不做**（translate→两遍式断句；reflow→回填步骤 1 合并补标点）
+2. **第一次遍历（英文预整理，分块派 subagent）**，产出 `01_subtitle_asr_fixed.srt`：
+   - **定 N + 分块（派发必经第一步，勿整条读字幕）**：
+     1. `python scripts/context_estimate.py <原始ASR.srt> --no-amplification` 定 `--owned`
+     2. `python scripts/text_chunk.py <原始ASR.srt> --type srt --owned <N> --ctx <M> --out _en_chunks/`
+   - **派发**：
+     1. 渲染：`python scripts/render_preprocess_prompt.py task-en-preprocess --video <工作目录> --all --glossary <L1/L2 csv...>`（渲染脚本自动注入 asr_fixes 全局+局部 + 领域术语集；见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）
+     2. 逐块派 subagent：任务文件 = `term-scan/task-en-preprocess`，结果写 `_work/<视频名>/_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv`（ASR 修正清单）
+   - **合并**：`python scripts/srt_join_parts.py _en_results/ --out 01_subtitle_asr_fixed.srt --chunks _en_chunks/`（各块 SRT 片段按块序拼接 + 全局段号重排；cue 数 = OWNED cue 数强制校验）
    - **立即校验时间轴**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、保留原时间码、不增删 cue；时间轴错位立即回本步修正（否则一路传最终稿）
+   - **ASR 推测登记**：汇总各块 `.asr.tsv`（映射命中 `[ASR]` / 联想 `[ASR 推测]` / 未定 `[待审核]`），跨视频通用 → 全局表、视频专属 → 局部 `asr_fixes.md`
+   - **跨行合并成整句/合并时间戳是阶段二的重活，此处不做**（translate→两遍式断句；reflow→回填步骤 1 合并补标点）
 3. **机械查找**：`python scripts/glossary_lookup.py scan <01> --categories <L2 集合> --levels L1,L2 --out scan_terms.txt`，命中项无论像不像术语一律按登记译名处理
-4. **术语识别（派 subagent）**：每块派一个术语识别 subagent——prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装（任务文件 = `term-scan/task-term-recognition` + 纪律母版 + 知识卡 + 块数据），结果写 `_work/<视频名>/_term_results/chunk_<k>.txt`；N 由 `context_estimate.py --no-amplification` 定（**预测阈值，不使用放大倍数参数**；执行一律 subagent，见 conventions「长视频分块」）
+4. **术语识别（派 subagent）**：
+   1. **定 N**：`python scripts/context_estimate.py <01> --no-amplification`（**预测阈值，不使用放大倍数参数**）
+   2. **分块**：`python scripts/text_chunk.py <01> --type srt --owned <N> --ctx <M> --out _term_chunks/`
+   3. **渲染派发 prompt**：`python scripts/render_preprocess_prompt.py task-term-recognition --video <工作目录> --all --scan <scan_terms.txt>`（自动注入 scan 命中项按块过滤 + 领域术语集 + ASR 修正映射）
+   4. **逐块派 subagent**：任务文件 = `term-scan/task-term-recognition`，结果写 `_work/<视频名>/_term_results/chunk_<k>.txt`（执行一律 subagent，见 conventions「长视频分块」）
 5. **主会话汇总**：按 `term_en` 合并去重；`[ASR 推测]`/`[推断]`/`[待审核]` 行保留**首次时间戳**（格式 `HH:MM:SS`，取字幕时间码精确值）；L3 未命中进 §1.2
 6. **非预期命中记录**：scan 命中项/查词/知识卡若来自**未预判分类**的词汇表 → 记录该分类 + 命中词，阶段末回填 yaml `keywords`（见 [use-glossary#运行中反哺](../use-glossary/SKILL.md#运行中反哺非预期命中--回填-categories)）
 
-> 术语识别 subagent 的任务规则见 `term-scan/task-term-recognition`（现成任务文件；派发配方见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）。
+> subagent 任务规则见 `term-scan/task-en-preprocess`（第一次遍历）与 `term-scan/task-term-recognition`（术语识别）（现成任务文件；prompt 由 `scripts/render_preprocess_prompt.py` 渲染，派发配方见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）。
 
-### 1.2 集中补齐（翻译前一次性完成所有网络请求）
-> 缓存命中判定、`fidelity` 回源、降级链、请求频率、保真阶梯、缓存写入见 [wiki-tools](../wiki-tools/SKILL.md)（权威）；数据源选择参考 `docs/SOURCE_COVERAGE.md`。
+### 1.2 集中补齐（翻译前一次性完成所有网络请求，查证 agent 派发）
+> 机制（缓存判定/fidelity/降级链/请求纪律/缓存写入）见 [wiki-tools](../wiki-tools/SKILL.md)（权威）；数据源选择参考 `docs/SOURCE_COVERAGE.md`。**查证由 `term-researcher`（研究型 agent）单次派发**——主会话只做：汇总待查列表、派发（任务文件即 prompt，双引用）、读查证结果、更新映射。**主会话不读 wiki 页面全文**（页面只进查证 agent 一次性上下文，返回每词一行压缩总结——token 纪律，见 [subagent-dispatch#主会话读写最小化](../subagent-dispatch/SKILL.md#主会话读写最小化token-纪律)）。
 
-1. "待查列表"去重，按数据源分组
-2. **查缓存（第一道门）**：中文译名/候选命中 `.cache/wiki/<中文规范标题>.md` → 直接读、不再联网；缺失时 grep_search 搜正文兜底
-3. 未命中判断数据源：Wiki 擅长类型（基础定义/合成配方）→ `mc-wiki-fetch-mcp` 的 `get_page`，不可用按可靠度降级（fetch_wiki.py → minecraft-wiki-mcp）；社区类型（高端技术/经验）→ 查 `indexes/repos/` 索引
-4. 从返回内容/社区资料提取译名，补内存映射表
-5. **上下文推断（降级）**：回原文搜首次出现前后 3-5 句，能推断则标 `[推断：原词 — 基于视频上下文]`；不足则给**候选译名 + 依据**标 `[待审核]`
-6. 仍无法确定 → 最终标 `[待审核：原词 → 候选译名（依据）]`——**不得只留原文**，必须带候选
+1. **主会话写待查列表**（§1.1 第 5 步合并去重后）：`_work/<视频名>/term_pending.md`，每行 `term_en | 首次时间戳 | 已给候选/依据`（L3 未命中 + 决策行）
+2. **派发（任务文件即 prompt，双引用）**：`runSubagent`（agentName = `term-researcher`，研究型 agent）——派发引用给两个路径：任务文件 `.github/skills/term-scan/task-term-resolve.md`（= 完整 prompt，含查证链/抓取纪律/输出契约）+ 待查列表 `_work/<视频名>/term_pending.md`，subagent 先 read 两者再执行；**不追加执行型纪律母版**（研究型纪律由 agent 系统提示词承载，见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)）
+3. **读查证结果**：查证 agent 写盘 `term_resolve.md`（每行 `term_en|候选译名|数据源|依据|[标记]`）+ 返回压缩总结（每词一行）；主会话据此更新内存术语映射表（`[待审核]` 进 §1.3 确认）
+4. **断点/审计**：`term_resolve.md` 即查证产物契约（数据源命中统计是阶段三 coverage_log 依据，见 `redstone-finalize`）
 
 ### 1.3 术语确认
 
@@ -84,5 +94,9 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 
 ### 1.4 术语入库
 
-按 [term-registration#同步步骤](../term-registration/SKILL.md#同步步骤)：筛选已确认（排除 `[待审核]`）→ 写 `_uncategorized.csv`（查重不覆盖）→ ASR 映射登记 `asr_fixes.md`。
+按 [term-registration#同步步骤](../term-registration/SKILL.md#同步步骤)：
+1. 筛选已确认术语（排除 `[待审核]`）
+2. 写 `_uncategorized.csv`（查重不覆盖）
+3. ASR 映射登记 `asr_fixes.md`
+
 > `_uncategorized.csv` 变动不更新 `indexes/knowledge/`（纯静态索引，见 `indexing-rules`）

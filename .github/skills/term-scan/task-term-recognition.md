@@ -27,7 +27,8 @@ description: 术语识别 subagent 任务——对给定字幕块做术语识别
 
 ---
 
-> 以下「## 先验知识」「## 本块数据」由主 agent 派发时填充：
+> **渲染步骤说明**（给主 agent/维护者看，渲染时剥离，不进入 subagent prompt）：
 > - `产物格式约定` = 无外部格式权威（输出格式已内联于本文件「输出」节），此项省略
-> - `## 先验知识` = **scan 命中项**（按 OWNED cue 过滤——先于其他注入，紧贴任务规则 1 强制查词）+ 术语/陷阱词知识卡 + ASR 修正映射
+> - `## 先验知识` = **scan 命中项**（按 OWNED cue 过滤——先于其他注入，紧贴任务规则 1 强制查词）+ 领域术语集 + ASR 修正映射
 > - `## 本块数据` = 数据文件引用：字幕块输入文件（块文件自带 `## BEFORE`/`## OWNED`/`## AFTER` 分区）
+> - 派发由 `scripts/render_preprocess_prompt.py task-term-recognition` 渲染（见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）

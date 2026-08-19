@@ -20,6 +20,7 @@
 | `srt_check_segments.py` | 校验分段/成稿时间约束：相邻段时间不重叠、时间边界 ⊆ 原边界集、段序不逆序、cue 覆盖完整（segment-subtitles Skill 用；`03_segments.md` 的 `~`=估算切分点；`--cue-exact` 用于 01 修正字幕：cue 数一致 + 逐 cue 时间戳与原始完全一致，输出目标/原始时间戳供返工） | `python scripts/srt_check_segments.py <目标> --orig <原字幕.srt> [--allow-estimated] [--cue-exact]` |
 | `text_chunk.py` | **长视频通用分块（SRT 与非 SRT 统一，新任务入口）**：SRT 默认按「N cue 负责 + M 上下文」；`--gaps` 按空隙组分组成「空隙组-片」（reflow 从 01 分块用，块边界优先在空隙点）；非 SRT（r01/r02/r03）按语义单位（段/句/整句组），超长单位自动细分「组-片」；输出统一块格式（含块头元数据 + manifest）；`--inherit` 已弃用 | `python scripts/text_chunk.py <输入> --out <dir> [--type srt\|text] [--unit 段\|句\|整句组] [--owned N] [--ctx M] [--max-chars N] [--gaps]` |
 | `text_merge.py` | **长视频分块合并（A 模式：全自动拼接 + 异常清单）**：按块序读 subagent 结果归位拼接；无异常直接产出，异常出报告 + 异常块头尾窗口供 Agent 决策；替代主 Agent 手工读头尾组装 | `python scripts/text_merge.py <chunks_dir> <results_dir> --out <合并产物> [--report <报告>] [--window N]` |
+| `srt_join_parts.py` | **SRT 片段拼接（第一次遍历合并链路）**：各块 SRT 片段（`chunk_<k>.srt`，保留原时间码）按块序拼接 + 全局段号重排 + cue 数强制校验（`--chunks`，漏/多 cue 拦截）；时间轴精确校验交 `srt_check_segments --cue-exact`；区别于 text_merge（其 srt 模式丢时间码，面向断句合并） | `python scripts/srt_join_parts.py <results_dir> --out <01.srt> [--chunks <chunks_dir>]` |
 | `srt_chunk.py` | 旧版长视频分块（仅 SRT，按「N 负责 + M 上下文」）；**保留兼容，新任务一律用 `text_chunk.py`** | `python scripts/srt_chunk.py <srt> --out <dir> --owned N --ctx M [--order en-zh|zh-en]` |
 
 ## 通用字幕工具（`srt_*`）
@@ -51,6 +52,7 @@
 | 脚本 | 用途 | 用法 |
 |------|------|------|
 | `fetch_wiki.py` | MediaWiki API 直连（兜底，MCP 不可用时） | `python scripts/fetch_wiki.py "页面名" ["页面名" ...]` |
+| `render_preprocess_prompt.py` | **preprocess 阶段一执行型块级任务 prompt 渲染（会话外落盘 `prompts/`）**：接入 `task-term-recognition`（scan 命中项按 OWNED cue 过滤 + 领域术语集 + ASR 修正映射）/ `task-en-preprocess`（asr_fixes 全局+局部 + 领域术语集）；独立于 reflow 渲染链路 `render_subagent_prompt.py`（reflow 阶段二专用）。**§1.2 查证（`task-term-resolve`）不走本脚本**——研究型单次任务，任务文件即 prompt，派发双引用 | `python scripts/render_preprocess_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--scan <scan_terms.txt>] [--glossary <csv...>] [--asr-fixes <局部文件>]` |
 | `refresh_cache.py` | 统一入口：检查三类缓存；Mojang/TechMC 自动刷新；Wiki 只告警不自动抓取（Agent 按 wiki-tools 降级链按需刷新） | `python scripts/refresh_cache.py [--force\|--dry-run\|--ttl N]` |
 | `check_index_stale.py` | 对比 submodule 当前 commit 与索引记录 commit，报告哪些索引需更新 | `python scripts/check_index_stale.py [--only <repo>]` |
 | `setup_editors.py` | 编辑器适配初始化（跨平台，创建 Claude Code 等所需的 symlink） | `python scripts/setup_editors.py [--force]` |

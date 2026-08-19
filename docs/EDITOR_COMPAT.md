@@ -24,7 +24,7 @@
 
 | 配置项 | 脚本能否处理 | 说明 |
 |--------|-------------|------|
-| **agent 定义适配**（reflow-worker） | ❌ | 脚本不生成各编辑器 agent 文件；迁移时按下方「agent 定义适配」手动 adapt |
+| **agent 定义适配**（reflow-worker / term-researcher） | ❌ | 脚本不生成各编辑器 agent 文件；迁移时按下方「agent 定义适配」手动 adapt |
 | **派发 subagent 入口** | ❌ | 各编辑器派发命令/工具名不同（见「各编辑器派发 subagent 命令表」），由**使用者自己的 agent** 按表执行 |
 | **no-think 模型名**（execution_model） | ❌ | 因人而异、脚本无法探测；统一填 `configs/subagent_model.yaml`（见下「模型配置」） |
 | **MCP 配置** | ❌ | `.vscode/mcp.json` 仅 VS Code；其它编辑器 mcp 配置格式不同，需自行对照其文档 |
@@ -73,6 +73,16 @@ execution_model: "<你的 no-think 模型名>"
 - **兜底**：纪律母版 #0 与其同源，派发时随 prompt 整体追加（编辑器无 agent 机制 / 未 adapt 时起效）
 - **迁移**：其它编辑器从该文件 adapt（见下方「agent 定义适配」）
 
+### 研究型 agent 定义文件（term-researcher）
+
+> 与 reflow-worker 定位相反——**研究型（查证），非任务处理型**：允许推理/判断/多步查证，但输出受控（页面原文只进一次性上下文、绝不返回，只返回每词一行压缩总结 + 写盘 `term_resolve.md`）。
+
+- **位置 / 格式**：`.github/agents/term-researcher.agent.md`（同 Copilot `.agent.md` 格式）
+- **工具**：`tools: [read, search, edit, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]`——MCP 工具用 `<server>/*` 全量语法（VS Code custom agents：tools 可含 MCP 工具，见官方文档）；server 名 = `.vscode/mcp.json` 的 `servers` 键
+- **模型**：**用主模型（当前选择），不用 `execution_model`**——研究型需要思考，no-think 仅用于 reflow-worker 执行型；frontmatter 不写 `model` 即用当前选择，如需指定可自行填
+- **纪律**：**不追加执行型纪律母版**（`_discipline.md` 与 reflow-worker 同源、面向执行型）；研究型纪律（查证链/输出受控）由 agent 正文承载
+- **迁移**：其它编辑器从该文件 adapt（正文原样复用；工具映射需含对应编辑器的网络/检索工具）
+
 ### agent 定义适配（迁移其它编辑器）
 
 从 `.github/agents/reflow-worker.agent.md`（GitHub Copilot 格式）adapt 到目标编辑器的 agent 定义，**正文（系统提示词）原样复用**：
@@ -82,7 +92,7 @@ execution_model: "<你的 no-think 模型名>"
 | 名称 | `name` | 映射为目标编辑器 agent 名（如 Claude Code 同名） |
 | 用途说明 | `description` | 原样保留（发现面） |
 | 工具白名单 | `tools` | 映射为目标编辑器工具集（read/edit/search 概念一致） |
-| 运行模型 | `model`（本文件不写，见「执行型 agent 定义文件」） | 映射为目标编辑器模型字段；值读 `configs/subagent_model.yaml` 的 `execution_model` |
+| 运行模型 | `model`（本文件不写，见「执行型 agent 定义文件」） | 执行型（reflow-worker）：值读 `configs/subagent_model.yaml` 的 `execution_model`；研究型（term-researcher）：用主模型 |
 | 系统提示词 | 正文（frontmatter 后全部） | **原样复用**——即执行型纪律，与纪律母版 #0 同源 |
 | 可见性 | `user-invocable: false` | 映射为目标编辑器"仅 subagent 调用" |
 

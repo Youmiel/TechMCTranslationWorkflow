@@ -62,7 +62,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 **中断恢复路由**：检查 `_work/<视频名>/` 最完整产物，**从产出该产物的阶段/步骤开头继续**（假设该阶段异常中断、产物可能不完整）：
 
 1. 无任何产物 → 从头开始（阶段〇）
-2. 仅 `01_subtitle_asr_fixed.srt` → preprocess §1.1 开头
+2. 仅 `01_subtitle_asr_fixed.srt` → preprocess §1.1 开头（有 `_en_chunks/` + 部分 `_en_results/` → §1.1 步骤 2 补派缺失块后 `srt_join_parts.py` 合并）
 3. 有 `02_terms.md` → preprocess §1.3 开头（§1.4 入库照做）
 4. 有 `r00_gaps.md`/`r01_breaks.md`（断句骨架）→ 步骤 2 开头（从确定块大小 + 分块续）
 5. 有 `reflow/chunks/`（01 分块骨架）→ 步骤 3 归一化（跑 `srt_reflow_normalize.py` → `r01_normalized/`）

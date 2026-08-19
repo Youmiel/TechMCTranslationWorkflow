@@ -28,7 +28,8 @@
 
 | 产物 | 工作流 | 生成者 | 消费/校验脚本 |
 |------|--------|--------|----------------|
-| `01_subtitle_asr_fixed.srt` | 共享（阶段〇/一） | Agent（ASR 修正） | `srt_check_segments.py --cue-exact`；reflow gap/breaks/words |
+| `01_subtitle_asr_fixed.srt` | 共享（阶段〇/一） | Agent（英文预整理 subagent 分块派发 + `srt_join_parts.py` 合并） | `srt_check_segments.py --cue-exact`；reflow gap/breaks/words |
+| `_en_results/chunk_<k>.srt` | 共享（阶段〇/一） | Agent（英文预整理 subagent） | `srt_join_parts.py`、`srt_check_segments.py --cue-exact` |
 | `02_terms.md` | 共享（阶段〇/一） | Agent（用户确认） | 翻译固定译名、ASR 修正组装 |
 | `s03_plan.md` | translate | Agent（断句定稿） | `srt_check_segments.py`（md 模式） |
 | `s04_draft.srt` | translate | Agent（逐段翻译） | `srt_check_segments.py`、`srt_check_width.py` |
@@ -88,6 +89,7 @@
 - **text 类型**（组-片前缀契约权威所在）：单元间空行分隔；每单元首行 `<组>-<片>\t<产出文本>`（内容可多行；**保留输入 OWNED 的组-片前缀**；单元数 = 该块 OWNED 单元数）——text 类型任务文件输出节引用本节
 - **srt 类型**：每行 `段号|cue范围[~]|文本`（`~`=估算切分点，同 `s03_plan.md`）；`CARRY: c<idx>` 结转标记行独立成行
 - **reflow 例外**：r01/r02/r03 块文件**不经 text_merge**（r01/r02 = 整段文字、r03 = `## S<n>` 整句分组，均无 `# CHUNK` 块头元数据，`parse_chunk_head` 无法解析）；回填**直读 `r03_results/` 目录**（`parse_r03_dir`），`r03_plan.md` 由 `join-r03` 按需生成（审核/审计用）。term 结果（`_term_results`）由主会话按 `term_en` 合并去重，亦不经 text_merge
+- **preprocess 例外**：`_en_results/chunk_<k>.srt`（第一次遍历英文预整理，裸 SRT 片段）**不经 text_merge**——text_merge 的 srt 模式面向断句合并（`段号|cue范围|文本` 前缀、丢时间码）；01 需保留逐 cue 时间码，由 `srt_join_parts.py` 按块序拼接 + 全局段号重排 + cue 数强制校验
 - 写后只报 `已写入 <文件名>（N 行）`，不返回全文（见 subagent-dispatch 纪律）
 
 ### 合并产物（`text_merge.py` 输出）
@@ -156,7 +158,7 @@
 ### `01_subtitle_asr_fixed.srt`
 
 - 命名：`<工作目录>/01_subtitle_asr_fixed.srt`
-- 生成：preprocess §1.1（ASR 修正）
+- 生成：preprocess §1.1 步骤 2（第一次遍历 subagent 分块派发 → `srt_join_parts.py` 拼接 `_en_results/` 各块 SRT 片段 → 01）
 - 格式：标准 SRT——`序号\nHH:MM:SS,mmm --> HH:MM:SS,mmm\n文本`，块间空行
 - 约束：
   - **只改文本、保留原时间码、不增删 cue**（时间轴骨架）
@@ -184,6 +186,16 @@
 ```
 
 - 约束：`原文` = 01 修正后文本；`ASR 修正` 列记录误识别映射（供组装期替换与 `asr_fixes.md` 沉淀）；表头固定不得改
+
+### `term_pending.md` / `term_resolve.md`（§1.2 查证产物）
+
+- 命名：`<工作目录>/term_pending.md`（主会话写待查列表）、`<工作目录>/term_resolve.md`（查证 agent 写结果）
+- 生成：preprocess §1.2——待查列表由主会话 §1.1 汇总后写；查证结果由 `term-researcher`（研究型 agent）写盘
+- 格式：
+  - `term_pending.md`：每行 `term_en | 首次时间戳 | 已给候选/依据`（L3 未命中 + 决策行）
+  - `term_resolve.md`：每行 `term_en\t候选译名\t数据源\t依据\t[标记]`（标记 = `[推断]`/`[待审核]`；数据源 = 缓存路径 / MCP 名 / indexes/repos 路径）
+- 消费：§1.3 用户确认表（候选译名/依据）、阶段三 coverage_log（数据源命中统计）、断点恢复
+- 约束：查证 agent **不返回页面原文**（页面只进一次性上下文，返回每词一行压缩总结）；`[待审核]` 必须带候选，不得只留原文
 
 ---
 
