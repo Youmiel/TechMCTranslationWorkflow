@@ -177,9 +177,9 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ##### 处理
 
-1. **补标点（逐块）**：每块派一个 subagent，按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装 prompt
-  - 任务文件：[reflow-redstone/task-punctuate](task-punctuate.md)
-  - 输入：`reflow/r01_normalized/chunk_<k>.txt`（已归一化：OWNED 为合并连续文本），**数据文件引用**——**行尾换行为显示性折行、非语义分行，subagent 按整段解析忽略**
+1. **补标点（逐块）**：每块派一个 subagent，**完整 prompt 由渲染脚本生成**（见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)），派发时按「派发引用 prompt」只给引用路径
+  - 渲染命令：`python scripts/render_subagent_prompt.py task-punctuate --video <工作目录> [--chunk <k> | --all]`（先验知识自动注入空隙断句标记 + 术语表；派发前数据文件只验证、不读取，见 subagent-dispatch「派发前主 Agent 准备」）
+  - 输入：`reflow/r01_normalized/chunk_<k>.txt`（已归一化：OWNED 为合并连续文本），**数据文件引用**（渲染脚本注入 `## 本块数据`）——**行尾换行为显示性折行、非语义分行，subagent 按整段解析忽略**
   - 产物：`reflow/r01_results/chunk_<k>.txt`，各块独立文件
     - 整段文字，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件，**中间不拼全文**；
     - 块首/块尾跨块句已按 [task-punctuate#规则 4](task-punctuate.md) 补全并标记——相邻块对同一跨块句都补全，待「校验」阶段衔接归位
@@ -194,7 +194,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 1. **硬性校验**（任务：逐空隙点查句末标点 `.?!`）
   - 脚本：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md`
-  - 处理方式：复用 r00_gaps 已验证空隙点；脚本先剥离跨块句标记 `【承接句】`/`【延伸句】` 再判，避免标记补全文本干扰空隙断句
+  - 处理方式：复用 r00_gaps 已验证空隙点；脚本先剥离跨块句标记 `【承接句】`/`【延伸句】` 再判，避免标记补全文本干扰空隙断句；剥离衔接句后无文本的块（纯标记/空块）对应空隙跳过校验（未定位提示人工核对），**不计打回**
   - 特例：空隙断句缺失 → 定点修复（B 档 `task-fix` 在空隙点补断句标点）；语义停顿可作受控例外放行（须 r03 不跨空隙成单元）
 2. **措辞校验 + 跨块句衔接**（任务：逐块词序列与对应 01 cue 段一致）
   - 脚本：`python scripts/srt_reflow_check_words.py <01> reflow/r01_results/ --chunks reflow/chunks/`——脚本剥离 `【承接句】`/`【延伸句】` 标记后比对
@@ -218,12 +218,12 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ##### 处理
 
-1. **派发**：每块派一个 subagent
-  - **prompt 组装（任务文件）**：`reflow-redstone/task-translate`（同一套 01 分块骨架）
-  - **输入**：`r01_results/chunk_<k>.txt` + 前后块 CONTEXT 衔接（`--ctx 10`，每侧 10 cue，覆盖前块末尾 1–2 句；语义段是步骤 3/4/6 统一分块单位，见 conventions）——**数据文件引用**
-  - **先验知识注入**（随 `## 先验知识`）：
+1. **派发**：每块派一个 subagent，**完整 prompt 由渲染脚本生成**（见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)），派发时按「派发引用 prompt」只给引用路径
+  - 渲染命令：`python scripts/render_subagent_prompt.py task-translate --video <工作目录> [--chunk <k> | --all] [--prior-file <前文摘要>]`（先验知识自动注入 humanizer 注入版 + 术语表；前文摘要用 `--prior-file` 追加）
+  - **输入**：`r01_results/chunk_<k>.txt` + 前后块 CONTEXT 衔接（`--ctx 10`，每侧 10 cue，覆盖前块末尾 1–2 句；语义段是步骤 3/4/6 统一分块单位，见 conventions）——**数据文件引用**（渲染脚本注入 `## 本块数据`）
+  - **先验知识注入**（渲染脚本自动注入 `## 先验知识`）：
     - **humanizer 注入版**：`humanizer-inject.md`（~50 行），**勿注入 humanizer-zh 354 行全量版**（仅主会话/审核深读）——禁止只写"去口语化/去翻译腔"笼统要求（subagent 看不到主会话加载的规则）
-    - **前文摘要注入（可选）**：需跨块长距离语义照应时，先对前文做摘要（派 `task-summary` → `reflow/summary.md`），随先验知识注入本块（见 [task-summary](task-summary.md)）
+    - **前文摘要注入（可选）**：需跨块长距离语义照应时，先对前文做摘要（派 `task-summary` → `reflow/summary.md`），用 `--prior-file` 追加注入本块（见 [task-summary](task-summary.md)）
   - **产物**：`reflow/r02_results/chunk_<k>.txt`，各块独立文件（整段中文，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件）——**中间不拼全文**
 2. **注意事项**：
   - **不交给 subagent 运行全局校验**（`check-r03` 块级模式验全部块，见步骤 5 校验段，主会话统一跑）
@@ -249,9 +249,9 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ##### 处理
 
-1. **派发**：每块派一个 subagent
-  - **prompt 组装（任务文件）**：`reflow-redstone/task-split`（同一套 01 分块骨架）
-  - **输入（材料配对——分句语义对应是需全貌的跨切面决策）**：每块输入 = `r03_normalized_1/chunk_<k>.txt` + `r03_normalized_2/chunk_<k>.txt`（脚本预分句标号版，见「归一化」）对照 + 前后块 CONTEXT（**数据文件引用**）
+1. **派发**：每块派一个 subagent，**完整 prompt 由渲染脚本生成**（见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)），派发时按「派发引用 prompt」只给引用路径
+  - 渲染命令：`python scripts/render_subagent_prompt.py task-split --video <工作目录> [--chunk <k> | --all] [--prior-file <块边界情况>]`（先验知识自动注入术语表；每块边界情况/空隙归属等主会话复核结论用 `--prior-file` 追加）
+  - **输入（材料配对——分句语义对应是需全貌的跨切面决策）**：每块输入 = `r03_normalized_1/chunk_<k>.txt` + `r03_normalized_2/chunk_<k>.txt`（脚本预分句标号版，见「归一化」）对照 + 前后块 CONTEXT（**数据文件引用**，渲染脚本注入 `## 本块数据`）
   - **分句/语义对应规则**：整句骨架（预分句 E 号确认）/ 译文判长短切分（Z 号参考）/ 1:1·1:n·n:1 对应 / 忠实转写铁律 / 拆合标注 / 游离停顿词——见 `task-split.md`；r03 产物结构（`## S<n>` / EN·ZH·关系 / 子单元）见 [PRODUCT_FORMATS#r03_plan.md](../../../docs/PRODUCT_FORMATS.md)
   - **产物**：`r03_results/chunk_<k>.txt`（**S 号块内从 1 连续编号**，见 task-split 规则 6）→ **`r03_results/` 即回填输入**（步骤 6 目录直读，脚本自动全局重编号，**无需拼接**）；`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
 2. **注意事项**：每块内保持整句/单元的语义完整性（不跨块拆句；空隙为硬边界，整句不跨空隙块）

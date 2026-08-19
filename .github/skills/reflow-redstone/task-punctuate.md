@@ -29,8 +29,11 @@ description: 补标点 subagent 任务——对给定字幕块合并全文并补
 
 ---
 
-> 以下内容由主 agent 派发时**按序**填充（纪律在前、数据在后）：
-> 1. `纪律母版` = subagent-dispatch 纪律母版（整体追加，**位于 `## 先验知识` 之前**，不内联进任务文件；含工作区/输出门禁等通用纪律）——见 [subagent-dispatch#纪律母版](../subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)
+> **渲染步骤（agent / 脚本通用）**：最终 prompt = 任务文件内容（含任务特有规则）按下列顺序拼接——
+> 1. `纪律母版` = subagent-dispatch 纪律母版（`_discipline.md` 整体追加，位于 `## 先验知识` 之前，含工作区/输出门禁等通用纪律）——见 [subagent-dispatch#纪律母版](../subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)
 > 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS.md` 的 `r01_results/chunk_<k>.txt（补标点块）` 节（subagent 唯一允许的外部读取）
-> 3. `## 先验知识` = **空隙断句标记**（`【强制断句】`位置，来自 r01_breaks.md 复核结果——先于其他注入，紧贴任务规则 2 强制断句）+ 术语/知识卡（如需）
-> 4. `## 本块数据` = 数据文件引用：`reflow/r01_normalized/chunk_<k>.txt`（已归一化：`## BEFORE`/`## OWNED`/`## AFTER` 分区内 cue 文本已合并为连续英文；行尾换行为显示性折行、可忽略）
+> 3. `## 先验知识` = **空隙断句标记**（`【强制断句】`位置，来自 r01_breaks.md 复核结果——先于其他注入，紧贴任务规则 2 强制断句）+ 02_terms.md 术语表（如需）
+> 4. `## 本块数据` = 数据文件引用：`reflow/r01_normalized/chunk_<k>.txt`（已归一化：`## BEFORE`/`## OWNED`/`## AFTER` 分区内 cue 文本已合并为连续英文；行尾换行为显示性折行、可忽略）+ 前后块衔接
+> 5. `写盘/报告约定` = 写入 `reflow/r01_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`（不数行数）
+
+> **渲染手段（脚本）**：上述步骤由 `scripts/render_subagent_prompt.py` 会话外自动完成——读本模板 + 替换 `<k>`/`<视频名>` + 追加材料 → 落盘 `_work/<视频名>/prompts/task-punctuate-chunk_<k>.txt`（完整 prompt 不进主会话）；空隙断句标记由脚本自动提取 r01_breaks.md，主会话复核结论用 `--prior-file <文件>` 追加；未走脚本（agent 手工组装）按上方步骤同序拼接。派发时按 [subagent-dispatch#派发引用 prompt](../subagent-dispatch/SKILL.md#派发引用-prompt) 只给引用路径。

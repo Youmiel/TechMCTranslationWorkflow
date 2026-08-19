@@ -29,8 +29,11 @@ description: 整段翻译 subagent 任务（reflow）——对给定 r01 英文�
 
 ---
 
-> 以下内容由主 agent 派发时**按序**填充（纪律在前、数据在后）：
-> 1. `纪律母版` = subagent-dispatch 纪律母版（整体追加，**位于 `## 先验知识` 之前**，不内联进任务文件；含工作区/输出门禁等通用纪律）——见 [subagent-dispatch#纪律母版](../subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)
+> **渲染步骤（agent / 脚本通用）**：最终 prompt = 任务文件内容（含任务特有规则）按下列顺序拼接——
+> 1. `纪律母版` = subagent-dispatch 纪律母版（`_discipline.md` 整体追加，位于 `## 先验知识` 之前，含工作区/输出门禁等通用纪律）——见 [subagent-dispatch#纪律母版](../subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)
 > 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS.md` 的 `r02_results/chunk_<k>.txt（翻译块）` 节（subagent 唯一允许的外部读取）
-> 3. `## 先验知识` = **humanizer 注入版规则**（`humanizer-inject.md`，去翻译腔风格参照——**先于术语表注入**，紧贴任务规则 5 自查）+ 02_terms.md 术语表（已确认译名，查表用）+ （可选）前文摘要；**勿注入 humanizer-zh 354 行全量版**（全量仅主会话/审核深读）
+> 3. `## 先验知识` = **humanizer 注入版规则**（`humanizer-inject.md`，去翻译腔风格参照——**先于术语表注入**，紧贴任务规则 5 自查）+ 02_terms.md 术语表（已确认译名，查表用）+ （可选）前文摘要（`--prior-file`）；**勿注入 humanizer-zh 354 行全量版**（全量仅主会话/审核深读）
 > 4. `## 本块数据` = 数据文件引用：`reflow/r01_results/chunk_<k>.txt`（本块 r01 英文整段）+ 前后块衔接
+> 5. `写盘/报告约定` = 写入 `reflow/r02_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`（不数行数）
+
+> **渲染手段（脚本）**：上述步骤由 `scripts/render_subagent_prompt.py` 会话外自动完成——读本模板 + 替换 `<k>`/`<视频名>` + 追加材料 → 落盘 `_work/<视频名>/prompts/task-translate-chunk_<k>.txt`（完整 prompt 不进主会话）；humanizer/术语由脚本自动注入，前文摘要用 `--prior-file <文件>` 追加；未走脚本（agent 手工组装）按上方步骤同序拼接。派发时按 [subagent-dispatch#派发引用 prompt](../subagent-dispatch/SKILL.md#派发引用-prompt) 只给引用路径。

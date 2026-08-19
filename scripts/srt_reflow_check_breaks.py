@@ -226,7 +226,15 @@ def main_block(args, cues, breaks):
         a_text = cues[ia - 1]["text"]
         b_text = cues[ib - 1]["text"]
         # 块级：空隙点应在块边界处（块边界优先在空隙点）；检查前块是否以句末标点结尾
-        ends_punct = bool(SENT_END_RE.search(text_a.rstrip()[-8:])) if text_a else False
+        # 剥离跨块句标记【承接句】/【延伸句】后无文本（纯标记块/空块）→ 无文本可判，跳过该空隙，
+        # 避免把「无文本」误报为「前块末尾无句末标点」（打回信号）
+        if not text_a or not text_b:
+            n_skip += 1
+            wa = "空" if not text_a else "有"
+            wb = "空" if not text_b else "有"
+            print(f"❓ c{ia}→c{ib}（{gap/1000:.1f}s）: 块剥离衔接句标记后无文本（chunk_{ka:03d}:{wa} / chunk_{kb:03d}:{wb}），无法判定断句，跳过")
+            continue
+        ends_punct = bool(SENT_END_RE.search(text_a.rstrip()[-8:]))
         if ends_punct:
             n_pass += 1
             if args.verbose:

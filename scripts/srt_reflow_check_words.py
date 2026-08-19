@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""r01 措辞校验：r01 词序列 == 01 词序列（剔除 [Music]/[Applause] 非语音标记），验证"不得改动措辞"硬约束
+"""r01 措辞校验：r01 词序列 == 01 词序列（剔除 [Music]/[Applause] 等非语音标记），验证"不得改动措辞"硬约束
 
 回填工作流（reflow-redstone）步骤 1：LLM 合并补标点后，词序列必须与 01 一致（只加标点、不改措辞）。
 
@@ -16,7 +16,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import auto_wrap_file, collect_chunk_files, ctx_snippet, parse_owned_cue_range, strip_stitch_marks, MAX_LINE
+from srt_reflow_common import auto_wrap_file, collect_chunk_files, ctx_snippet, is_pure_marker, parse_owned_cue_range, strip_stitch_marks, MAX_LINE
 
 
 def srt_words(path):
@@ -27,7 +27,8 @@ def srt_words(path):
         if len(lines) < 3:
             continue
         body = " ".join(lines[2:])
-        if body.strip() in ("[Music]", "[Music] ", "[Applause]", "[Applause] "):
+        # 非语音 cue 剔除：方括号标记（is_pure_marker 动态识别，[Music]/[Applause] 等）
+        if is_pure_marker(body):
             continue
         texts.append(body)
     joined = " ".join(texts)
@@ -51,7 +52,8 @@ def parse_srt(path):
         if not m:
             continue
         body = " ".join(lines[2:]).strip()
-        if body.strip() in ("[Music]", "[Music] ", "[Applause]", "[Applause] "):
+        # 非语音 cue 剔除：方括号标记（is_pure_marker 动态识别，[Music]/[Applause] 等）
+        if is_pure_marker(body):
             body = ""
         cues.append((int(m.group()), body))
     return cues
@@ -122,22 +124,32 @@ def main():
                 a = srt_terms[diff_i] if diff_i < len(srt_terms) else "—"
                 b = r01_terms[diff_i] if diff_i < len(r01_terms) else "—"
                 print(f"    第 {diff_i} 词: 01=[{a}] r01=[{b}]")
-                # r01 定位：分歧词在 r01 原文中的行号 + 上下文（供直接编辑）
+                # 01/r01 词级上下文并列（±6 词，措辞差异一眼可辨）
+                ctx1 = " ".join(srt_terms[max(0, diff_i - 6):diff_i + 8])
+                ctx2 = " ".join(r01_terms[max(0, diff_i - 6):diff_i + 8])
+                print(f"    01 上下文: ...{ctx1}...")
+                print(f"    r01 上下文: ...{ctx2}...")
+                # r01 定位：剥离跨块句标记后定位（避免定位到邻块补全的标记内容）+ 行号供直接编辑
                 anchor = b if b != "—" else a
-                pos = raw.lower().find(anchor)
+                stripped = strip_stitch_marks(raw)
+                pos = stripped.lower().find(anchor)
                 if pos != -1:
-                    ln, frag = ctx_snippet(raw, pos)
+                    ln, frag = ctx_snippet(stripped, pos)
                     print(f"    {os.path.basename(res_path)} 行 {ln}｜{frag}")
                 else:
                     print(f"    {os.path.basename(res_path)}: 未定位到分歧词（缺词/改写，需打开块核对）")
-                # 01 定位：分歧词对应 cue
+                # 01 定位：按累计词数定位到分歧词所在 cue（避免重复词误定位）
                 if diff_i < len(srt_terms):
                     c = None
+                    acc = 0
                     for cc in range(cmin, cmax + 1):
                         body = cue_map.get(cc, "")
-                        if body and srt_terms[:diff_i + 1][-1] in re.findall(r"[a-z0-9']+", body.lower()):
-                            c = cc
-                            break
+                        if body:
+                            ws = re.findall(r"[a-z0-9']+", body.lower())
+                            if acc + len(ws) > diff_i:
+                                c = cc
+                                break
+                            acc += len(ws)
                     if c:
                         print(f"    01 cue c{c}: `{cue_map.get(c, '')}`")
         if n_err:
