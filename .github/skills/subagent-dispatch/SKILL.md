@@ -133,11 +133,11 @@ subagent prompt = 任务文件内容（含任务特有规则）
 | 术语识别（preprocess §1.1） | `term-scan/task-term-recognition` | `_term_results/chunk_<k>.txt` |
 | 英文预整理·第一次遍历（preprocess §1.1） | `term-scan/task-en-preprocess` | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
 | L3 术语查证（preprocess §1.2，研究型 agent 单次派发，任务文件即 prompt） | `term-scan/task-term-resolve` | `term_resolve.md`（输入 `term_pending.md`；派发双引用） |
-| 补标点（reflow 步骤 1） | `reflow-redstone/task-punctuate` | `reflow/r01_results/chunk_<k>.txt` |
-| 整段翻译（reflow 步骤 2） | `reflow-redstone/task-translate` | `reflow/r02_results/chunk_<k>.txt` |
-| 分句对应（reflow 步骤 4） | `reflow-redstone/task-split` | `reflow/r03_results/chunk_<k>.txt` |
+| 补标点（reflow 步骤 3） | `reflow-redstone/task-punctuate` | `reflow/r01_results/chunk_<k>.txt` |
+| 整段翻译（reflow 步骤 4） | `reflow-redstone/task-translate` | `reflow/r02_results/chunk_<k>.txt` |
+| 分句对应（reflow 步骤 5） | `reflow-redstone/task-split` | `reflow/r03_results/chunk_<k>.txt` |
 | 定点修复（校验打回 B 档） | `reflow-redstone/task-fix` | 覆盖写 `## 目标文件` 同一路径 |
-| 前文摘要（reflow 步骤 2 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
+| 前文摘要（reflow 步骤 4 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
 | 合并（translate 阶段二） | `translate-redstone/task-merge`（**未建**——translate 未重构，按 SKILL 步骤组装） | `_merge_results/chunk_<k>.txt` |
 | 翻译（translate 阶段二） | `translate-redstone/task-translate`（**未建**——同上） | `_trans_results/chunk_<k>.txt` |
 | 去翻译腔（translate 阶段二+） | `translate-redstone/task-humanize`（**未建**——同上） | `_humanize_results/chunk_<k>.txt` |

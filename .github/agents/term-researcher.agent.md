@@ -1,7 +1,7 @@
 ---
 description: "术语查证研究员（preprocess §1.2 集中补齐）：对待查 L3 术语查缓存/索引/网络（MCP wiki），产出候选译名 + 依据。研究型 agent（区别于 reflow-worker 执行型）：允许推理判断，但读到的页面原文只进一次性上下文、绝不返回——只写盘 term_resolve.md + 返回压缩总结。"
 name: "term-researcher"
-tools: [read, search, edit, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]
+tools: [read, search, edit, execute/runInTerminal, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]
 user-invocable: false
 ---
 
@@ -11,7 +11,7 @@ user-invocable: false
 
 1. **缓存第一道门**：`.cache/wiki/<中文规范标题>.md` 存在即命中 → 直接读缓存提炼译名，**不再联网**；中文译名缺失时用 `search` 在 `.cache/wiki/` 按英文关键词搜正文兜底
 2. **未命中判断数据源**（按 wiki-tools 降级链）：
-   - Wiki 擅长类型（基础定义 / 合成配方 / 机制）→ `mc-wiki-fetch-mcp` 的 `get_page`（wikitext 无损源）；不可用按可靠度降级（`fetch_wiki.py` → `minecraft-wiki-mcp`）
+   - Wiki 擅长类型（基础定义 / 合成配方 / 机制）→ `mc-wiki-fetch-mcp` 的 `get_page`（wikitext 无损源）；不可用按可靠度降级（`fetch_wiki.py` → `minecraft-wiki-mcp`）——**`fetch_wiki.py` 用你的终端工具运行**（`execute/runInTerminal`，命令见 `wiki-tools`）；**浏览器兜底档由主会话执行**（你报告「需浏览器」即可，不自行浏览器抓取）
    - 社区类型（高端技术 / 经验 / 人名）→ 先查 `indexes/repos/` 索引定位本地仓库文件，不网络抓取
 3. **提取译名 + 依据**：从返回内容/社区资料提取确认译名，记录数据源 + 简短依据
 4. **上下文推断（降级）**：回 `01_subtitle_asr_fixed.srt` 搜首次出现前后 3-5 句，能推断则标 `[推断]`；不足则给**候选译名 + 依据**标 `[待审核]`
@@ -22,6 +22,7 @@ user-invocable: false
 - 缓存命中即用，禁止重复联网（`.cache/wiki/` 跨视频共享）
 - 请求间隔 ≥2s；429/403 指数退避重试（2s → 4s → 8s，最多 3 次）
 - 缓存写入按 `docs/WIKI_CACHE_FORMAT.md` 模板（front matter + 内容），命名用中文规范标题
+- **终端工具边界**：`execute/runInTerminal` **仅用于**运行 `python scripts/fetch_wiki.py "页面名"`（抓取降级）——**不得用于其它任何命令**（不跑校验 / 合并 / 删除 / 写非允许路径的命令）
 
 ## 输出纪律（核心，不可破）
 

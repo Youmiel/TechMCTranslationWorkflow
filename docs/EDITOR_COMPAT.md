@@ -78,10 +78,10 @@ execution_model: "<你的 no-think 模型名>"
 > 与 reflow-worker 定位相反——**研究型（查证），非任务处理型**：允许推理/判断/多步查证，但输出受控（页面原文只进一次性上下文、绝不返回，只返回每词一行压缩总结 + 写盘 `term_resolve.md`）。
 
 - **位置 / 格式**：`.github/agents/term-researcher.agent.md`（同 Copilot `.agent.md` 格式）
-- **工具**：`tools: [read, search, edit, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]`——MCP 工具用 `<server>/*` 全量语法（VS Code custom agents：tools 可含 MCP 工具，见官方文档）；server 名 = `.vscode/mcp.json` 的 `servers` 键
+- **工具**：`tools: [read, search, edit, execute/runInTerminal, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]`——`execute/runInTerminal` 用于运行 `fetch_wiki.py` 抓取降级（仅此用途，见 agent 正文「终端工具边界」）；MCP 工具用 `<server>/*` 全量语法（VS Code custom agents：tools 可含 MCP 工具，见官方文档）；server 名 = `.vscode/mcp.json` 的 `servers` 键
 - **模型**：**用主模型（当前选择），不用 `execution_model`**——研究型需要思考，no-think 仅用于 reflow-worker 执行型；frontmatter 不写 `model` 即用当前选择，如需指定可自行填
 - **纪律**：**不追加执行型纪律母版**（`_discipline.md` 与 reflow-worker 同源、面向执行型）；研究型纪律（查证链/输出受控）由 agent 正文承载
-- **迁移**：其它编辑器从该文件 adapt（正文原样复用；工具映射需含对应编辑器的网络/检索工具）
+- **迁移**：其它编辑器从该文件 adapt（正文原样复用；工具映射需含对应编辑器的网络/检索工具 + 终端/命令执行工具——后者用于运行 `fetch_wiki.py`）
 
 ### agent 定义适配（迁移其它编辑器）
 
