@@ -1,5 +1,6 @@
-﻿term_en,short_form,definition,notes,term_zh,term_ja
+term_en,short_form,definition,notes,term_zh,term_ja
 sliced nether portal,,利用更新抑制/更新跳略技术制造的非正常状态的下界传送门（部分传送门方块或其框架缺失的非法方块状态）。,来源：_repos/TechMCDocs/BugsAndExploits/UpdateSuppression.md「Portal Slicing」；Wavetech 恶魂农场采用,切片下界传送门,
 falling nether portal,,利用落沙技术使下界传送门方块进入下落状态的非法方块形态，可复制/放置多个传送门。,来源：6sPS4yqC72I 视频 c982-986；2026-08-04 用户确认,落沙下界传送门,
 corner portal farm,,使用下界传送门角落位置制造切片传送门（sliced nether portal），使怪物被传送到非常规位置的农场设计。,[推断：视频上下文+用户定义] 来源：QSDpdXT9SPs 视频 c23-c24；2026-08-13 用户确认（corner portal=角落门* 见 .cache/glossary/mob_farm.csv）,角落门的设计,
 block breaking progression saving,,世界边界相关的技术 bug（MC-54587）：方块破坏进度保存在被推出边界外的方块（如远古残骸）上，可使挖掘速度提升约 10%。,[通用] 来源：TechMCDocs 文章 GameMechanics/WorldBorder（FX）；2026-08-01 用户确认直译；关联 MC-54587,方块破坏进度保存,
+multiply by eight glitch,,利用下界↔主世界坐标 8:1 映射的传送漏洞（配合更新抑制与陷阱箱技巧远距离传送）。,来源：6sPS4yqC72I 视频 c1139-1141；Minecraft Wiki 下界页（8:1 坐标比）；2026-08-04 用户确认,乘八漏洞,

@@ -26,3 +26,10 @@
 | 陷阱词 | 正确术语 | 标准译名 | 依据 |
 |--------|----------|----------|------|
 | Hermit(s) | Hermitcraft member | Hermitcraft 成员 | knowledge/ proper_nouns.csv |
+
+## general（通用，始终加载）
+
+| 陷阱词 | 正确术语 | 标准译名 | 依据 |
+|--------|----------|----------|------|
+| target / target block | target | 标靶 / 目标（按语境二选一） | knowledge/ 01_terminology/target.md；投射物/信号语境→标靶，仇恨/追踪语境→目标 |
+| credits / credits video / credit video | credits | （简介）引用的视频 | knowledge/ 01_terminology/credits.md；credits video 指被引用/被致谢的视频，非"致谢视频" |

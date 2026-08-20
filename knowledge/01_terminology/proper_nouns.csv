@@ -1,5 +1,5 @@
-﻿term_en,short_form,definition,notes,term_zh,term_ja
-cubicmetre,,"Minecraft红石技术YouTuber",[人物] 来源：视频,cubicmetre,
+term_en,short_form,definition,notes,term_zh,term_ja
+cubicmetre,,Minecraft红石技术YouTuber,[人物] 来源：视频,cubicmetre,
 Red Nomster,,Minecraft红石技术YouTuber,[人物] 来源：视频,Red Nomster,
 Mumbo Jumbo,Mumbo,"知名Minecraft YouTuber,Hermitcraft成员",[人物] 来源：视频,Mumbo,
 Hermitcraft,,知名Minecraft多人SMP服务器及内容创作社区,[组织] 来源：视频,Hermitcraft,
@@ -77,3 +77,12 @@ flying machine simulator,,Xcom 等人制作的简化飞行器模拟程序，用�
 Dark,,Minecraft 红石技术玩家（精通潜影贝农场设计）,[人物] 来源：uVOFckoMdIU 视频 00:03:44；2026-08-12 用户确认，保留原文,Dark,
 Ending Credits,,Minecraft 红石技术玩家（精通潜影贝农场设计）,[人物] 来源：uVOFckoMdIU 视频 00:06:28；2026-08-12 用户确认，保留原文,Ending Credits,
 free cam,,自由视角：tweakeroo 模组功能，脱离玩家身体自由移动镜头观察。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c196；2026-08-13 用户确认（tweakeroo 模组功能）,自由视角,
+COZY Discord,COZY,COZY Discord 服务器（cubicmetre 的社区 Discord）,[组织] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c1320；2026-08-13 用户确认全大写 COZY,COZY Discord,
+cartofel,,Minecraft 红石技术玩家,[人物] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c1265；2026-08-13 用户确认保留原文（是否误识别不确定）,cartofel,
+WorldEdit,WE,创世神：Minecraft 建筑辅助模组（区域操作/笔刷/脚本）,[专名] 来源：uVOFckoMdIU 视频 00:26:48（与 Carpet/Litematica 并列）；indexes/repos/tree-hole 索引；中文社区通用译名「创世神」；2026-08-20 用户确认,WorldEdit（创世神）,
+disableObserver,,Tweakeroo 模组功能：禁用侦测器（单机特性，便于粘贴投影）,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:28:42；2026-08-13 用户确认,禁用侦测器,
+fillUpdates,,Carpet 模组规则：fill 命令是否触发方块更新,Carpet 模组规则：fill 命令是否触发方块更新；来源：uVOFckoMdIU 视频 00:28:48；2026-08-13 用户确认 → 2026-08-20 用户改为保持原文 /carpet fillUpdates,fillUpdates（保持原文）,
+Tweakeroo,,Minecraft技术模组，由masady/masa开发，提供了很多客户端实用功能,[模组] 来源：视频,Tweakeroo模组,
+bot,,Carpet 模组 /player 生成的自动化玩家,[通用] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c632；2026-08-13 用户确认译名「假人」,假人,
+script load,,Carpet 模组加载 scarpet 脚本的命令,来源：uVOFckoMdIU 视频 00:37:59；2026-08-14 用户确认,脚本加载（scarpet /script load）,
+overlay,,scarpet 脚本 /overlay 命令,来源：uVOFckoMdIU 视频 00:38:05；2026-08-14 用户确认保留英文,/overlay（scarpet 脚本名）,

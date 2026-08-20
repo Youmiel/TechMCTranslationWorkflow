@@ -1,0 +1,13 @@
+term_en,short_form,definition,notes,term_zh,term_ja
+kill area,,农场中集中击杀/收集掉落物的区域（本视频指 Overworld 内不用 TNT、用传送+脚手架的击杀区）,[农场通用] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c1302；2026-08-13 用户确认,击杀区,
+boat spam,,使用大量船吸取怪物的刷怪平台设计（与 Boat Capturing 船吸同义，指大量放船的刷怪设计）。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c21；2026-08-13 用户确认；译名同 .cache/glossary/mob_farm.csv Boat Capturing=船吸,船吸,
+portal spam,,使用切片下界传送门（sliced nether portal）的大量切门刷怪平台设计。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c22；2026-08-13 用户确认,大量切门,
+bottom feeding TNT,,从底部向击杀室供 TNT 的方式,来源：uVOFckoMdIU 视频 00:18:41；2026-08-14 用户确认,底部输入 TNT,
+top fed farm,,TNT 从顶部输入供料的农场（本视频终版设计）,来源：uVOFckoMdIU 视频 00:19:25；2026-08-14 用户确认,顶部输入（TNT）的农场,
+TNT loader,,向击杀室定时装载 TNT 的装置（ASR 误听 TNT leader）,来源：uVOFckoMdIU 视频 00:18:49；2026-08-14 用户确认,TNT 装载机,
+variable timing TNT loader,,可变速率的 TNT 装载机（ASR 误听 lazy leader）,来源：uVOFckoMdIU 视频 00:18:49；2026-08-14 用户确认,可变时机（TNT）装载机,
+looter,,与 duper 合并为同一 TNT 线供给的掠夺装置,来源：uVOFckoMdIU 视频 00:18:57；2026-08-14 用户确认,TNT 掠夺装置,
+player TNT,,由玩家（bot）点燃的 TNT（对比 arrow lit 箭点燃）,来源：uVOFckoMdIU 视频 00:46:30；2026-08-14 用户确认,玩家点燃的 TNT,
+arrow lit,,由箭点燃的 TNT（点火方式）,来源：uVOFckoMdIU 视频 00:46:34；2026-08-14 用户确认,箭点燃,
+dupe TNT,,TNT 复制机产出的 TNT（对比 looting TNT）,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:21:05；2026-08-13 用户确认,复制 TNT,
+kill chamber,,实体被击杀、掉落物被收集的舱室,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:38:40；2026-08-13 用户确认；.cache/glossary/mob_farm.csv Killing Chamber=击杀室,击杀室,

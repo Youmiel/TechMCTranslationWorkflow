@@ -1,4 +1,4 @@
-﻿term_en,short_form,definition,notes,term_zh,term_ja
+term_en,short_form,definition,notes,term_zh,term_ja
 not gate,,数字电路中输出与输入相反的逻辑门。,[数电常识] 来源：xyw455piBUE 视频；2026-08-06 用户确认,非门,
 OR gate,,数字电路中任一输入为真则输出为真的逻辑门。,[数电常识] 来源：xyw455piBUE 视频；2026-08-06 用户确认,或门,
 XOR gate;XOR,,数字电路中输入不同则输出为真的逻辑门（异或）。,[数电常识] 来源：xyw455piBUE 视频；2026-08-06 用户确认,异或门,
@@ -26,3 +26,4 @@ synchronized,,同步：多个信号按统一时钟节拍对齐。,[数电常识]
 hex-to-binary transmission,,十六进制转二进制的信号传输方案（用于减少控制布线）。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c246（字幕原文 translation，简介 transmission）；2026-08-13 用户确认 transmission,十六进制转二进制传输,
 redstone coder,,红石编码器：将按钮/输入编码为红石信号组合的装置（ASR 原文 red coder）,来源：uVOFckoMdIU 视频 00:21:58；2026-08-12 用户确认,红石编码器,
 on-off panel,,合成器开关面板：可单独或组合开启各类型合成器。,[推断：on-off+panel=面板（.cache/glossary/storage.csv）] 来源：QSDpdXT9SPs 视频 c123；2026-08-13 用户确认,开关面板,
+redcoder,,用红石信号解码/选择模式的装置（ASR 误听 red coder）,来源：uVOFckoMdIU 视频 00:21:58；2026-08-14 用户确认；.cache/glossary/computational.csv 相关,红石信号解码器,

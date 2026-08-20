@@ -1,4 +1,4 @@
-﻿term_en,short_form,definition,notes,term_zh,term_ja
+term_en,short_form,definition,notes,term_zh,term_ja
 Impulse Style Item Filter,,使用比较器持续读取容器信号强度的标准物品分类器设计,[存储] 来源：cubicmetre视频,脉冲式物品分类器,
 Dustless Filter,,不含红石粉的物品分类器，利用切换状态检测容器变化,[存储] 来源：cubicmetre视频,无粉物品分类器,
 Item-Shulker Splitter,,用于将物品实体和潜影盒实体分离到不同输出的装置,[存储] 来源：cubicmetre视频,物品-潜影盒分离器,
@@ -9,3 +9,11 @@ box crafter,,潜影盒合成机：自动合成并染色的潜影盒装置（16 �
 6x loader,,六倍打包机：6 个打包机并联的配置（ASR 误听 6X letters）,来源：uVOFckoMdIU 视频 00:18:28；2026-08-12 用户确认,六倍打包机,
 rocket crafters,,自动合成烟花火箭的合成器阵列。,[推断：rocket=烟花火箭（.cache/mojang/items.csv Firework Rocket）+crafter=合成器] 来源：QSDpdXT9SPs 视频 c152；2026-08-13 用户确认,烟花（火箭）合成器,
 main player interface,,存储系统的主玩家交互界面（可拿取火药/TNT/各时长烟花火箭）。,[推断：main+player interface 构词，参照 user interface=用户界面] 来源：QSDpdXT9SPs 视频 c61；2026-08-13 用户确认；注意与 main storage=全物品仓库（.cache/glossary/storage.csv）区分,主玩家界面,
+2x unloader,,以 2x 速率运作的拆包机/卸货机（TNT 供给语境）,[存储] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c646；派生 .cache/glossary/storage.csv Unloader=拆包机/卸货机；2026-08-13 用户确认,双倍卸货机,
+2x dropper,,以 2x 速率运作的投掷器（向玩家供 TNT）,[红石] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c652；2026-08-13 用户确认,双倍投掷器,
+2X box loader,,2x 速率的 Box Loader 变体（minecarts 装载潜影盒处）,[存储] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c1306；派生 .cache/glossary/storage.csv Box Loader=打包机（6x loader=六倍打包机先例）；2026-08-13 用户确认,双倍打包机,
+sediment slice,,"存储系统中专门存放泥土、沙子等""沉积物""类物品的分区（slice）","[存储] 来源：cubicmetre 视频；2026-08-01 用户确认：社区把储存泥土/沙子类的存储类别叫""沉积物""",沉积物切片,
+plumbing,,管线布局：决定物品在装置中的路由走向。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c252；2026-08-13 用户确认,管线布局,
+boxing,,将物品装入潜影盒（loader 语境）,来源：uVOFckoMdIU 视频 00:18:28；2026-08-14 用户确认,打包,
+shulker box loader,,将物品装入潜影盒并破坏输出的打包机（box loader 全称）,[存储] 来源：uVOFckoMdIU 视频 00:45:59（ASR box letters→box loaders）；派生 .cache/glossary/storage.csv Box Loader=打包机；2026-08-20 用户确认（全称 shulker box loader）,潜影盒打包机,
+indefinite unloading,,一种卸货模式：不设数量上限，持续从存储卸出物品，直到手动停止。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c227-c228；2026-08-13 用户确认（与 increments of five=按5辆一批 相对）,无限量卸载,

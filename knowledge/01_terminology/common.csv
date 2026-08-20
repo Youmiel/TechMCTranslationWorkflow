@@ -1,4 +1,4 @@
-﻿term_en,short_form,definition,notes,term_zh,term_ja
+term_en,short_form,definition,notes,term_zh,term_ja
 blue wither skull;blue skull,,凋灵主头小概率（0.1%）发射的威力巨大的凋灵之首弹射物，可破坏黑曜石；凋灵长期受伤害时也会随机发射。,来源：.cache/wiki/凋灵笼（教程）.md；区别于普通「黑色凋灵之首」；实体系译名见 .cache/mojang（entity.minecraft.wither_skull=凋灵之首）,蓝色凋灵之首,
 dragon respawn ritual;ritual,,在返回传送门边框放置末地水晶触发末影龙复活的流程；复活期间依次重置黑曜石柱，中途移除水晶可中止复活。,来源：.cache/wiki/末影龙.md；本视频利用该机制只重置单根柱子（cancelling the ritual）,末影龙复活仪式,
 boss bar;Bossbar,,HUD 正上方的 Boss 生命进度条指示器；Java 版最多同屏显示 9 个，凋灵/末影龙各有其 Boss栏（可重命名）。,来源：.cache/wiki/Boss栏.md；视频「52 个凋灵只显示 6 个名字、顺序随机」即 Boss栏机制,Boss栏,
@@ -11,6 +11,7 @@ nether ceiling,,下界顶部的基岩层及其上方空间；1.12 中玩家可�
 illegal blocks;illegal items,,无法在生存模式正常获得的方块/物品（如命令方块、屏障等），是 1.12 服务器黑科技的核心产物。,来源：6sPS4yqC72I 视频 c5/c75/c360/c426/c512/c618/c664；2026-08-04 用户确认,非法方块;非法物品,
 end island,,末地中心的岛屿（末地主岛），末影龙战斗的主要场地。对照 Mojang 译法 Small End Islands→末地小型岛屿。,[推断：末地主岛] 来源：kxHpyV95rB0 视频 c317；对照 .cache/mojang/misc.csv；2026-08-05 用户确认,末地中心岛,
 overworld,,主世界：Minecraft 三大维度之一（默认出生维度）。,[通用译名] 来源：Minecraft 官方中文译名；.cache/mojang 未收录；2026-08-05 用户确认,主世界,
-aggro,,游戏机制通用词：吸引仇恨,来源：uVOFckoMdIU 视频 00:02:59；2026-08-12 用户确认,仇恨,
 geode,,紫晶洞：主世界地下生成的地物，内含紫水晶簇与紫水晶母岩。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c232；Minecraft Wiki 紫晶洞页证实；2026-08-13 用户确认,紫晶洞,
 duration one/two/three,,烟花火箭一级/二级/三级（不同飞行时长；本视频颜色编码：粉=一、红=二、橙=三）。,[推断：视频上下文 jargon] 来源：QSDpdXT9SPs 视频 c101-c102/c169-c171；2026-08-13 用户确认,烟花火箭一/二/三级,
+waterlogged stair,,含水楼梯：被水淹没的楼梯方块,[方块] 来源：uVOFckoMdIU 视频 00:33:33（ASR water like there→waterlogged stair）；全局 asr_fixes 映射 + 中文 Wiki 标准译名；2026-08-20 用户确认,含水楼梯,
+item entity,,物品掉落形成的实体,来源：uVOFckoMdIU 视频 00:16:58；2026-08-14 用户确认,物品实体,

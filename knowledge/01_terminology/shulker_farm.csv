@@ -1,4 +1,4 @@
-﻿term_en,short_form,definition,notes,term_zh,term_ja
+term_en,short_form,definition,notes,term_zh,term_ja
 supercharger,,潜影贝农场的加速组件（脚手架式潜影贝农场的雪傀儡激怒源）,来源：uVOFckoMdIU 视频 00:01:40；2026-08-12 用户确认,加速装置,
 social aggro,,潜影贝复制机制中「附近其他潜影贝的仇恨信号」,来源：uVOFckoMdIU 视频 00:02:59；2026-08-12 用户确认,群体仇恨,
 aggro engine,,以雪傀儡等持续激怒潜影贝的装置,来源：uVOFckoMdIU 视频 00:07:05；2026-08-12 用户确认,仇恨引擎,
@@ -8,3 +8,12 @@ transition time,,潜影贝开壳→发射→复制的周期,来源：uVOFckoMdIU
 reactor farm,,利用仇恨链/多潜影贝聚集的农场类型,来源：uVOFckoMdIU 视频 00:03:41；2026-08-12 用户确认,反应堆式（的）农场,
 portal-based farm,,利用潜影贝传送机制的农场类型,来源：uVOFckoMdIU 视频 00:08:33；2026-08-12 用户确认,传送门式农场,
 scaffolding-based farm,,利用脚手架移动潜影贝的农场类型（ASR 误听 scaffolding by）,来源：uVOFckoMdIU 视频 00:04:14；2026-08-12 用户确认,脚手架式农场,
+teleportation pad,,潜影弹飞向的传送引导装置（视频内装置专名）,[潜影贝农场] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c250；Wiki 无此术语；2026-08-13 用户确认,传送平台,
+peeking,,潜影贝周期性开壳的行为（ASR 误听 peaking）,来源：uVOFckoMdIU 视频 00:02:10；2026-08-14 用户确认,探出（潜影贝开壳行为）,
+shulker processing,,主世界侧处理潜影贝的外围环节（击杀/收集）,来源：uVOFckoMdIU 视频 00:05:37；2026-08-14 用户确认,潜影贝处理,
+bullet pathfinding,,潜影弹追踪/寻路机制,来源：uVOFckoMdIU 视频 00:12:37；2026-08-14 用户确认,潜影弹寻路,
+teleportation spot,,潜影贝复制的有效传送位置（空气方块+完整面方块）,来源：uVOFckoMdIU 视频 00:02:32；2026-08-14 用户确认,传送点,
+shulker curator,,潜影贝生成/管理器（用户确认原文如此，不译）,来源：uVOFckoMdIU 视频 00:37:00；2026-08-14 用户确认保留原文 → 2026-08-20 用户改为意译「潜影贝培育器」,潜影贝培育器,
+black box,,视频中指仇恨引擎看起来像个黑色盒子,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:06:30；2026-08-13 用户确认,黑箱,
+hallway;hall,,潜影弹飞行通道（cell 内延伸的弹道通道）,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:09:49；2026-08-13 用户确认,通道,
+sideways,,潜影贝在 cell 中侧向放置的机制,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:09:04；2026-08-13 用户确认,侧向（放置）,
