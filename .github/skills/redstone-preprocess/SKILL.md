@@ -53,6 +53,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
      2. 逐块派 subagent：任务文件 = `term-scan/task-en-preprocess`，结果写 `_work/<视频名>/_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv`（ASR 修正清单）
    - **合并**：`python scripts/srt_join_parts.py _en_results/ --out 01_subtitle_asr_fixed.srt --chunks _en_chunks/`（各块 SRT 片段按块序拼接 + 全局段号重排；cue 数 = OWNED cue 数强制校验）
    - **立即校验时间轴**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、保留原时间码、不增删 cue；时间轴错位立即回本步修正（否则一路传最终稿）
+   - **字幕缺失定位（--missing-ctx）**：cue 数不一致（字幕缺失/多余）时脚本默认只报缺失/多余总数；追加 `--missing-ctx 1` 输出每条缺失 cue 的标号+时间+文本+上下句（agent 直接定位、无需自写定位脚本；默认关闭，防输出过多挤爆上下文）
    - **ASR 推测登记**：汇总各块 `.asr.tsv`（映射命中 `[ASR]` / 联想 `[ASR 推测]` / 未定 `[待审核]`），跨视频通用 → 全局表、视频专属 → 局部 `asr_fixes.md`
    - **跨行合并成整句/合并时间戳是阶段二的重活，此处不做**（translate→两遍式断句；reflow→回填步骤 1 合并补标点）
 3. **机械查找**：`python scripts/glossary_lookup.py scan <01> --categories <L2 集合> --levels L1,L2 --out scan_terms.txt`，命中项无论像不像术语一律按登记译名处理

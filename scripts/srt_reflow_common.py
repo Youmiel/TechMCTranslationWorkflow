@@ -97,7 +97,7 @@ def auto_wrap_file(path, max_len=MAX_LINE):
 
 
 def collect_chunk_files(chunks_dir):
-    """收集块文件（chunk_(\d{3}).txt）→ {序号: 绝对路径}（按序号排序）。"""
+    r"""收集块文件（chunk_(\d{3}).txt）→ {序号: 绝对路径}（按序号排序）。"""
     import os
     out = {}
     for fn in sorted(os.listdir(chunks_dir)):

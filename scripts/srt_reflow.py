@@ -73,6 +73,7 @@ def main():
                     help="中文阅读速度（字/秒），用于碎片预检与中英失配预估；0=禁用两者（默认 5.0）")
     p3.add_argument("--no-frag", action="store_true", help="禁用碎片预检（存疑预警）")
     p3.add_argument("--no-mismatch", action="store_true", help="禁用中英失配预估（存疑预警）")
+    p3.add_argument("--full-warnings", action="store_true", help="全量打印存疑预警（默认折叠：统计+前 5 条；分句阶段决策需全量时用）")
 
     p4 = sub.add_parser("check-duration", help="回填后时长复核（长句碎片/独立短句/阅读失配），长句碎片退出码 1")
     p4.add_argument("r04", help="r04_draft.srt（回填后时间轴）")
@@ -99,9 +100,11 @@ def main():
         # r03 为目录 → 块级（r03_results/ + chunks/ 骨架 + r02_results/）；为文件 → 整段
         if os.path.isdir(args.r03):
             sys.exit(check_r03_blocks(args.r03, args.srt, args.chunks, args.r02, args.cjk_speed,
-                                      check_frag=not args.no_frag, check_mismatch=not args.no_mismatch))
+                                      check_frag=not args.no_frag, check_mismatch=not args.no_mismatch,
+                                      full_warnings=args.full_warnings))
         sys.exit(check_r03(args.r03, args.srt, args.r02, args.cjk_speed,
-                           check_frag=not args.no_frag, check_mismatch=not args.no_mismatch))
+                           check_frag=not args.no_frag, check_mismatch=not args.no_mismatch,
+                           full_warnings=args.full_warnings))
     elif args.cmd == "check-duration":
         sys.exit(check_duration(args.r04, args.r03, args.min_ms, args.cjk_speed, min_gap_ms=args.min_gap_ms))
     elif args.cmd == "join-r03":

@@ -20,6 +20,10 @@
   且逐 cue 时间戳与原始完全一致（01 只改文本、保留原时间码、不增删 cue）。
   时间轴错位会一路传给 03/04（表现为"字幕比语音快/慢"），须在断句前发现。
 
+--missing-ctx <N>（搭配 --cue-exact）：cue 数不一致（字幕缺失/多余）时输出
+  每条缺失 cue 的标号+时间+文本 + 每侧 N 条上下句，供 agent 直接定位（无需
+  自写定位脚本）；0=只报缺失/多余总数（默认，防输出过多挤爆上下文）。
+
 退出码：0=全部通过；1=发现问题。
 """
 import argparse
@@ -35,6 +39,8 @@ ap.add_argument('--allow-estimated', action='store_true',
                 help='允许估算切分点：成稿 SRT 中新时间点降级为告警（仅限受控例外的中间断句）')
 ap.add_argument('--cue-exact', action='store_true',
                 help='SRT 模式：目标为逐 cue 流（如 01 修正字幕），要求 cue 数一致且逐 cue 时间戳与原始完全一致')
+ap.add_argument('--missing-ctx', type=int, default=0, metavar='N',
+                help='cue 数不一致时输出缺失 cue 明细（标号+时间+文本+每侧 N 条上下句）；0=只报缺失/多余总数，防输出挤爆上下文')
 args = ap.parse_args()
 
 TS_RE = re.compile(r'(\d{2}):(\d{2}):(\d{2}),(\d{3})')
@@ -55,26 +61,38 @@ def fmt(ms):
     return '%02d:%02d:%02d,%03d' % (h, m, s, ms)
 
 
+def clip(text, limit=80):
+    """截断显示文本（防明细输出过多挤爆上下文）"""
+    text = (text or '').replace('\n', ' ').strip()
+    return text if len(text) <= limit else text[:limit] + '…'
+
+
 def parse_orig(path):
-    """返回 (边界毫秒集合, {cue_idx: (start, end)})"""
+    """返回 (边界毫秒集合, {cue_idx: (start, end, text)})"""
     bounds = set()
     cues = {}
     idx = None
+    last_cue_idx = None
     with open(path, encoding='utf-8-sig') as fh:
         for line in fh:
-            line = line.strip()
-            m = re.fullmatch(r'\d+', line)
+            stripped = line.strip()
+            m = re.fullmatch(r'\d+', stripped)
             if m:
                 idx = int(m.group(0))
+                last_cue_idx = None
                 continue
-            m = re.match(r'(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})', line)
+            m = re.match(r'(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})', stripped)
             if m and idx is not None:
                 s = parse_time(m.group(1))
                 e = parse_time(m.group(2))
                 bounds.add(s)
                 bounds.add(e)
-                cues[idx] = (s, e)
-                idx = None
+                cues[idx] = (s, e, '')
+                last_cue_idx = idx
+                continue
+            if stripped and last_cue_idx is not None:
+                s, e, t = cues[last_cue_idx]
+                cues[last_cue_idx] = (s, e, (t + ' ' + stripped).strip())
     return bounds, cues
 
 
@@ -98,7 +116,7 @@ def parse_md(path):
 
 
 def parse_srt(path):
-    """返回 [(idx, start, end), ...]（SRT 序号 + 毫秒）"""
+    """返回 [(idx, start, end, text), ...]（SRT 序号 + 毫秒 + 文本）"""
     out = []
     with open(path, encoding='utf-8-sig') as fh:
         text = fh.read()
@@ -110,7 +128,7 @@ def parse_srt(path):
             continue
         m = re.match(r'(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})', lines[1])
         if m:
-            out.append((int(lines[0]), parse_time(m.group(1)), parse_time(m.group(2))))
+            out.append((int(lines[0]), parse_time(m.group(1)), parse_time(m.group(2)), ' '.join(lines[2:])))
     return out
 
 
@@ -118,7 +136,7 @@ orig_bounds, orig_cues = parse_orig(args.orig)
 if not orig_cues:
     sys.exit('原字幕解析失败：%s' % args.orig)
 
-errors, warnings_ = [], []
+errors, warnings_, missing_details = [], [], []
 
 
 def is_md(path):
@@ -171,7 +189,7 @@ else:
     if not segs:
         sys.exit('目标解析失败（既非 03_segments.md 也非 SRT）：%s' % args.target)
     prev_end = None
-    for n, (idx, s, e) in enumerate(segs, 1):
+    for n, (idx, s, e, _) in enumerate(segs, 1):
         if s is None or e is None:
             errors.append('段 %d: 时间行无法解析' % n)
             continue
@@ -191,15 +209,34 @@ else:
         prev_end = e
     # --cue-exact：目标为逐 cue 流（如 01 修正字幕），要求 cue 数一致且逐 cue 时间戳与原始一致
     if args.cue_exact:
+        target_ids = {idx for idx, *_ in segs}
+        orig_ids = set(orig_cues)
         if len(segs) != len(orig_cues):
-            errors.append('cue 数不一致：目标=%d，原始=%d（01 应保留原时间码、不增删 cue）'
-                          % (len(segs), len(orig_cues)))
-        for idx, s, e in segs:
+            n_missing = len(orig_ids - target_ids)
+            n_extra = len(target_ids - orig_ids)
+            errors.append('cue 数不一致：目标=%d，原始=%d（缺失 %d、多余 %d；01 应保留原时间码、不增删 cue）'
+                          % (len(segs), len(orig_cues), n_missing, n_extra))
+            if args.missing_ctx:
+                for c in sorted(orig_ids - target_ids):
+                    cs, ce, ctext = orig_cues[c]
+                    missing_details.append('缺失 c%d [%s-%s] %s'
+                                           % (c, fmt(cs), fmt(ce), clip(ctext)))
+                    for p in range(c - args.missing_ctx, c):
+                        if p in orig_cues:
+                            ps, pe, ptext = orig_cues[p]
+                            missing_details.append('  上句 c%d [%s-%s] %s'
+                                                   % (p, fmt(ps), fmt(pe), clip(ptext)))
+                    for q in range(c + 1, c + 1 + args.missing_ctx):
+                        if q in orig_cues:
+                            qs, qe, qtext = orig_cues[q]
+                            missing_details.append('  下句 c%d [%s-%s] %s'
+                                                   % (q, fmt(qs), fmt(qe), clip(qtext)))
+        for idx, s, e, _ in segs:
             oc = orig_cues.get(idx)
             if oc is None:
                 errors.append('cue %d: 原始字幕无此序号（目标序号错位）' % idx)
                 continue
-            os_, oe = oc
+            os_, oe, _ = oc
             if s != os_ or e != oe:
                 errors.append('cue %d: 时间错位  目标=%s-%s  原始=%s-%s'
                               % (idx, fmt(s), fmt(e), fmt(os_), fmt(oe)))
@@ -212,6 +249,10 @@ if errors:
     print('校验失败（%d 处）：' % len(errors))
     for e in errors[:60]:
         print('  - %s' % e)
+    if missing_details:
+        print('缺失 cue 明细（--missing-ctx %d）：' % args.missing_ctx)
+        for d in missing_details:
+            print('  %s' % d)
     sys.exit(1)
 print('校验通过：时间不重叠、边界 ⊆ 原边界集、段序不逆序' +
       ('（含估算切分点告警 %d 条）' % len(warnings_) if warnings_ else ''))

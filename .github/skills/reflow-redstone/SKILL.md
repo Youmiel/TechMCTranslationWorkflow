@@ -109,6 +109,8 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 按 [redstone-preprocess](../redstone-preprocess/SKILL.md) 原样执行（阶段〇 预判 / §1.1 扫描 → `01_subtitle_asr_fixed.srt` / §1.2 补齐 / §1.3 确认 → `02_terms.md` / §1.4 入库）。`--cue-exact` 校验保留（保护原轴骨架）。**阶段门禁：`01`/`02` 交用户确认后才进入阶段二，不得擅自跨阶段**（阶段间确认是本工作流的流程控制）。
 
+> **实践建议**（补丁，机制设计不变）：阶段〇/一 分块（preprocess §1.1 第一次遍历 `_en_chunks/`）`--owned` 按 **≤400 cue** 封顶——实践得出；封顶只在取值时做，`context_estimate.py --no-amplification` 定 N 与分块机制不变
+
 ---
 
 ### 阶段二：语义回填
@@ -156,6 +158,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 1. **定容量**：`python scripts/context_estimate.py <01>`
   - 参数默认读 `configs/context_window.json`、CLI 可覆盖
   - 输出：估算 token / 单块容量上限（min 统一、已含放大）/ 每 cue 平均字符 / `--owned` 建议值（= 单块容量上限 × 1.5 ÷ 每 cue 平均字符）
+  - **实践建议**（补丁，机制设计不变）：`--owned` 取值按 **≤200 cue** 封顶——实践发现单块 >200 cue 时分句 subagent 处理不了（no-think 输出超限中断，只能拆半重派）；封顶只在取值时做，`context_estimate.py` 反推公式与分块机制不变
 2. **分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`
   - 块 = 「空隙组-片」，
   - `--owned` 填上一步建议值
@@ -262,7 +265,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 **本步是回填前的写时预检，不可跳过**：`check-r03` 通过才进步骤 6（回填）——把"步骤 6 跑完才发现"提前到分句阶段拦截。
 
-1. **r03 统一校验**：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/ [--cjk-speed 5] [--no-frag] [--no-mismatch]`——逐块六查（锚定缩到块内 cue 区间、ZH 忠实缩到块内 r02；主会话统一跑，勿交 subagent——与 subagent-dispatch 纪律母版 #9「不运行全局校验」同指一次运行）；**本校验即分句 subagent「不手算、不重抄」的执行兜底**——task-split 规则 2/4/7 只要求凭目测切分、直接写盘，行宽 ③ / 拼接互斥 ② / ZH 忠实 ④ 全在此统一裁决
+1. **r03 统一校验**：`python scripts/srt_reflow.py check-r03 reflow/r03_results/ <01> reflow/r02_results/ --chunks reflow/chunks/ [--cjk-speed 5] [--no-frag] [--no-mismatch] [--full-warnings]`——逐块六查（锚定缩到块内 cue 区间、ZH 忠实缩到块内 r02；主会话统一跑，勿交 subagent——与 subagent-dispatch 纪律母版 #9「不运行全局校验」同指一次运行）；**本校验即分句 subagent「不手算、不重抄」的执行兜底**——task-split 规则 2/4/7 只要求凭目测切分、直接写盘，行宽 ③ / 拼接互斥 ② / ZH 忠实 ④ 全在此统一裁决
   - ① **整句锚定唯一性**（缩到块内 cue 区间）
   - ② **拆句子单元互斥拼接 == 整句（EN）**
   - ③ **译文单元行宽 ≤26**（软 22 / 硬 26）
@@ -275,7 +278,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
     2. **一次 surgical-fix**：全部错误清单**一次派发** `task-fix`（B 档批量，见 subagent-dispatch「定点修正」）——不逐条派发
     3. **一次复验**：task-fix 后重跑 check-r03；残留增量 → 第二轮 B 档只派**增量残留清单**（逐轮收敛）；连续多轮仍失败 → 升级 C 档整块重派
     4. **严禁全量重写**：禁止整块打回全文重写（token 反超现状，见 token 优化方案「五」）
-    5. 存疑预警（⑤⑥⑦）：Agent 智能判断——⑤⑥ 独立开关 `--no-frag` / `--no-mismatch`（预警过多、效果不佳时可单独关一项降噪）
+    5. 存疑预警（⑤⑥⑦）：Agent 智能判断——⑤⑥ 独立开关 `--no-frag` / `--no-mismatch`（预警过多、效果不佳时可单独关一项降噪）；**默认折叠**（统计 + 前 5 条样例，其余省略），分句阶段需全量看预警时加 `--full-warnings`
 
 
 #### 步骤 6：回填

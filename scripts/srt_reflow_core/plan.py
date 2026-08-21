@@ -18,6 +18,17 @@ from .anchor import resolve_shared_cues, unit_anchor_in_sentence
 
 # 译文忠实校验：去空白/标点，留中文字符与字母数字（断点标点不计入比较）
 ZH_KEEP_RE = re.compile(r"[^\u4e00-\u9fff0-9a-zA-Z]")
+# 译文忠实差异列表展示上限：任一侧差集超过此值即视为“疑似缺句/覆盖不全”——只给统计摘要+诊断提示，
+# 不展开全量字符差集（修复 agent 按错误清单逐处定点修，上千字符的差集无从逐字消费、纯噪声）
+ZH_DIFF_LIST_LIMIT = 80
+# 存疑预警默认折叠阈值：超过只打印统计 + 前 N 条（全量需 --full-warnings，分句阶段决策用）
+WARN_PRINT_MAX = 5
+KIND_NAMES = {"🔪": "碎片", "📖": "中英失配", "🧩": "括号/引号"}
+
+
+def _clip(s, n=60):
+    """输出截断：问题/预警中的超长文本只留前 n 字符（+…）——修复 agent 按 文件:行号 定位，无需整句全文"""
+    return s if len(s) <= n else s[:n] + "…"
 
 
 def zh_content(s):
@@ -272,7 +283,7 @@ def join_r03(r03_dir, out_path, chunks_dir=None):
 
 
 def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True, check_mismatch=True,
-              cue_range=None, r02_text=None):
+              cue_range=None, r02_text=None, full_warnings=False):
     """r03 写时即合规预检（步骤 4 产出后、步骤 5 回填前必跑）：
 
     - 锚定唯一性：每个整句 EN 在 01 唯一命中（未命中 / 重复命中均报告）
@@ -327,7 +338,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
             w = text_width(u[2])
             ul = s.unit_lines.get(u[0], s.line)
             if w > 26:
-                problems.append(f"📏 行宽 {w:.1f}（>26 硬）{u[0]}（{base}:行{ul}）: {u[2]}")
+                problems.append(f"📏 行宽 {w:.1f}（>26 硬）{u[0]}（{base}:行{ul}）: {_clip(u[2])}")
 
     # 括号/引号配对预警（存疑，不阻断）：单元内不成对 = 括号被拆 / 引号归属漂移（S24/S61e/S70c 类）
     for s in sentences:
@@ -337,10 +348,10 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
             ul = s.unit_lines.get(u[0], s.line)
             for o, c in (("（", "）"), ("(", ")")):
                 if zh.count(o) != zh.count(c):
-                    warnings.append(f"🧩 括号不配对 {u[0]}（{base}:行{ul}）: 「{zh}」含 {o}×{zh.count(o)}/{c}×{zh.count(c)}——括号整体应归同一单元（可能被切在括号中间）")
+                    warnings.append(f"🧩 括号不配对 {u[0]}（{base}:行{ul}）: 「{_clip(zh)}」含 {o}×{zh.count(o)}/{c}×{zh.count(c)}——括号整体应归同一单元（可能被切在括号中间）")
                     break
             if zh.count('"') % 2 == 1 or zh.count("“") != zh.count("”"):
-                warnings.append(f"🧩 引号不配对 {u[0]}（{base}:行{ul}）: 「{zh}」引号不成对——引号归属可能漂移（整句中间的引号随其后中文文本归属，不得丢失/错位）")
+                warnings.append(f"🧩 引号不配对 {u[0]}（{base}:行{ul}）: 「{_clip(zh)}」引号不成对——引号归属可能漂移（整句中间的引号随其后中文文本归属，不得丢失/错位）")
 
     # 跨整句共享 cue 切分（预估贴近回填：相邻整句共享 cue 时末单元被裁到共享切分点，S6/S7 实证）
     resolve_shared_cues([a for a in anchors if a is not None], cues, cue_offsets, [])
@@ -380,7 +391,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
                         if need > 0 and d < need * READING_MISMATCH_RATIO \
                                 and (need * READING_MISMATCH_RATIO - d) >= READING_MIN_GAP_MS:
                             warnings.append(
-                                f"📖 中英失配预估 {u[0]}（{base}:行{ul}）: 中文「{u[2]}」阅读需 {need}ms，英文 cue 预估仅 {d}ms"
+                                f"📖 中英失配预估 {u[0]}（{base}:行{ul}）: 中文「{_clip(u[2])}」阅读需 {need}ms，英文 cue 预估仅 {d}ms"
                                 f"（<阅读所需×{READING_MISMATCH_RATIO}，失配 {int(need * READING_MISMATCH_RATIO - d)}ms）"
                                 f"——倒装/时长不均，整句 {s.key}：可调整 r03 切分点或依赖回填阅读插值"
                             )
@@ -392,7 +403,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
             if joined != whole:
                 problems.append(
                     f"❌ 拆句 {s.key}（{base}:行{s.line}）子单元 ZH 拼接 ≠ 整句 ZH（断句不得改写译文）"
-                    f"——子单元「{joined}」vs 整句「{whole}」"
+                    f"——子单元「{_clip(joined)}」vs 整句「{_clip(whole)}」"
                 )
     # ZH 忠实性：r03 整句 ZH（s.zh）与 r02 定稿做字符多集比较
     # ——断句只允许插标点/重排口语词归属，不得增删或改写任何字（净增删即违规）
@@ -401,16 +412,34 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
         r03_norm = zh_content("".join(s.zh for s in sentences))
         c2, c3 = Counter(r02_norm), Counter(r03_norm)
         if c2 != c3:
-            added = "".join(sorted((c3 - c2).elements())) or "—"
-            removed = "".join(sorted((c2 - c3).elements())) or "—"
-            problems.append(
-                f"❌ 译文忠实性：r03 译文单元 ZH ≠ r02 定稿（断句不得增删/改写字，仅可插标点）"
-                f"；r03 多出「{added}」/ r02 有而 r03 缺「{removed}」"
-            )
+            add_diff, rem_diff = c3 - c2, c2 - c3
+            n_added, n_removed = sum(add_diff.values()), sum(rem_diff.values())
+            added = "".join(sorted(add_diff.elements())) or "—"
+            removed = "".join(sorted(rem_diff.elements())) or "—"
+            # 差异量级分级：小差异（正常断句/标点归属）全量列出；任一侧超限 = 疑似缺句/覆盖不全，只给摘要+提示
+            if max(n_added, n_removed) > ZH_DIFF_LIST_LIMIT:
+                rem_part = f"r02 有而 r03 缺 {n_removed} 字符（{removed[:40]}…）" if n_removed else "r02 无缺"
+                add_part = f"r03 多出 {n_added} 字符（{added[:40]}…）" if n_added else "r03 无多出"
+                problems.append(
+                    f"❌ 译文忠实性：r03 译文单元 ZH ≠ r02 定稿（断句不得增删/改写字，仅可插标点）；"
+                    f"{rem_part} / {add_part}——差异过大（任一侧 >{ZH_DIFF_LIST_LIMIT} 字符），疑似 r03 块缺句/覆盖不全："
+                    f"先按模板 r03_normalized_2/chunk_<k>.txt 的 Z 句逐句对齐补齐，再处理具体断句差异"
+                )
+            else:
+                problems.append(
+                    f"❌ 译文忠实性：r03 译文单元 ZH ≠ r02 定稿（断句不得增删/改写字，仅可插标点）"
+                    f"；r03 多出「{added}」/ r02 有而 r03 缺「{removed}」"
+                )
     if warnings:
-        print(f"🔪 check-r03 存疑预警 {len(warnings)} 条（估算值，供 Agent 判断：合并相邻单元 / 调整切分点 / 接受 / 依赖回填插值）:")
-        for w in warnings:
-            print("  " + w)
+        if full_warnings or len(warnings) <= WARN_PRINT_MAX:
+            print(f"🔪 check-r03 存疑预警 {len(warnings)} 条（估算值，供 Agent 判断：合并相邻单元 / 调整切分点 / 接受 / 依赖回填插值）:")
+            for w in warnings:
+                print("  " + w)
+        else:
+            kind_str = " / ".join(f"{KIND_NAMES[k]} {n} 条" for k, n in Counter(w[0] for w in warnings).most_common())
+            print(f"🔪 check-r03 存疑预警 {len(warnings)} 条（{kind_str}，估算值，供 Agent 判断）——默认折叠显示前 {WARN_PRINT_MAX} 条，需全量用 --full-warnings:")
+            for w in warnings[:WARN_PRINT_MAX]:
+                print("  " + w)
     if not problems:
         print(f"✅ check-r03 通过：{len(sentences)} 整句，锚定唯一 / 互斥 / 行宽 / ZH忠实均合规")
         return 0
@@ -421,7 +450,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
 
 
 def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
-                     check_frag=True, check_mismatch=True):
+                     check_frag=True, check_mismatch=True, full_warnings=False):
     """块级 check-r03：逐块校验（r03_results/ + chunks/ 骨架 + r02_results/）。
 
     - 每块 = 一个空隙组-片（chunks/ 的块 ↔ cue 区间）；锚定缩到块内 cue 区间
@@ -470,7 +499,7 @@ def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
         print(f"--- chunk_{k:03d} (c{cue_range[0]}-c{cue_range[1]}) ---")
         rc = check_r03(r03_blk, srt_path, r02_path=None, cjk_speed=cjk_speed,
                        check_frag=check_frag, check_mismatch=check_mismatch,
-                       cue_range=cue_range, r02_text=r02_text)
+                       cue_range=cue_range, r02_text=r02_text, full_warnings=full_warnings)
         n_blocks += 1
         if rc != 0:
             n_block_err += 1
