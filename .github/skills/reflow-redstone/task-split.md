@@ -1,6 +1,6 @@
 ---
 name: task-split
-description: 分句 + 语义对应 subagent 任务（reflow）——对照 r03_normalized_1（EN 预分句 E 号）与 r03_normalized_2（ZH r03 模板骨架：Z 句 + 子句段预填），确认整句骨架 + 填空（S 号/EN/关系）+ 语义对应（1:1/1:n/n:1），输出 r03_results/chunk_<k>.txt。reflow 步骤 5 派发分句 subagent 时作为任务 prompt 文件使用。
+description: 分句 + 语义对应 subagent 任务（reflow 步骤 5-1 LLM 语义分句）——对照 r03_normalized_1（EN 预分句 E 号）与 r03_normalized_2（ZH r03 模板骨架：Z 句 + 子句段预填），确认整句骨架 + 填空（S 号/EN/关系）+ 语义对应（1:1/1:n/n:1），输出 r03_results/chunk_<k>.txt。reflow 步骤 5-1 派发分句 subagent 时作为任务 prompt 文件使用。
 ---
 
 # 分句 + 语义对应 subagent 任务（reflow）
@@ -55,6 +55,7 @@ description: 分句 + 语义对应 subagent 任务（reflow）——对照 r03_n
 ```
 
 - 头部可加 `> ` 注释（如残片剔除说明）；写完后报告 `已写入 <文件名>`（**不数行数**，行数由主会话脚本统计），不粘贴全文
+- **漏句留空（不静默丢弃）**：某 Z 句无法对应 EN（找不到语义对应 / 超宽段切不动）→ 在产物中写 `> ⚠️ 未匹配 Z<n>：<文本>`（r03 允许 `> ` 注释），**不得静默丢弃该句**——漏句会让 check-r03 ④ ZH 忠实校验报缺句，留空标记便于主会话按 `> ⚠️` 精确定位、定点补/回 r02 改
 
 ---
 
@@ -62,7 +63,7 @@ description: 分句 + 语义对应 subagent 任务（reflow）——对照 r03_n
 > 1. `纪律母版` = subagent-dispatch 纪律母版（`_discipline.md` 整体追加，位于 `## 先验知识` 之前，含工作区/输出门禁等通用纪律）——见 [subagent-dispatch#纪律母版](../subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)
 > 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS.md` 的 `r03_plan.md` 节（`## S<n>` 整句分组格式；`r03_results/chunk_<k>.txt` 同此格式；subagent 唯一允许的外部读取）
 > 3. `## 先验知识` = 02_terms.md 术语表（如需核对译名）+ 每块边界情况/空隙归属等主会话复核结论（`--prior-file` 追加）；本任务特有规则（长句碎片 1s / 阅读速度 5 字/秒 / 时间边界 / 回填严格脚本化）已内联于「任务规则」
-> 4. `## 本块数据` = 数据文件引用：`reflow/r03_normalized_1/chunk_<k>.txt`（E 号预分句）+ `reflow/r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架，见 SKILL 步骤 5「归一化」）+ 前后块衔接
+> 4. `## 本块数据` = 数据文件引用：`reflow/r03_normalized_1/chunk_<k>.txt`（E 号预分句）+ `reflow/r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架，见 SKILL 步骤 5「归一化（两路径共享）」）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `reflow/r03_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`（不数行数）
 
 > **渲染手段（脚本）**：上述步骤由 `scripts/render_subagent_prompt.py` 会话外自动完成——读本模板 + 替换 `<k>`/`<视频名>` + 追加材料 → 落盘 `_work/<视频名>/prompts/task-split-chunk_<k>.txt`（完整 prompt 不进主会话）；主会话复核结论用 `--prior-file <文件>` 追加；未走脚本（agent 手工组装）按上方步骤同序拼接。派发时按 [subagent-dispatch#派发引用 prompt](../subagent-dispatch/SKILL.md#派发引用-prompt) 只给引用路径。

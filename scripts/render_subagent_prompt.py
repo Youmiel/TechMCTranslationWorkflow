@@ -60,6 +60,15 @@ TASKS = {
         "output": "reflow/r03_results/chunk_<k>.txt",
         "prior": ["terms"],
     },
+    "task-match": {
+        "skill": "reflow-redstone",
+        "template": "task-match.md",
+        "role": "句子匹配",
+        "format_section": "r03_matches/chunk_<k>.txt（匹配文件）",
+        "inputs": ["reflow/r03_normalized_1/chunk_<k>.txt", "reflow/r03_normalized_2/chunk_<k>.txt"],
+        "output": "reflow/r03_matches/chunk_<k>.txt",
+        "prior": [],
+    },
 }
 
 

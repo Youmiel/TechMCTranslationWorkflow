@@ -51,7 +51,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
      - 步骤 3 处理（补标点）→ `r01_results/chunk_<k>.txt`
      - 步骤 4 处理（翻译 + 术语核对）→ `r02_results/chunk_<k>.txt`
      - 步骤 5 归一化（预分句 + ZH 机械化断句）→ `r03_normalized_1/chunk_<k>.txt`（EN 预分句 E 号）+ `r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架：Z 句 + 子句段预填）
-     - 步骤 5 处理（分句）→ `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号；**回填输入 = 目录直读**，`parse_r03_dir` 按块序解析 + 全局重编号，零拼接）——`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
+     - 步骤 5 处理（分句，5-1/5-2 二选一）→ **5-1 LLM 语义分句**（老，现状）：`task-split` 直接写；**5-2 脚本断句**（新，省 token）：`r03_matches/chunk_<k>.txt`（匹配文件，LLM 只做句子匹配）→ `build-r03` 机械填回——两路径产物 `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号；**回填输入 = 目录直读**，`parse_r03_dir` 按块序解析 + 全局重编号，零拼接）——`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
      - 步骤 6 处理（回填）→ `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
      - 步骤 7 处理（组装）→ `r04_bilingual.srt`（双语预览 en-zh）
 
@@ -69,8 +69,9 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 6. 有 `reflow/r01_normalized/`（归一化输入）→ 步骤 3 逐块补标点续
 7. 有 `reflow/r01_results/`（逐块中间产物）→ 步骤 3 校验（从补标点校验续）
 8. 有 `reflow/r02_results/`（逐块中间产物）→ 步骤 4 第 1 步（从逐块翻译续）
-9. 有 `reflow/r03_normalized_1/` + `reflow/r03_normalized_2/`（EN 预分句 + ZH r03 模板骨架）→ 步骤 5 处理第 1 步（从派发续；归一化已完成）
-10. 有 `reflow/r03_results/`（逐块中间产物）→ 步骤 5 第 1 步（从分句续；回填直读 r03_results/，无需拼接）
+9. 有 `reflow/r03_normalized_1/` + `reflow/r03_normalized_2/`（EN 预分句 + ZH r03 模板骨架）→ 步骤 5（归一化已完成，从 5-1 / 5-2 选择续）
+9.5. 有 `reflow/r03_matches/`（匹配文件，5-2）→ 步骤 5-2 步骤 2（从 `build-r03` 机械填回续）
+10. 有 `reflow/r03_results/`（逐块中间产物）→ 步骤 5-1 第 1 步（从分句续；5-2 产物亦可直接回填；回填直读 r03_results/，无需拼接）
 11. 有 `r03_plan.md`（仅审核/审计产物，非回填输入）→ 不设独立恢复点，回填以 r03_results/ 为准
 12. 有 `r04_draft.srt` → 步骤 6 开头（重新回填）
 
@@ -241,9 +242,15 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 2. **跨步骤兜底**：步骤 5 check-r03 ④ ZH 忠实（拦截译文改写）→ 阶段二½ 人工对照检查
 
 
-#### 步骤 5：分句 + 语义对应
+#### 步骤 5：分句 + 语义对应（两条平行路径，二选一）
 
-##### 归一化
+> 两路径产物契约一致（`r03_results/chunk_<k>.txt`，消费端 check-r03 / 回填无感），差异在断句方式与 token 消耗。**步骤 5-1（老，现状）在前**、**步骤 5-2（新，省 token）在后**——两路径各自独立「归一化 → 处理 → 校验」三段；5-2 的归一化/校验与 5-1 相同，**只引用前文**（见步骤 5-1 对应段），处理独立展开。
+
+##### 步骤 5-1：LLM 语义分句（老，现状，精细）
+
+> 语义对应/句内再切更精细，token 消耗大（~35k/块，token 优化实测）。
+
+###### 归一化
 
 1. **预分句 + ZH 机械化断句（脚本，方案 4——断句基线机械化）**：`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/`
   - EN 按句末标点 `.?!`（`r01_results/`，衔接归位后）预分句标号 `E1..En` → `reflow/r03_normalized_1/chunk_<k>.txt`
@@ -252,16 +259,17 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
   - **多语言通用**：切分标点（`--punct-levels` 有序层级，默认逗号族>顿号>破折号，超宽才降级）、句长区间（`--soft-min/--soft-max/--hard-max/--min-unit`）全参数化，默认 CJK；宽度复用 `srt_reflow_common.text_width`（Unicode 块通用）
   - 一次性全目录跑完（r02 折行副本不再需要——预分句输出已逐句折行，脚本直读 r02_results 原稿）
 
-##### 处理
+###### 处理
 
 1. **派发**：每块派一个 subagent，**完整 prompt 由渲染脚本生成**（见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)），派发时按「派发引用 prompt」只给引用路径
   - 渲染命令：`python scripts/render_subagent_prompt.py task-split --video <工作目录> [--chunk <k> | --all] [--prior-file <块边界情况>]`（先验知识自动注入术语表；每块边界情况/空隙归属等主会话复核结论用 `--prior-file` 追加）
   - **输入（材料配对——分句语义对应是需全貌的跨切面决策）**：每块输入 = `r03_normalized_1/chunk_<k>.txt`（EN E 号预分句）+ `r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架，见「归一化」）对照 + 前后块 CONTEXT（**数据文件引用**，渲染脚本注入 `## 本块数据`）
   - **分句/语义对应规则**：整句骨架（预分句 E 号确认）/ 模板填空（S 号·EN·关系·子单元 EN）/ 1:1·1:n·n:1 对应 / 忠实转写铁律 / 拆合标注 / 游离停顿词——见 `task-split.md`；r03 产物结构（`## S<n>` / EN·ZH·关系 / 子单元）见 [PRODUCT_FORMATS#r03_plan.md](../../../docs/PRODUCT_FORMATS.md)
   - **产物**：`r03_results/chunk_<k>.txt`（**S 号块内从 1 连续编号**，见 task-split 规则 6）→ **`r03_results/` 即回填输入**（步骤 6 目录直读，脚本自动全局重编号，**无需拼接**）；`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
+  - **漏句留空**：处理不了的 Z 句（无法对应/超宽段切不动）在产物写 `> ⚠️ 未匹配 Z<n>：<文本>` 标记，**不静默丢弃**（check-r03 ④ ZH 忠实会抓缺句，配合留空标记精确定位）
 2. **注意事项**：每块内保持整句/单元的语义完整性（不跨块拆句；空隙为硬边界，整句不跨空隙块）
 
-##### 校验
+###### 校验
 
 **本步是回填前的写时预检，不可跳过**：`check-r03` 通过才进步骤 6（回填）——把"步骤 6 跑完才发现"提前到分句阶段拦截。
 
@@ -279,6 +287,28 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
     3. **一次复验**：task-fix 后重跑 check-r03；残留增量 → 第二轮 B 档只派**增量残留清单**（逐轮收敛）；连续多轮仍失败 → 升级 C 档整块重派
     4. **严禁全量重写**：禁止整块打回全文重写（token 反超现状，见 token 优化方案「五」）
     5. 存疑预警（⑤⑥⑦）：Agent 智能判断——⑤⑥ 独立开关 `--no-frag` / `--no-mismatch`（预警过多、效果不佳时可单独关一项降噪）；**默认折叠**（统计 + 前 5 条样例，其余省略），分句阶段需全量看预警时加 `--full-warnings`
+
+##### 步骤 5-2：脚本断句（新，省 token，先试）——LLM 只做句子匹配，断句/填回全机械
+
+> 分句阶段的 LLM 思考链 + 写盘 token **归零**；产物 = 复用模板子句段（机械断句）+ 按序近似中英对应，语义对齐/游离词/超宽段等由 **漏句留空标记**（`> ⚠️`）+ 人工审核兜底。适合先跑一版粗分句看节奏，审核不满意再走 5-1（老路径）。
+
+###### 归一化
+
+（同步骤 5-1 归一化，见上——`r03_normalized_1/` + `r03_normalized_2/` 已生成则直接复用，不重复跑）
+
+###### 处理
+
+1. **句子匹配（每块派一个 subagent）**：`python scripts/render_subagent_prompt.py task-match --video <工作目录> [--chunk <k> | --all]`（派发引用 prompt，见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）
+  - **输入**：`r03_normalized_1/chunk_<k>.txt`（EN E 号预分句）+ `r03_normalized_2/chunk_<k>.txt`（ZH Z 句模板骨架）对照（**数据文件引用**，渲染脚本注入 `## 本块数据`）
+  - LLM **只输出匹配文件** `reflow/r03_matches/chunk_<k>.txt`（每行 `Z组 = E组`，如 `Z5+Z6+Z7+Z8 = E5`；**覆盖全部 Z/E 号各恰好一次**）——**不抄文本、不断句、不写 r03**（规则见 `task-match.md`；`r03_matches` 格式见 [PRODUCT_FORMATS#r03_matches](../../../docs/PRODUCT_FORMATS.md)）
+  - **覆盖完整性是第一要务**：漏任何 Z/E 句都会在 r03 产物留空标记（脚本断句允许不完整，缺处人工核对或升级 5-1）
+2. **机械断句填回（脚本，一次性全目录）**：`python scripts/srt_reflow_build_r03.py reflow/r03_matches/ reflow/r03_normalized_1/ reflow/r03_normalized_2/ -o reflow/r03_results/`
+  - 子单元 = **复用模板骨架子句段**（presplit 机械断句结果，忠实/宽度由结构保证）；EN 整句 = 匹配 E 组按号拼接；子单元 EN = 按 ZH 子单元宽度比例机械切分（**互斥拼接 == 整句**，check-r03 ② 可过）
+  - **漏句留空**：匹配未覆盖的 Z/E 句，产物写 `> ⚠️ 脚本断句·未匹配 Z<n>: <文本>`（**不静默消失**）；S 号块内连续、关系由子单元数定（1:1/1:n）
+
+###### 校验
+
+（同步骤 5-1 校验，见上——check-r03 对两路径产物统一裁决；5-2 由 build-r03 机械生成、互斥/行宽/忠实天然满足，产物 `> ⚠️ 脚本断句·未匹配` 标记 = 漏句，在此显形，需人工核对或升级 5-1）
 
 
 #### 步骤 6：回填
