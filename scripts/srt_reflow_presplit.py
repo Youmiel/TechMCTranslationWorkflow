@@ -35,7 +35,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import wrap_text, collect_chunk_files, strip_stitch_marks, MAX_LINE, text_width
+from srt_reflow_common import wrap_text, collect_chunk_files, strip_stitch_prefix, MAX_LINE, text_width
 
 # 机械化断句默认参数（CJK；可 CLI 覆盖——多语言适配只改这里 + 标点参数，核心算法零改动）
 DEFAULT_SOFT_MIN = 15      # 目标区间下限（视觉宽度）
@@ -78,9 +78,9 @@ def is_en_sentence_end(text, start, end):
 
 
 def split_en(text):
-    """英文整段按句末标点 .?! 分句（先合并显示折行、剥离跨块句标记）→ [句文本]。"""
+    """英文整段按句末标点 .?! 分句（先合并显示折行、剥跨块句标记前缀）→ [句文本]。"""
     text = re.sub(r"\s+", " ", text.strip())
-    text = strip_stitch_marks(text).strip()
+    text = strip_stitch_prefix(text).strip()
     sentences, buf = [], []
     i, n = 0, len(text)
     while i < n:
@@ -135,7 +135,8 @@ def _collapse_ws(text):
 
 
 def split_zh(text):
-    """中文整段按句末标点 。！？… 分句（折行合并保留中英/数字空格、括号配平保护）→ [句文本]。"""
+    """中文整段按句末标点 。！？… 分句（折行合并保留中英/数字空格、括号配平保护；剥跨块句标记前缀）→ [句文本]。"""
+    text = strip_stitch_prefix(text)
     text = _collapse_ws(text)
     sentences, buf = [], []
     i, n = 0, len(text)

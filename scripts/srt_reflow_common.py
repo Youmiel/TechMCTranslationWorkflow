@@ -23,6 +23,9 @@ TS_RE = re.compile(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})")
 # r01 跨块句标记【承接句】/【延伸句】（片边界跨块句补全，见 reflow-redstone task-punctuate 规则 4）
 # 标记内容 = 邻块补全的完整句；剥离到句末标点 / 下一个【 / 结尾。校验剥离用：标记内容不计入词序列与断句判定
 STITCH_RE = re.compile(r"【(?:承接句|延伸句)】.*?(?:[.?!。]|(?=【)|$)")
+# 预分句用：只剔除标记前缀本身、保留补全内容（内容为本块真实句子，需参与 E/Z 锚定）——
+# 与 STITCH_RE 连内容剥离（校验视角）不同；见 strip_stitch_prefix docstring（uVOFckoMdIU S94 事故修复）
+STITCH_PREFIX_RE = re.compile(r"【(?:承接句|延伸句)】")
 
 
 def parse_time(s):
@@ -56,6 +59,16 @@ def strip_stitch_marks(text):
     标记内容 = 邻块补全部分，不属于本块 OWNED cue——措辞/断句校验前先剥离，避免邻块词污染词序列与定位。
     本块 OWNED 的跨块句部分若被包在标记内，剥离后缺失——由调用方（check_words）以「有标记 + 子集」放行。"""
     return STITCH_RE.sub("", text)
+
+
+def strip_stitch_prefix(text):
+    """只剔除 r01 跨块句标记前缀【承接句】/【延伸句】，保留补全内容（预分句用）。
+
+    与 strip_stitch_marks（连内容剥离，校验用）不同：预分句的 EN/ZH 两侧都需保留标记内容参与 E/Z 锚定，
+    只去掉前缀标记本身——否则 EN 侧整句被剥导致锚点缺失（r03_normalized_1 无 E 号）、ZH 侧带标记，
+    两侧不对称（uVOFckoMdIU chunk_002 S94 事故：分句 agent 遇「延伸句无 E 锚点」只能写 CARRY）。
+    标记彻底消除由 check-r03 格式标记残留校验兜底拦截。"""
+    return STITCH_PREFIX_RE.sub("", text)
 
 
 def wrap_text(text, width=1000):

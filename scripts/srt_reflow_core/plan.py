@@ -23,7 +23,12 @@ ZH_KEEP_RE = re.compile(r"[^\u4e00-\u9fff0-9a-zA-Z]")
 ZH_DIFF_LIST_LIMIT = 80
 # 存疑预警默认折叠阈值：超过只打印统计 + 前 N 条（全量需 --full-warnings，分句阶段决策用）
 WARN_PRINT_MAX = 5
-KIND_NAMES = {"🔪": "碎片", "📖": "中英失配", "🧩": "括号/引号"}
+KIND_NAMES = {"🔪": "碎片", "📖": "中英失配", "🧩": "括号/引号", "\U0001f3f7": "占位标记"}
+# r03 格式标记残留（uVOFckoMdIU chunk_002 S94 事故修复）：
+# - 跨块句标记【承接句】/【延伸句】= r01 阶段格式标记，衔接归位/翻译/预分句应已消除——残留即上游漏处理，回填会原样写进交付 SRT → 硬违规
+# - ASR 残词占位【待审核】= r01 兜底占位，应在翻译/分句时按 01 修正定稿——残留提示回 r02 定稿或人工确认 → 存疑预警
+STITCH_RESIDUAL_RE = re.compile(r"【(?:承接句|延伸句)】")
+PLACEHOLDER_RESIDUAL_RE = re.compile(r"\[待审核[^\]]*\]")
 
 
 def _clip(s, n=60):
@@ -339,6 +344,20 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
             ul = s.unit_lines.get(u[0], s.line)
             if w > 26:
                 problems.append(f"📏 行宽 {w:.1f}（>26 硬）{u[0]}（{base}:行{ul}）: {_clip(u[2])}")
+
+    # 格式标记残留硬校验：r01 跨块句标记【承接句】/【延伸句】、ASR 残词占位【待审核】是 r01 阶段临时标记，
+    # 分句产物 r03 不得残留（衔接归位/翻译/预分句应已消除）——残留 = 上游漏处理，回填会把标记原样写进交付 SRT
+    # 扫描层：整句（s.en/s.zh）+ 各子单元；1:1 无子单元时整句即单元，只查一次不重复报
+    for s in sentences:
+        layers = [(s.key, s.line, s.en), (s.key, s.line, s.zh)]
+        for u in s.units:
+            ul = s.unit_lines.get(u[0], s.line)
+            layers.extend([(u[0], ul, u[1]), (u[0], ul, u[2])])
+        for key, ln, field in layers:
+            for m in STITCH_RESIDUAL_RE.finditer(field):
+                problems.append(f"❌ 格式标记残留 {key}（{base}:行{ln}）: 含「{m.group(0)}」——跨块句标记应在衔接归位/翻译/预分句时消除，回填将原样写入 SRT")
+            for pm in PLACEHOLDER_RESIDUAL_RE.finditer(field):
+                warnings.append(f"\U0001f3f7 占位标记残留 {key}（{base}:行{ln}）: 含「{pm.group(0)}」——ASR 残词占位应在翻译/分句时按 01 修正定稿，残留将写入交付（回 r02 改或人工确认）")
 
     # 括号/引号配对预警（存疑，不阻断）：单元内不成对 = 括号被拆 / 引号归属漂移（S24/S61e/S70c 类）
     for s in sentences:
