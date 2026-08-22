@@ -6,7 +6,7 @@ Vertical Integration,,确保系统中每个环节处理速度一致以避免瓶�
 Container Threshold,,物品分类器中可变的容器填充度检测阈值，解决单片间信号溢出问题,[存储] 来源：cubicmetre视频,可变容器阈值,
 Main Storage,MS,存储科技术语：一个巨大的仓库，可分类并存储几乎所有可获得的已知物品,"[存储] 来源：techmc-glossary contraptions.csv + storage.csv（techmc-glossary，源分类 contraptions; storage 双分类）；2026-08-01 用户审计确认；本视频指 Wavetech 的全物品仓库；勿译""主存储""",全物品仓库（全物品分类仓库）,
 box crafter,,潜影盒合成机：自动合成并染色的潜影盒装置（16 游戏刻一个，信号强度输入选择颜色）。,[推断：box=潜影盒（.cache/mojang/items.csv Shulker Box）+crafter=合成器] 来源：QSDpdXT9SPs 视频 c106；2026-08-13 用户确认,潜影盒合成机,
-6x loader,,六倍打包机：6 个打包机并联的配置（ASR 误听 6X letters）,来源：uVOFckoMdIU 视频 00:18:28；2026-08-12 用户确认,六倍打包机,
+6x loader,,六倍打包机：6 个打包机并联的配置（ASR 误听 6X letters）,来源：uVOFckoMdIU 视频 00:18:28；2026-08-12 用户确认；2026-08-21 用户改译「六倍速打包机」（原「六倍打包机」）,六倍速打包机,
 rocket crafters,,自动合成烟花火箭的合成器阵列。,[推断：rocket=烟花火箭（.cache/mojang/items.csv Firework Rocket）+crafter=合成器] 来源：QSDpdXT9SPs 视频 c152；2026-08-13 用户确认,烟花（火箭）合成器,
 main player interface,,存储系统的主玩家交互界面（可拿取火药/TNT/各时长烟花火箭）。,[推断：main+player interface 构词，参照 user interface=用户界面] 来源：QSDpdXT9SPs 视频 c61；2026-08-13 用户确认；注意与 main storage=全物品仓库（.cache/glossary/storage.csv）区分,主玩家界面,
 2x unloader,,以 2x 速率运作的拆包机/卸货机（TNT 供给语境）,[存储] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c646；派生 .cache/glossary/storage.csv Unloader=拆包机/卸货机；2026-08-13 用户确认,双倍卸货机,

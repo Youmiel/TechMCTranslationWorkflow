@@ -110,7 +110,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 按 [redstone-preprocess](../redstone-preprocess/SKILL.md) 原样执行（阶段〇 预判 / §1.1 扫描 → `01_subtitle_asr_fixed.srt` / §1.2 补齐 / §1.3 确认 → `02_terms.md` / §1.4 入库）。`--cue-exact` 校验保留（保护原轴骨架）。**阶段门禁：`01`/`02` 交用户确认后才进入阶段二，不得擅自跨阶段**（阶段间确认是本工作流的流程控制）。
 
-> **实践建议**（补丁，机制设计不变）：阶段〇/一 分块（preprocess §1.1 第一次遍历 `_en_chunks/`）`--owned` 按 **≤400 cue** 封顶——实践得出；封顶只在取值时做，`context_estimate.py --no-amplification` 定 N 与分块机制不变
+> **实践建议**（补丁，机制设计不变）：阶段〇/一 分块（preprocess §1.1 第一次遍历 `_en_chunks/`）`--owned` 按 **≤300 cue** 封顶——实践得出；封顶只在取值时做，`context_estimate.py --no-amplification` 定 N 与分块机制不变
 
 ---
 

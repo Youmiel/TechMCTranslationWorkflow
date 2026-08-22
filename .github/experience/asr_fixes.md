@@ -58,28 +58,20 @@
 | caustic | costic | 难缠的（形容物品集） |
 | redstone | resto | 红石（装置） |
 | Louvain | levane | 鲁汶（图聚类算法） |
-| Overworld | overlay | 主世界（音近） |
+| overworld | overlay / overwatch | 主世界（音近） |
 | snow golems | stuck ones / snugones | 雪傀儡 |
 | chunk | trunk | 区块（chunk loader 语境高频） |
 | endermite | then dermite | 末影螨 |
-| update suppressor | object suppressor | 更新抑制器（即时红石/更新抑制语境） |
-| ideal | idol | — |
+| update suppressor | object suppressor / pressure / update to pressure / important extra update to pressure | 更新抑制器（即时红石/更新抑制语境） |
 | higher-end | higherend | — |
-| sort bee | sort be | 蜂巢（bee nests） |
-| item sorter breaks | item sort of breaks | ASR 漏词 |
 | three-wide tileable | free wide tilable | 三宽可堆叠 |
 | wither skulls | river skulls | 凋灵之首 |
 | /tp | slash tv | 命令（/teleport） |
 | ghast | gas | 恶魂 |
 | end pillar | n pillar | 末地黑曜石柱 |
-| in creative | hearing / in creative | ASR 多词/漏词 |
-| farm in creative | farming creative | ASR 漏介词 |
-| convinced | comforted | 确信（"fully convinced"） |
 | obsidian farm | obscene farm | 黑曜石农场 |
 | ender dragon | enemy dragon / gender dragon | 末影龙 |
 | end stone farm | start farm | 末地石农场 |
-| we built | we bought | 口语（"built an obsidian farm"） |
-| scared you'll mess my stuff up | scared you my stuff up | ASR 漏词 |
 | kill that wither | feel that wither | 击杀凋灵 |
 | carts | cars / cards | 矿车（minecart） |
 | shulker | sugar / should / shocker / shoulder / shelter / choker / schulker / shoulders | 潜影贝（本视频最高频误听） |
@@ -102,20 +94,17 @@
 | Tweakeroo | twicroot | 辅助模组 |
 | MiniHUD | midi HUD | 信息显示模组 |
 | farm | phone | 农场 |
-| ritual | rich / original | 仪式 |
 | spyglass | spy glass | 望远镜 |
 | netherrack | dandarak | 下界岩 |
 | wither | widow / weapon | 凋灵 |
-| overworld | overwatch | 主世界 |
 | portal cooldown | nk21 | 传送门冷却 |
 | piston clock | piston club | 活塞时钟 |
-| sand | sans / sand | 沙子 |
+| sand | sans | 沙子 |
 | the end dimension | the n dimension | 末地维度 |
 | mycelium | misalignment | 菌丝 |
 | eye of ender | head bottle | 末影之眼 |
 | dragon egg | dragon axe / dragon x | 龙蛋 |
 | wither skeletons | weapon dogs | 凋灵骷髅 |
-| update suppressor | pressure / update to pressure / important extra update to pressure | 更新抑制器 |
 | async chunk | ac chunk / 18 chunk | 异步区块（重载） |
 | cluster chunk | cluster change / cluster shank / plus a chunk / few hundred plus / a few hundred plus the chance | 集群区块 |
 | main thread | mainframe | 主线程 |
@@ -124,24 +113,11 @@
 | water in the nether | water in another / water in the ladder | 下界水 |
 | waterlogged stairs / blocks | water locked stairs / water lock blocks | 含水方块 |
 | water buckets | creating weapon dogs | 水桶 |
-| a strand of sand with a dragon egg | a stand of sand with dragon axe | 沙线+龙蛋 |
-| the trapped chest trick | the trapped chest two to get | 陷阱箱技巧 |
-| unlucky hopper | unholy hopper / unlocked hopper | 倒霉漏斗（社区梗） |
 | piston heads | improvement hits | 活塞头 |
 | piston block 36 | eight plus block 36 | 活塞 |
-| grid out of stone bricks | good out of stone bricks | 石砖网格 |
-| hoe | hole in the dirt block | 锄 |
-| server tour | server to us | 服务器游览 |
-| record a little bit | require a little bit | 录制 |
-| Mojang fix that bug | moyan fix that book | Mojang 修 bug |
 | lava pocket | liquid pocket | 岩浆池 |
-| the lava RNG | the liquid rng | 岩浆随机数 |
-| drone | fall off the door | 无人机 |
 | flying machine | pingu freedom of flying machine | 飞行器 |
 | palette of blocks | palace down there / palette of blogs | 方块调色板 |
-| cubicmetre | cubic meter | 人名（频道名，存储技术） |
-| my old mate | me old mate | 口语语法 |
-| design in snapshot | design snapshot | ASR 漏介词 in |
 | node | note / notes / endnote / i know / red nose / a no | 节点（末影龙寻路机制主题高发） |
 | pathfind | path finds / pat find / path find | 寻路（末影龙寻路机制） |
 | island | iceland | 岛（末地岛） |
@@ -150,10 +126,33 @@
 | valid path | pallet path | 有效路径（语义+音近） |
 | dirt | third | 泥土（音近） |
 | blocks | logs | 方块（语义+音近，dirt blocks 语境） |
-| cut it | carry | 剪辑用语（"我要切掉这段"） |
 | social aggro | social I grow / social Agro / social like or | 群体仇恨（潜影贝复制机制的仇恨信号，aggro 变体 + social 前缀） |
 | omega long pulse extender | an ilmango um / a ill mango | 欧米伽长脉冲延长器（ilmango 人名误听） |
+| Mojang | mojing | Mojang（公司/官方） |
+| chute | shoots / shoes / shoot | 滑道 |
 
-<!-- 历史单视频专属映射（无法确认归属视频或已不在 _work 追踪）：不参与通用解码。
-     清理遵循 AGENTS.md 核心原则 #6，提示用户手动归档到 _work/<视频名>/asr_fixes.md，不自动删。 -->
+<!-- 低价值/视频专属映射（主表超限整理时移出，暂存于此）：不参与通用解码。
+     2026-08-22 已归档 2 条到对应视频：ideal→QSDpdXT9SPs、cubicmetre→uVOFckoMdIU。
+     清理遵循 AGENTS.md 核心原则 #6，如需彻底归档到 _work/<视频名>/asr_fixes.md，请用户手动执行。 -->
 
+| sort bee | sort be | 蜂巢（bee nests） |
+| item sorter breaks | item sort of breaks | ASR 漏词 |
+| in creative | hearing / in creative | ASR 多词/漏词 |
+| farm in creative | farming creative | ASR 漏介词 |
+| convinced | comforted | 确信（"fully convinced"） |
+| we built | we bought | 口语（"built an obsidian farm"） |
+| scared you'll mess my stuff up | scared you my stuff up | ASR 漏词 |
+| ritual | rich / original | 仪式 |
+| a strand of sand with a dragon egg | a stand of sand with dragon axe | 沙线+龙蛋 |
+| the trapped chest trick | the trapped chest two to get | 陷阱箱技巧 |
+| unlucky hopper | unholy hopper / unlocked hopper | 倒霉漏斗（社区梗） |
+| grid out of stone bricks | good out of stone bricks | 石砖网格 |
+| hoe | hole in the dirt block | 锄 |
+| server tour | server to us | 服务器游览 |
+| record a little bit | require a little bit | 录制 |
+| Mojang fix that bug | moyan fix that book | Mojang 修 bug |
+| the lava RNG | the liquid rng | 岩浆随机数 |
+| drone | fall off the door | 无人机 |
+| my old mate | me old mate | 口语语法 |
+| design in snapshot | design snapshot | ASR 漏介词 in |
+| cut it | carry | 剪辑用语（"我要切掉这段"） |

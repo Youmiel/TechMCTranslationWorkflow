@@ -11,3 +11,4 @@ player TNT,,由玩家（bot）点燃的 TNT（对比 arrow lit 箭点燃）,来�
 arrow lit,,由箭点燃的 TNT（点火方式）,来源：uVOFckoMdIU 视频 00:46:34；2026-08-14 用户确认,箭点燃,
 dupe TNT,,TNT 复制机产出的 TNT（对比 looting TNT）,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:21:05；2026-08-13 用户确认,复制 TNT,
 kill chamber,,实体被击杀、掉落物被收集的舱室,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:38:40；2026-08-13 用户确认；.cache/glossary/mob_farm.csv Killing Chamber=击杀室,击杀室,
+non-looting,,潜影贝农场的非掠夺运行模式（与 looting 相对，不使用掠夺 TNT）,[推断：视频上下文] 来源：uVOFckoMdIU 视频 00:27:21；2026-08-21 用户确认,非掠夺（模式）,
