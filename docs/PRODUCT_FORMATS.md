@@ -47,7 +47,7 @@
 | `r04_bilingual.srt` | reflow | `srt_reflow.py attach-en` | `srt_check_width.py --order en-zh` |
 | `r04_alerts.md` | reflow | `srt_reflow.py reflow` | Agent 参考 |
 | `r03_anchored.jsonl` | reflow | `srt_reflow.py reflow` | 人工/机器审查 |
-| `prompts/<任务>-chunk_<k>.txt` | 共享（派发存档） | Agent（派发前落盘完整 subagent prompt） | 复盘查阅（无自动校验，规则见 subagent-dispatch「提示词存档」） |
+| `prompts/<任务>-chunk_<k>.txt` | 共享（派发存档） | 渲染脚本 `render_subagent_prompt.py`（reflow 阶段二）/ Agent 手工（term-recognition/en-preprocess/fix/summary，未接入渲染脚本） | 复盘查阅（无自动校验，规则见 subagent-dispatch「提示词存档」） |
 
 ---
 
@@ -281,15 +281,15 @@
 ### `r01_results/chunk_<k>.txt`（补标点块）
 
 - 命名：`<工作目录>/reflow/r01_results/chunk_<k>.txt`
-- 生成：Agent（步骤 1 逐块补标点 subagent；各块独立文件，块数 = 空隙组数 × 组内片数）
+- 生成：Agent（步骤 3 逐块补标点 subagent；各块独立文件，块数 = 空隙组数 × 组内片数）
 - 格式：**整段文字**——每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**；块内加标点但**不按 cue 分行、不按句分行**（逐句/cue 分行会孤立 ASR 残片导致误译）；**不带 `c<idx>\t时间码\t` 前缀**；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（英文在空格处折、不拆词），属**显示性换行、非语义分行**（read_file 可读、check_words 按整段解析）；CONTEXT 仅作语境，**片边界跨块句允许补全**（见约束）
 - 约束：仅加标点、不改措辞；空隙断句标记处按复核方式断句；词序列与对应 01 cue 段一致（`check_words` 块级模式按整段解析校验）；**跨块句补全（仅片边界）**——OWNED 首句承接前块 → 行首 `【承接句】<完整句>`；末句延伸后块 → 行首 `【延伸句】<完整句>`；相邻块对同一跨块句都补全（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`），主会话「衔接归位」后**只在一侧留无标记完整句、另一侧不留该句文本**；空隙边界不承接
-- 消费：步骤 2 整段翻译（`r02_results/` 对应块）、预分句标号（`r03_normalized_1/`，见该节）、`check_breaks`/`check_words` 块级模式（`【承接句】`/`【延伸句】` 标记由校验脚本识别、不计入词序列）
+- 消费：步骤 4 整段翻译（`r02_results/` 对应块）、预分句标号（`r03_normalized_1/`，见该节）、`check_breaks`/`check_words` 块级模式（`【承接句】`/`【延伸句】` 标记由校验脚本识别、不计入词序列）
 
 ### `r02_results/chunk_<k>.txt`（翻译块）
 
 - 命名：`<工作目录>/reflow/r02_results/chunk_<k>.txt`
-- 生成：Agent（步骤 2 逐块整段翻译 subagent，**先验知识注入 humanizer 注入版规则（humanizer-inject）**；各块独立文件，块数 = 空隙组数 × 组内片数）
+- 生成：Agent（步骤 4 逐块整段翻译 subagent，**先验知识注入 humanizer 注入版规则（humanizer-inject）**；各块独立文件，块数 = 空隙组数 × 组内片数）
 - 格式：**整段中文译文**——每块 = 对应 `r01_results/chunk_<k>.txt` 的整段翻译；块内**不按 cue 分行、不按句分行、不编号、不输出原文**；**不带 `c<idx>\t时间码\t` 前缀**；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（中文按字符折），属**显示性换行、非语义分行**（read_file 可读、check-r03 按整段作 ZH 忠实基准）；CONTEXT 只读不产出
 - 约束：r02 定稿即自然译文（去翻译腔内联）；`check-r03` 块级模式以本文件整段为 ZH 忠实基准（r03 逐字复用）
 - 消费：ZH 归一化模板骨架（`r03_normalized_2/`，见该节）、分句（`r03_results/` 对应块）、`check-r03` 块级模式

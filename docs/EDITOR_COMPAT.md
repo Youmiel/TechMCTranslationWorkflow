@@ -40,6 +40,8 @@
 execution_model: "<你的 no-think 模型名>"
 ```
 
+> **Copilot 特例标注（仅本机适用）**：LLM API 配置（VS Code `chatLanguageModels.json`，BYOK 注册）**不随仓库分发**，故下述仅适用于本机 VS Code Copilot + BYOK 场景——Copilot 不透传 `thinking: disabled`（chat-completions 只认 `temperature`/`top_p`），且 DeepSeek 无非思考模型，`execution_model` 实际运行的是 **`reasoning_effort: low`（最小思考量）**，是 Copilot 不支持传递 disabled 情况下的**权宜办法**，并非真正关闭思考；"无思考模型"是执行型纪律的称呼（配合 `thinking: false` 隐藏思考 UI），不代表模型零思考。其它编辑器 / 其它模型配置无此限制，按各自方式填真正 no-think 模型即可。
+
 ## 各编辑器派发 subagent 命令表
 
 派发 subagent 的**入口名称各编辑器不同**（并非都叫 `runSubagent`），且**不在任何 skill 中硬编码**——使用者自己的 agent 按本表调用（具体语法以各编辑器官方文档为准）：
