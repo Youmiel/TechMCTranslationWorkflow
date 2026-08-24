@@ -19,7 +19,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 
 **不派 subagent（主会话）**：需用户交互（术语确认 §1.3、审核循环 阶段二½）——能力约束；需全貌的跨切面决策（如 r03 分句对应、回填判断）。
 
-**translate（未重构）**：阶段二仍是条件派发（长分块才 subagent），保留阶段入口报告 `本阶段 subagent 策略：用/不用 — N 个 — 原因`；重构后与 reflow 对齐。
+**translate（2026-08-24 已重构）**：阶段二合并断句 / 翻译**一律派 subagent**（与 reflow 对齐，对齐 translate-redstone 阶段二）——块数由分块骨架决定，无需报告"用/不用"，直接按派发配方派发。
 
 ## 主会话读写最小化（token 纪律）
 
@@ -43,7 +43,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 
 > 每个可派发任务 = 一份**任务 prompt 文件**（放所属 skill 目录，如 `reflow-redstone/task-punctuate`），内容是面向 subagent 的**现成任务指令**（目标 + 行为规则 + 输出契约）。**完整 prompt 由渲染脚本 `scripts/render_subagent_prompt.py` 会话外组装落盘**（`_work/<视频名>/prompts/<task>-chunk_<k>.txt`）：读模板正文（`<k>`/`<视频名>` 占位替换）+ 逐字追加纪律母版（`_discipline.md` 单一权威）+ 注入产物格式约定 + 注入先验知识（术语直读 02_terms.md / humanizer-inject / 空隙断句标记）+ 生成块数据引用——**完整 prompt 文本不进主会话历史**，主 agent 只发渲染命令 + 派发引用。任务**特有规则直接内联**在任务文件（不建独立规则文件）；**通用纪律**由 `_discipline.md` 单一权威；**产物格式约定**（格式查找路径）由渲染脚本注入（见下）。
 
-> **渲染脚本覆盖范围**：reflow 阶段二由 `scripts/render_subagent_prompt.py` 接入 `task-punctuate` / `task-translate` / `task-split` / `task-match`；preprocess 阶段一由**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）——派发只需发渲染命令 + 引用。**§1.2 查证（`task-term-resolve`）不走渲染脚本**——单次研究型任务、规则静态内联于任务文件，派发时「任务文件 + term_pending.md」双引用（见「派发边界」）。`task-fix` / `task-summary` 未接入——仍按旧方式：主 agent 读模板 + 手工组装 + 落盘存档（内容不大时也可直接内联派发）。
+> **渲染脚本覆盖范围**：reflow 阶段二由 `scripts/render_subagent_prompt.py` 接入 `task-punctuate` / `task-translate` / `task-split` / `task-match`；translate 阶段二由同一脚本接入 `task-merge` / `task-humanize` / `task-translate`（**同名任务多 skill：派发时 `--skill translate-redstone` 取 translate 版，默认 reflow 版**）——派发只需发渲染命令 + 引用。preprocess 阶段一由**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）。**§1.2 查证（`task-term-resolve`）不走渲染脚本**——单次研究型任务、规则静态内联于任务文件，派发时「任务文件 + term_pending.md」双引用（见「派发边界」）。`task-fix`（reflow / translate 版）/ `task-summary` 未接入——错误清单 / 摘要为动态内容不走块级渲染，仍按旧方式：主 agent 读模板 + 手工组装 + 落盘存档（内容不大时也可直接内联派发）。
 
 > **执行型纪律与模型**：reflow 类执行任务**派发 `reflow-worker`（执行型 agent），使用无思考模型**——具体做法（派发入口 / agent 定义 / 模型名 / adapt）按你自己的编辑器执行，见 [EDITOR_COMPAT](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml` 的 `execution_model`）。纪律母版 #0 与 agent 系统提示词同源，由渲染脚本随 prompt 整体注入（内联兜底 + 任务特定纪律 + 兜底）。**研究型任务（§1.2 查证 `term-researcher`）不同**：用主模型（非 `execution_model`）、不追加执行型纪律母版——见「派发边界」。
 
@@ -141,9 +141,10 @@ subagent prompt = 任务文件内容（含任务特有规则）
 | 句子匹配·5-2 脚本断句（reflow 步骤 5-2） | `reflow-redstone/task-match` | `reflow/r03_matches/chunk_<k>.txt` |
 | 定点修复（校验打回 B 档） | `reflow-redstone/task-fix` | 覆盖写 `## 目标文件` 同一路径 |
 | 前文摘要（reflow 步骤 4 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
-| 合并（translate 阶段二） | `translate-redstone/task-merge`（**未建**——translate 未重构，按 SKILL 步骤组装） | `_merge_results/chunk_<k>.txt` |
-| 翻译（translate 阶段二） | `translate-redstone/task-translate`（**未建**——同上） | `_trans_results/chunk_<k>.txt` |
-| 去翻译腔（translate 阶段二+） | `translate-redstone/task-humanize`（**未建**——同上） | `_humanize_results/chunk_<k>.txt` |
+| 合并断句（translate 阶段二） | `translate-redstone/task-merge` | `_merge_results/chunk_<k>.txt` |
+| 翻译（translate 阶段二） | `translate-redstone/task-translate`（同名 reflow 任务，派发渲染用 `--skill translate-redstone`） | `_trans_results/chunk_<k>.txt` |
+| 去翻译腔（translate 阶段二+） | `translate-redstone/task-humanize` | `_humanize_results/chunk_<k>.txt` |
+| 定点修复（translate 校验打回 B 档） | `translate-redstone/task-fix` | 覆盖写 `## 目标文件` 同一路径 |
 
 ## 纪律母版（派发时必须整体追加）
 
@@ -160,7 +161,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
    - `## 结论: 无异常` → 直接进入第 4 步，**零读取**
    - `## 异常清单` → 只读清单 + `## 异常块头尾窗口`（每块 OWNED 头尾各 `--window` 行），按异常类型决策：
      - **行数不符/缺块** → 回对应块补跑 subagent
-     - **重复产出**（srt 重叠）→ 保留更完整版本（默认 start 最早，见 [segment-subtitles#跨块未完成句](../segment-subtitles/SKILL.md#跨块未完成句结转规则)）
+     - **重复产出**（srt 重叠）→ 保留更完整版本（默认 start 最早，见 [redstone-conventions#跨块未完成句结转](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)）
      - **gap/cue 缺口**（srt）→ 查 SRT 确认 gap 处是否空 cue（[Music] 等），是则并入相邻段、否则标记重译
      - **结转**：`CARRY: c<idx>` 对应产出段，确认未重复未遗漏
      - **片号不连续**（text）→ 查该组是否缺片，补跑

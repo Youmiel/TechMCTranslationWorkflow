@@ -127,7 +127,7 @@
 
 ##### 校验
 
-1. **术语全量核对**：`python scripts/srt_reflow_check_terms.py <01> <02_terms.md> reflow/r02_results/ --chunks reflow/chunks/`——逐条遍历 02_terms.md，01 定位原文出现块 → 该块 r02 译文须含确认译名（变体容错/长术语覆盖逻辑见脚本 docstring）
+1. **术语全量核对**：`python scripts/srt_check_terms.py <01> <02_terms.md> reflow/r02_results/ --chunks reflow/chunks/`——逐条遍历 02_terms.md，01 定位原文出现块 → 该块 r02 译文须含确认译名（变体容错/长术语覆盖逻辑见脚本 docstring）
   - 输出：✅ 命中（默认折叠计数，`--verbose` 展开）/ ⚠️ 译文未见确认译名（带 r02 块文件行号 + 上下文 + 01 原句 + 02_terms 行号；Agent 复核：意译 / 漏译 / 漂移 / 命令·参数·专名保留原文）/ ℹ️ 01 未命中（带 02_terms 行号；查 ASR 修正列或措辞变体）
   - 退出码 1 = 有未命中项，**Agent 复核后才可放行**；漂移**回写** `reflow/r02_results/` 对应块（各块独立文件）
 2. **跨步骤兜底**：步骤 5 check-r03 ④ ZH 忠实（拦截译文改写）→ 阶段二½ 人工对照检查

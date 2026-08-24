@@ -42,14 +42,43 @@ TASKS = {
         "output": "reflow/r01_results/chunk_<k>.txt",
         "prior": ["breaks", "terms"],
     },
-    "task-translate": {
-        "skill": "reflow-redstone",
-        "template": "task-translate.md",
-        "role": "整段翻译",
-        "format_section": "r02_results/chunk_<k>.txt（翻译块）",
-        "inputs": ["reflow/r01_results/chunk_<k>.txt"],
-        "output": "reflow/r02_results/chunk_<k>.txt",
-        "prior": ["humanizer", "terms"],
+    "task-translate": [
+        {
+            "skill": "reflow-redstone",
+            "template": "task-translate.md",
+            "role": "整段翻译",
+            "format_section": "r02_results/chunk_<k>.txt（翻译块）",
+            "inputs": ["reflow/r01_results/chunk_<k>.txt"],
+            "output": "reflow/r02_results/chunk_<k>.txt",
+            "prior": ["humanizer", "terms"],
+        },
+        {
+            "skill": "translate-redstone",
+            "template": "task-translate.md",
+            "role": "翻译",
+            "format_section": "_trans_results/chunk_<k>.txt（翻译块）",
+            "inputs": ["_merge_results/chunk_<k>.txt"],
+            "output": "_trans_results/chunk_<k>.txt",
+            "prior": ["humanizer", "terms"],
+        },
+    ],
+    "task-merge": {
+        "skill": "translate-redstone",
+        "template": "task-merge.md",
+        "role": "合并断句",
+        "format_section": "_merge_results/chunk_<k>.txt（断句块）",
+        "inputs": ["chunks/chunk_<k>.txt"],
+        "output": "_merge_results/chunk_<k>.txt",
+        "prior": ["terms"],
+    },
+    "task-humanize": {
+        "skill": "translate-redstone",
+        "template": "task-humanize.md",
+        "role": "去翻译腔",
+        "format_section": "_humanize_results/chunk_<k>.txt（去翻译腔块）",
+        "inputs": ["_humanize_chunks/chunk_<k>.txt"],
+        "output": "_humanize_results/chunk_<k>.txt",
+        "prior": ["humanizer"],
     },
     "task-split": {
         "skill": "reflow-redstone",
@@ -75,6 +104,20 @@ TASKS = {
 def read(path):
     with open(path, encoding="utf-8") as f:
         return f.read()
+
+
+def resolve_cfg(task, skill):
+    """TASKS[task] 可能是 dict（单配置）或 list（同名多 skill 配置）→ 按 skill 选择；不传 skill 用第一个。
+
+    task-translate 在 reflow / translate 两工作流同名但模板与产物不同，派发方用 --skill 选择。
+    """
+    raw = TASKS[task]
+    if isinstance(raw, list):
+        for cfg in raw:
+            if cfg["skill"] == skill:
+                return cfg
+        return raw[0]
+    return raw
 
 
 def write(path, text):
@@ -135,6 +178,9 @@ def collect_priors(cfg, video_dir, chunk, prior_files):
 
     if "humanizer" in cfg["prior"]:
         inject_path = os.path.join(SKILLS_DIR, cfg["skill"], "humanizer-inject.md")
+        if not os.path.exists(inject_path):
+            # 字幕场景通用注入版在 reflow-redstone/（跨工作流共享，translate 侧亦引用）
+            inject_path = os.path.join(SKILLS_DIR, "reflow-redstone", "humanizer-inject.md")
         if os.path.exists(inject_path):
             parts.append("### 去翻译腔（humanizer 注入版，风格参照）\n\n" + read(inject_path))
 
@@ -190,8 +236,8 @@ def collect_data(cfg, video_dir, chunk, chunks_dir):
     return "\n".join(lines)
 
 
-def render(task, video_dir, chunk, prior_files, chunks_dir):
-    cfg = TASKS[task]
+def render(task, video_dir, chunk, prior_files, chunks_dir, skill=None):
+    cfg = resolve_cfg(task, skill)
     video_name = os.path.basename(os.path.normpath(video_dir))
 
     # 1. 模板正文（剥离「主 agent 填充说明」注释）
@@ -242,7 +288,9 @@ def main():
     ap.add_argument("--chunk", type=int, help="块号（1 起）")
     ap.add_argument("--all", action="store_true", help="渲染全部块")
     ap.add_argument("--prior-file", action="append", default=[], help="额外先验知识文件（可多次，追加到 ## 先验知识）")
-    ap.add_argument("--chunks-dir", default=None, help="chunks 目录（默认 <video>/reflow/chunks）")
+    ap.add_argument("--chunks-dir", default=None, help="chunks 目录（默认 <video>/reflow/chunks；translate 传 <video>/chunks）")
+    ap.add_argument("--skill", default=None,
+                    help="任务所属 skill（同名多 skill 任务用，如 task-translate 传 translate-redstone 取 translate 版；默认 reflow-redstone）")
     args = ap.parse_args()
 
     video_dir = os.path.join(PROJECT_ROOT, args.video) if not os.path.isabs(args.video) else args.video
@@ -254,11 +302,11 @@ def main():
             print("错误：--all 需要 chunks 目录存在（或用 --chunks-dir 指定）", file=sys.stderr)
             sys.exit(1)
         for k in nums:
-            print(f"生成 {render(args.task, video_dir, k, args.prior_file, chunks_dir)}")
+            print(f"生成 {render(args.task, video_dir, k, args.prior_file, chunks_dir, args.skill)}")
     else:
         if not args.chunk:
             ap.error("需指定 --chunk <k> 或 --all")
-        print(f"生成 {render(args.task, video_dir, args.chunk, args.prior_file, chunks_dir)}")
+        print(f"生成 {render(args.task, video_dir, args.chunk, args.prior_file, chunks_dir, args.skill)}")
 
 
 if __name__ == "__main__":
