@@ -334,7 +334,7 @@
 - 生成：脚本 `srt_reflow_presplit.py`（`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/`，一次性全目录）——ZH 按句末标点 `。！？…` 预分句（括号配平保护）标号 `Z1..Zm` + **句内按标点切候选段 + 贪心拼合 [15,22]（硬 ≤26）**；**直读 `r02_results/` 原稿**（脚本读取不受行宽限制，不再需要 r02 折行副本）
 - 格式：**r03 模板骨架**（r03 整句分组格式的 ZH 预填版）——每 Z 句一组 `## S?_Z<n>（默认 E<n>）`：`- ZH:` 整句原文预填 + `- 关系:` 预填 1:1/1:n + `### S?_Z<n><a>` 子句段预填（带 `> 段宽` 注释）；`- EN:` 为 `<待填>` 占位；S 号 `S?_Z<n>` 为占位（待分句 agent 替换为块内连续 `S<号>`）
 - 定位：分句 subagent 输入的**断句基线 + 填空模板**——脚本承担长短判断/宽度/忠实（子句段只在标点处切、不增删改，段拼接 == Z 原文 == r02）；agent 只做**填空与核对**（S 号/EN/关系/子单元 EN/对应/游离词）；`默认 E<n>` 为按序启发式提示须核对；不形成中英对照
-- 参数：`--soft-min/--soft-max/--hard-max/--min-unit/--punct-levels`（多语言通用，默认 CJK；`--punct-levels` 有序层级 = 优先级：逗号族>顿号>破折号，超宽段才降级用低层）
+- 参数：`--soft-min/--soft-max/--hard-max/--min-unit/--punct-levels`（多语言通用，默认 CJK；`--punct-levels` 有序层级 = 优先级：逗号族>破折号>顿号，超宽段才降级用低层）
 - 消费：分句 subagent（`r03_results/` 对应块）
 
 ### `r03_matches/chunk_<k>.txt`（分句输入·匹配文件，脚本断句路径）

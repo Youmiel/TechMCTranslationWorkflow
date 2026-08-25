@@ -44,9 +44,9 @@ DEFAULT_HARD_MAX = 26      # 硬上限（check-r03 ③ 硬 26，>26 必切）
 DEFAULT_MIN_UNIT = 5       # 最小单元宽度（≈1s 阅读时长 @5字/秒，防碎片）
 # 切分标点层级（有序 = 优先级从高到低；标点保留段尾；层级递增式切分——先用高层切，
 # 单段超 hard_max 才降级用低层；语义完整处优先、宽度兜底）：
-#   L1 逗号族（，；：）主断点；L2 顿号（、）并列内部（避免切断「a、b」并列短语）；
-#   L3 破折号（—）插入/解释，最后手段。可 --punct-levels 扩展/覆盖（多语言只改这里）
-DEFAULT_PUNCT_LEVELS = ["，；：", "、", "—"]
+#   L1 逗号族（，；：）主断点；L2 破折号（—）插入/解释；
+#   L3 顿号（、）并列内部（避免切断「a、b」并列短语），最后手段。可 --punct-levels 扩展/覆盖（多语言只改这里）
+DEFAULT_PUNCT_LEVELS = ["，；：", "—", "、"]
 
 # EN 句末标点（可连续：... / !?）；ZH 句末标点（含省略号）
 EN_EOS_RE = re.compile(r"[.!?]+")
@@ -302,7 +302,7 @@ def main():
     ap.add_argument("--hard-max", type=float, default=DEFAULT_HARD_MAX, help=f"硬上限（默认 {DEFAULT_HARD_MAX}；check-r03 ③ 硬 26）")
     ap.add_argument("--min-unit", type=float, default=DEFAULT_MIN_UNIT, help=f"最小单元宽度/防碎片（默认 {DEFAULT_MIN_UNIT}，≈1s@5字/秒）")
     ap.add_argument("--punct-levels", action="append", default=None,
-                    help="切分标点层级（可多次指定，先高后低；默认 %s——逗号族/顿号/破折号）" % "/".join(DEFAULT_PUNCT_LEVELS))
+                    help="切分标点层级（可多次指定，先高后低；默认 %s——逗号族/破折号/顿号）" % "/".join(DEFAULT_PUNCT_LEVELS))
     args = ap.parse_args()
     punct_levels = args.punct_levels or DEFAULT_PUNCT_LEVELS
 

@@ -149,7 +149,7 @@
   - EN 按句末标点 `.?!`（`r01_results/`，衔接归位后）预分句标号 `E1..En` → `reflow/r03_normalized_1/chunk_<k>.txt`
   - ZH 按句号 `。！？`（`r02_results/` 译文原稿，脚本读取不受行宽限制）预分句标号 `Z1..Zm` + **句内按标点切候选段 + 贪心拼合 [15,22]（硬 ≤26）** → `reflow/r03_normalized_2/chunk_<k>.txt`（**r03 模板骨架**：每 Z 句一组 `## S?_Z<n>`，ZH 整句原文 + 子句段预填、关系预填 1:1/1:n、EN 待填——分句 agent 填空后即 r03_results）
   - **不形成中英对照**（EN/ZH 各自编号；`S?_Z<n>` 默认按序提示对应 `E<n>`，启发式须核对）；**忠实铁律由结构保证**（段只在标点处切、不增删改——段拼接 == Z 原文 == r02）；**长短/宽度/断句类型机械化**，agent 不再自行判长短
-  - **多语言通用**：切分标点（`--punct-levels` 有序层级，默认逗号族>顿号>破折号，超宽才降级）、句长区间（`--soft-min/--soft-max/--hard-max/--min-unit`）全参数化，默认 CJK；宽度复用 `srt_reflow_common.text_width`（Unicode 块通用）
+  - **多语言通用**：切分标点（`--punct-levels` 有序层级，默认逗号族>破折号>顿号，超宽才降级）、句长区间（`--soft-min/--soft-max/--hard-max/--min-unit`）全参数化，默认 CJK；宽度复用 `srt_reflow_common.text_width`（Unicode 块通用）
   - 一次性全目录跑完（r02 折行副本不再需要——预分句输出已逐句折行，脚本直读 r02_results 原稿）
 
 ###### 处理
