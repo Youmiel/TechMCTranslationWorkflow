@@ -58,6 +58,7 @@
 | caustic | costic | 难缠的（形容物品集） |
 | redstone | resto | 红石（装置） |
 | Louvain | levane | 鲁汶（图聚类算法） |
+| calculate | caclulate | 计算（拼写错误变体） |
 | overworld | overlay / overwatch | 主世界（音近） |
 | snow golems | stuck ones / snugones | 雪傀儡 |
 | chunk | trunk | 区块（chunk loader 语境高频） |
