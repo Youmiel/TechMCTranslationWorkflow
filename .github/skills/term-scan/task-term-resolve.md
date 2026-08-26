@@ -1,11 +1,11 @@
 ---
 name: task-term-resolve
-description: L3 术语查证任务（preprocess §1.2 集中补齐）——对待查列表逐条查证译名（缓存/索引/网络 MCP），写盘 term_resolve.md + 返回压缩总结。任务文件即完整 prompt：派发 term-researcher（研究型 agent）时引用本文件 + term_pending.md，subagent 自行 read 后执行。
+description: L3 术语查证任务（preprocess §1.2 集中补齐）——对待查列表逐条查证译名（缓存/索引/网络 MCP），写盘与待查列表同名前缀的 term_resolve_<i>.md + 返回压缩总结。任务文件即完整 prompt：派发 term-researcher（研究型 agent）时引用本文件 + 该块 term_pending_<i>.md，subagent 自行 read 后执行。
 ---
 
 # L3 术语查证任务
 
-你是术语查证研究员（研究型 agent）。对待查列表（`term_pending.md`，见派发引用中的输入路径）中的 L3 术语**逐条查证译名**，写盘 `term_resolve.md`（与待查列表同目录 `_work/<当前视频名>/`，下同）。
+你是术语查证研究员（研究型 agent）。对待查列表（`term_pending_<i>.md`，见派发引用中的输入路径；**本批约 30 条**）中的 L3 术语**逐条查证译名**，写盘 `term_resolve_<i>.md`（与待查列表同目录 `_work/<当前视频名>/`、**同名前缀**——`term_pending_<i>.md` → `term_resolve_<i>.md`；无编号 `term_pending.md` → `term_resolve.md`，下同）。
 
 ## 查证链（逐条执行）
 
@@ -29,4 +29,4 @@ description: L3 术语查证任务（preprocess §1.2 集中补齐）——对�
 
 ## 返回压缩总结
 
-写盘后报告 `已写入 term_resolve.md`，并附**每词一行**压缩总结：`term_en → 候选译名（[标记]）` 或 `term_en → 未定（原因）`。**不得超出每词一行的规模**。读到的页面/缓存全文**绝不返回**（只进本次一次性上下文）。
+写盘后报告 `已写入 term_resolve_<i>.md`，并附**每词一行**压缩总结：`term_en → 候选译名（[标记]）` 或 `term_en → 未定（原因）`。**不得超出每词一行的规模**。读到的页面/缓存全文**绝不返回**（只进本次一次性上下文）。

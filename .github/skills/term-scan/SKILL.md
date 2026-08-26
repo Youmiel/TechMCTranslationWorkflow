@@ -20,7 +20,7 @@ description: 阶段一术语扫描（redstone-preprocess §1.1/§1.2）的机制
 |------|----------|------|------|
 | 第一次遍历（ASR 修正 + 游离单词归位） | `task-en-preprocess.md` | `render_preprocess_prompt.py task-en-preprocess` → 块级派发 | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
 | 术语识别 | `task-term-recognition.md` | `render_preprocess_prompt.py task-term-recognition` → 块级派发 | `_term_results/chunk_<k>.txt` |
-| L3 术语查证（§1.2） | `task-term-resolve.md` | **任务文件即完整 prompt**，双引用派发 `term-researcher` | `term_resolve.md` |
+| L3 术语查证（§1.2） | `task-term-resolve.md` | **任务文件即完整 prompt**，分批双引用派发 `term-researcher` | `term_resolve_<i>.md` |
 
 ## ASR 语义解码（第一次遍历）
 
@@ -43,4 +43,4 @@ description: 阶段一术语扫描（redstone-preprocess §1.1/§1.2）的机制
 
 ## 集中补齐（§1.2 查证）
 
-> 待查 L3 术语译名查证**由 `term-researcher`（研究型 agent）单次派发**，**任务文件即完整 prompt**（`task-term-resolve.md`），派发时「任务文件 + term_pending.md」双引用（见 redstone-preprocess §1.2）——主会话只写待查列表 + 派发 + 读结果，**不读 wiki 页面全文**。查证链/抓取纪律见 [wiki-tools](../wiki-tools/SKILL.md)（权威）+ `task-term-resolve.md`；产物契约（`term_pending.md` / `term_resolve.md`）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)。
+> 待查 L3 术语译名查证**由 `term-researcher`（研究型 agent）分批派发**——待查列表按 **30 条/块** 拆 `term_pending_<i>.md` 后逐块派发，**任务文件即完整 prompt**（`task-term-resolve.md`），派发时「任务文件 + 该块待查列表 `term_pending_<i>.md`」双引用（见 redstone-preprocess §1.2）——主会话只写待查列表 + 分块 + 逐块派发 + 读各块结果 + 合并，**不读 wiki 页面全文**。查证链/抓取纪律见 [wiki-tools](../wiki-tools/SKILL.md)（权威）+ `task-term-resolve.md`；产物契约（`term_pending.md` / `term_pending_<i>.md` / `term_resolve_<i>.md`）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)。

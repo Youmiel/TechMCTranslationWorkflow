@@ -15,7 +15,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 
 **一律派 subagent**（reflow 阶段二补标点/翻译/分句、preprocess §1.1 第一次遍历 + 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
 
-**查证（preprocess §1.2）→ 研究型 agent 单次派发**：L3 术语查证派 `term-researcher`（研究型 agent，tools 含 read/search/edit + wiki MCP）——**非任务处理 agent**：允许推理/判断/多步查证，但页面原文只进一次性上下文、只返回每词一行压缩总结；**任务文件即完整 prompt**（`term-scan/task-term-resolve.md`，规则静态内联），派发时「任务文件 + term_pending.md」双引用，**不走渲染脚本**、**不追加执行型纪律母版**（研究型纪律由 agent 系统提示词承载）。
+**查证（preprocess §1.2）→ 研究型 agent 分批派发**：L3 术语查证待查列表按 **30 条/块** 拆 `term_pending_<i>.md` 后逐块派 `term-researcher`（研究型 agent，tools 含 read/search/edit + wiki MCP）——**非任务处理 agent**：允许推理/判断/多步查证，但页面原文只进一次性上下文、只返回每词一行压缩总结；**任务文件即完整 prompt**（`term-scan/task-term-resolve.md`，规则静态内联），派发时「任务文件 + 该块 `term_pending_<i>.md`」双引用，**不走渲染脚本**、**不追加执行型纪律母版**（研究型纪律由 agent 系统提示词承载）。
 
 **不派 subagent（主会话）**：需用户交互（术语确认 §1.3、审核循环 阶段二½）——能力约束；需全貌的跨切面决策（如 r03 分句对应、回填判断）。
 
@@ -27,7 +27,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > 背景：主会话历史只增不减、每轮都付——**无论多小的读/写/验证动作都进入对话历史**（流程越长越明显）。凡能由脚本/subagent 完成的读、写、验证一律下沉，主会话只保留「路由 + 决策必需」动作。
 
 - **读**：数据文件读取 → 渲染脚本/校验脚本/subagent（主会话不 read 块数据、不读 wiki 页面全文）；大内容（Wiki 页面/长产物）→ 研究型 agent 读取、只返回压缩总结；校验告警已带「文件:行号 + 上下文」→ **直接打包进 `task-fix` 清单派发（B 档），主会话不 read 定位、不自行定点修**（A 档已废弃，见「定点修正」）
-- **写**：产物全部由 subagent（create_file 直接写盘）或脚本（`--out`）产出；主会话不 create_file 中间产物，只发命令触发；主会话唯一写 = 需用户确认的交付物（`02_terms`、`_output/`）+ 小量路由产物（如 `term_pending.md` 待查列表）
+- **写**：产物全部由 subagent（create_file 直接写盘）或脚本（`--out`）产出；主会话不 create_file 中间产物，只发命令触发；主会话唯一写 = 需用户确认的交付物（`02_terms`、`_output/`）+ 小量路由产物（如 `term_pending.md` 全量待查列表 + 分块 `term_pending_<i>.md`）
 - **验证**：存在性验证（收信号即验）用 `list_dir` 一次校验，不 `read_file`；行数/非空由脚本统计（`text_merge` 报告 / `(Get-Content).Count`），主会话不数
 - **例外（决策必需，允许）**：用户交互展示（§1.3 确认表、审核对象）——**校验告警定位后的定点编辑不再例外**，一律下放 B 档 `task-fix`（主会话零定点编辑，见「定点修正」）
 
@@ -43,7 +43,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 
 > 每个可派发任务 = 一份**任务 prompt 文件**（放所属 skill 目录，如 `reflow-redstone/task-punctuate`），内容是面向 subagent 的**现成任务指令**（目标 + 行为规则 + 输出契约）。**完整 prompt 由渲染脚本 `scripts/render_subagent_prompt.py` 会话外组装落盘**（`_work/<视频名>/prompts/<task>-chunk_<k>.txt`）：读模板正文（`<k>`/`<视频名>` 占位替换）+ 逐字追加纪律母版（`_discipline.md` 单一权威）+ 注入产物格式约定 + 注入先验知识（术语直读 02_terms.md / humanizer-inject / 空隙断句标记）+ 生成块数据引用——**完整 prompt 文本不进主会话历史**，主 agent 只发渲染命令 + 派发引用。任务**特有规则直接内联**在任务文件（不建独立规则文件）；**通用纪律**由 `_discipline.md` 单一权威；**产物格式约定**（格式查找路径）由渲染脚本注入（见下）。
 
-> **渲染脚本覆盖范围**：reflow 阶段二由 `scripts/render_subagent_prompt.py` 接入 `task-punctuate` / `task-translate` / `task-split` / `task-match`；translate 阶段二由同一脚本接入 `task-merge` / `task-humanize` / `task-translate`（**同名任务多 skill：派发时 `--skill translate-redstone` 取 translate 版，默认 reflow 版**）——派发只需发渲染命令 + 引用。preprocess 阶段一由**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）。**§1.2 查证（`task-term-resolve`）不走渲染脚本**——单次研究型任务、规则静态内联于任务文件，派发时「任务文件 + term_pending.md」双引用（见「派发边界」）。`task-fix`（reflow / translate 版）/ `task-summary` 未接入——错误清单 / 摘要为动态内容不走块级渲染，仍按旧方式：主 agent 读模板 + 手工组装 + 落盘存档（内容不大时也可直接内联派发）。
+> **渲染脚本覆盖范围**：reflow 阶段二由 `scripts/render_subagent_prompt.py` 接入 `task-punctuate` / `task-translate` / `task-split` / `task-match`；translate 阶段二由同一脚本接入 `task-merge` / `task-humanize` / `task-translate`（**同名任务多 skill：派发时 `--skill translate-redstone` 取 translate 版，默认 reflow 版**）——派发只需发渲染命令 + 引用。preprocess 阶段一由**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）。**§1.2 查证（`task-term-resolve`）不走渲染脚本**——分批研究型任务（30 条/块）、规则静态内联于任务文件，派发时「任务文件 + 该块 term_pending_<i>.md」双引用（见「派发边界」）。`task-fix`（reflow / translate 版）/ `task-summary` 未接入——错误清单 / 摘要为动态内容不走块级渲染，仍按旧方式：主 agent 读模板 + 手工组装 + 落盘存档（内容不大时也可直接内联派发）。
 
 > **执行型纪律与模型**：reflow 类执行任务**派发 `reflow-worker`（执行型 agent），使用无思考模型**——具体做法（派发入口 / agent 定义 / 模型名 / adapt）按你自己的编辑器执行，见 [EDITOR_COMPAT](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml` 的 `execution_model`）。纪律母版 #0 与 agent 系统提示词同源，由渲染脚本随 prompt 整体注入（内联兜底 + 任务特定纪律 + 兜底）。**研究型任务（§1.2 查证 `term-researcher`）不同**：用主模型（非 `execution_model`）、不追加执行型纪律母版——见「派发边界」。
 
@@ -134,7 +134,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 |------|----------|--------------------------|
 | 术语识别（preprocess §1.1） | `term-scan/task-term-recognition` | `_term_results/chunk_<k>.txt` |
 | 英文预整理·第一次遍历（preprocess §1.1） | `term-scan/task-en-preprocess` | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
-| L3 术语查证（preprocess §1.2，研究型 agent 单次派发，任务文件即 prompt） | `term-scan/task-term-resolve` | `term_resolve.md`（输入 `term_pending.md`；派发双引用） |
+| L3 术语查证（preprocess §1.2，研究型 agent 分批派发 30 条/块，任务文件即 prompt） | `term-scan/task-term-resolve` | `term_resolve_<i>.md`（输入 `term_pending_<i>.md`；派发双引用） |
 | 补标点（reflow 步骤 3） | `reflow-redstone/task-punctuate` | `reflow/r01_results/chunk_<k>.txt` |
 | 整段翻译（reflow 步骤 4） | `reflow-redstone/task-translate` | `reflow/r02_results/chunk_<k>.txt` |
 | 分句·5-1 LLM 语义分句（reflow 步骤 5-1） | `reflow-redstone/task-split` | `reflow/r03_results/chunk_<k>.txt` |

@@ -164,6 +164,7 @@
 - 约束：
   - **只改文本、保留原时间码、不增删 cue**（时间轴骨架）
   - `[Music]` 等纯方括号标记 cue（去括号后无文本）**保留原样**，勿手动删——下游 `gap_scan`/`breaks`/`check_breaks` 动态识别跳过，reflow 核心 `io.parse_srt` 亦剔除
+  - **内嵌非语音事件标记**（DownSub/YouTube 自动字幕的 `[laughter]`/`[clears throat]` 等，夹在语音文本中）由第一次遍历 subagent **语义识别并剔除**（不进 01 词序列；剔除后空文本 cue 保留时间码）——与纯标记 cue 不同，内嵌标记**无法硬编码枚举/规则探测**，靠 agent 语义判断（见 `term-scan/task-en-preprocess` 规则 4）
 - 校验：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`
 
 ### `02_terms.md`
@@ -188,14 +189,14 @@
 
 - 约束：`原文` = 01 修正后文本；`ASR 修正` 列记录误识别映射（供组装期替换与 `asr_fixes.md` 沉淀）；表头固定不得改
 
-### `term_pending.md` / `term_resolve.md`（§1.2 查证产物）
+### `term_pending.md` / `term_resolve_<i>.md`（§1.2 查证产物）
 
-- 命名：`<工作目录>/term_pending.md`（主会话写待查列表）、`<工作目录>/term_resolve.md`（查证 agent 写结果）
-- 生成：preprocess §1.2——待查列表由主会话 §1.1 汇总后写；查证结果由 `term-researcher`（研究型 agent）写盘
+- 命名：`<工作目录>/term_pending.md`（主会话写**全量**待查列表）、`<工作目录>/term_pending_<i>.md`（分块，每块 ≤30 条）、`<工作目录>/term_resolve_<i>.md`（各块查证结果，与待查列表**同名前缀**）
+- 生成：preprocess §1.2——全量待查列表由主会话 §1.1 汇总后写，按 30 条/块拆分后**逐块串行派发**；各块结果由 `term-researcher`（研究型 agent）写盘，主会话合并
 - 格式：
-  - `term_pending.md`：每行 `term_en | 首次时间戳 | 已给候选/依据`（L3 未命中 + 决策行）
-  - `term_resolve.md`：每行 `term_en\t候选译名\t数据源\t依据\t[标记]`（标记 = `[推断]`/`[待审核]`；数据源 = 缓存路径 / MCP 名 / indexes/repos 路径）
-- 消费：§1.3 用户确认表（候选译名/依据）、阶段三 coverage_log（数据源命中统计）、断点恢复
+  - `term_pending.md` / `term_pending_<i>.md`：每行 `term_en | 首次时间戳 | 已给候选/依据`（L3 未命中 + 决策行）
+  - `term_resolve_<i>.md`：每行 `term_en\t候选译名\t数据源\t依据\t[标记]`（标记 = `[推断]`/`[待审核]`；数据源 = 缓存路径 / MCP 名 / indexes/repos 路径）
+- 消费：§1.3 用户确认表（候选译名/依据）、阶段三 coverage_log（数据源命中统计）、断点恢复（粒度 = 块）
 - 约束：查证 agent **不返回页面原文**（页面只进一次性上下文，返回每词一行压缩总结）；`[待审核]` 必须带候选，不得只留原文
 
 ---

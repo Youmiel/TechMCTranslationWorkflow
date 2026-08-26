@@ -67,13 +67,14 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 
 > subagent 任务规则见 `term-scan/task-en-preprocess`（第一次遍历）与 `term-scan/task-term-recognition`（术语识别）（现成任务文件；prompt 由 `scripts/render_preprocess_prompt.py` 渲染，派发配方见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）。
 
-### 1.2 集中补齐（翻译前一次性完成所有网络请求，查证 agent 派发）
-> 机制（缓存判定/fidelity/降级链/请求纪律/缓存写入）见 [wiki-tools](../wiki-tools/SKILL.md)（权威）；数据源选择参考 `docs/SOURCE_COVERAGE.md`。**查证由 `term-researcher`（研究型 agent）单次派发**——主会话只做：汇总待查列表、派发（任务文件即 prompt，双引用）、读查证结果、更新映射。**主会话不读 wiki 页面全文**（页面只进查证 agent 一次性上下文，返回每词一行压缩总结——token 纪律，见 [subagent-dispatch#主会话读写最小化](../subagent-dispatch/SKILL.md#主会话读写最小化token-纪律)）。
+### 1.2 集中补齐（翻译前一次性完成所有网络请求，查证 agent 分批派发）
+> 机制（缓存判定/fidelity/降级链/请求纪律/缓存写入）见 [wiki-tools](../wiki-tools/SKILL.md)（权威）；数据源选择参考 `docs/SOURCE_COVERAGE.md`。**查证由 `term-researcher`（研究型 agent）分批派发**——主会话只做：汇总待查列表、分块、逐块派发（任务文件即 prompt，双引用）、读各块结果、合并、更新映射。**主会话不读 wiki 页面全文**（页面只进查证 agent 一次性上下文，返回每词一行压缩总结——token 纪律，见 [subagent-dispatch#主会话读写最小化](../subagent-dispatch/SKILL.md#主会话读写最小化token-纪律)）。
 
 1. **主会话写待查列表**（§1.1 第 5 步合并去重后）：`_work/<视频名>/term_pending.md`，每行 `term_en | 首次时间戳 | 已给候选/依据`（L3 未命中 + 决策行）
-2. **派发（任务文件即 prompt，双引用）**：`runSubagent`（agentName = `term-researcher`，研究型 agent）——派发引用给两个路径：任务文件 `.github/skills/term-scan/task-term-resolve.md`（= 完整 prompt，含查证链/抓取纪律/输出契约）+ 待查列表 `_work/<视频名>/term_pending.md`，subagent 先 read 两者再执行；**不追加执行型纪律母版**（研究型纪律由 agent 系统提示词承载，见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)）
-3. **读查证结果**：查证 agent 写盘 `term_resolve.md`（每行 `term_en|候选译名|数据源|依据|[标记]`）+ 返回压缩总结（每词一行）；主会话据此更新内存术语映射表（`[待审核]` 进 §1.3 确认）
-4. **断点/审计**：`term_resolve.md` 即查证产物契约（数据源命中统计是阶段三 coverage_log 依据，见 `redstone-finalize`）
+2. **分块（条数多必分，防研究 agent 推理截断）**：待查列表按 **30 条/块** 拆成 `term_pending_<i>.md`（块内保持原行格式；`term_pending.md` 保留全量作审计）。块数 = ⌈条数÷30⌉
+3. **逐块派发（任务文件即 prompt，双引用）**：每块一个 `runSubagent`（agentName = `term-researcher`，研究型 agent）——派发引用给两个路径：任务文件 `.github/skills/term-scan/task-term-resolve.md`（= 完整 prompt，含查证链/抓取纪律/输出契约）+ 该块待查列表 `_work/<视频名>/term_pending_<i>.md`，subagent 先 read 两者再执行；**不追加执行型纪律母版**（研究型纪律由 agent 系统提示词承载，见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)）；**串行派发**——上一块 `term_resolve_<i>.md` 写盘后再派下一块（断点恢复粒度 = 块）
+4. **读查证结果 + 合并**：各块查证 agent 写盘 `term_resolve_<i>.md`（每行 `term_en|候选译名|数据源|依据|[标记]`）+ 返回压缩总结（每词一行）；主会话合并各块 → 汇总（供 §1.3 确认），据此更新内存术语映射表（`[待审核]` 进 §1.3 确认）
+5. **断点/审计**：`term_resolve_<i>.md` 即查证产物契约（数据源命中统计是阶段三 coverage_log 依据，见 `redstone-finalize`）
 
 ### 1.3 术语确认
 

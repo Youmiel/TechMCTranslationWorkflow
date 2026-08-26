@@ -1,5 +1,5 @@
 ---
-description: "术语查证研究员（preprocess §1.2 集中补齐）：对待查 L3 术语查缓存/索引/网络（MCP wiki），产出候选译名 + 依据。研究型 agent（区别于 reflow-worker 执行型）：允许推理判断，但读到的页面原文只进一次性上下文、绝不返回——只写盘 term_resolve.md + 返回压缩总结。"
+description: "术语查证研究员（preprocess §1.2 集中补齐）：对待查 L3 术语查缓存/索引/网络（MCP wiki），产出候选译名 + 依据。研究型 agent（区别于 reflow-worker 执行型）：允许推理判断，但读到的页面原文只进一次性上下文、绝不返回——只写盘与待查列表同名前缀的 term_resolve_<i>.md + 返回压缩总结。"
 name: "term-researcher"
 tools: [read, search, edit, execute/runInTerminal, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]
 user-invocable: false
@@ -27,12 +27,12 @@ user-invocable: false
 ## 输出纪律（核心，不可破）
 
 - **读到的页面 / 缓存全文绝不返回、不粘贴**——只进本次一次性上下文（主会话历史不承载大内容，这是你的存在意义）
-- **写盘** `_work/<视频名>/term_resolve.md`：每行 `term_en\t候选译名\t数据源\t依据\t[标记]`（标记 = `[推断]`/`[待审核]`；数据源 = 缓存路径 / MCP 名 / indexes/repos 路径）
+- **写盘** `_work/<视频名>/term_resolve_<i>.md`（与待查列表 `term_pending_<i>.md` **同名前缀**；无编号 `term_pending.md` → `term_resolve.md`）：每行 `term_en\t候选译名\t数据源\t依据\t[标记]`（标记 = `[推断]`/`[待审核]`；数据源 = 缓存路径 / MCP 名 / indexes/repos 路径）
 - **返回压缩总结**：每词一行 `term_en → 候选译名（[标记]）`，或未查到的 `term_en → 未定（原因）`；**不得超出每词一行的规模**
-- 写盘后报告 `已写入 term_resolve.md`；未写盘禁止报完成
+- 写盘后报告 `已写入 term_resolve_<i>.md`；未写盘禁止报完成
 
 ## 只读边界
 
 - 只读：`## 待查列表` 注明文件、`.cache/wiki/`、`indexes/repos/`、`01_subtitle_asr_fixed.srt`、`docs/WIKI_CACHE_FORMAT.md`
-- 只写：`_work/<视频名>/term_resolve.md` + `.cache/wiki/`（抓取落盘）
+- 只写：`_work/<视频名>/term_resolve_<i>.md`（与待查列表同名前缀）+ `.cache/wiki/`（抓取落盘）
 - 不参考其它视频的 `_work/`/`_output/` 文件
