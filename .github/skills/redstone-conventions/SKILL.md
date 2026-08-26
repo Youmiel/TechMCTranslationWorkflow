@@ -52,7 +52,7 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 ## 时间纪律（通用部分）
 
 - 相邻段时间**不得重叠**：`end_i ≤ start_{i+1}`（允许相接不允许交叉）
-- 每次分句/合并后**立即校验**，不要最后抽查：时间/重叠/逆序用 `srt_check_segments.py`，行宽用 `srt_check_width.py`
+- 每次分句/合并后**立即校验**，不要最后抽查：时间/重叠/逆序用 `srt_check_segments.py`，行宽用 `srt_check_width.py`（校验脚本默认只给问题数，`--expand` 看明细）
 - **时间边界规则差异**（工作流特有，见各自主 skill）：translate 输出边界**必须 ⊆ 原字幕边界集合**；reflow 允许预测点（100ms 取整、不入原边界集）
 - **时间引用格式统一（agent 手写/反馈）**：agent 手写产物与向用户反馈（术语表 `02_terms.md`、ASR 修正、审核意见、r03 注释等）一律用**时间戳 `HH:MM:SS`**（无毫秒）；**cue 编号（`c<idx>`）只存在于脚本生成/解析产物**（`s03` 的 `cstart-cend`、chunks 骨架、`r03_anchored.jsonl`），agent 手写**不写 cue 编号**。时间戳须从字幕时间码**精确读取**（SRT 时间码 `HH:MM:SS,mmm` 去毫秒即得），**禁止凭记忆推算或按 cue 号换算**
 

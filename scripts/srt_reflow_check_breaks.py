@@ -13,9 +13,13 @@ Agent 裁决角色：
 - 通过的复核：断句方式（独立成句 / 分段 / 归前句）由 Agent 复核，影响 r03 游离停顿词归属。
 
 块级模式（产物单轨）：r01 为 r01_results 目录，--chunks 必填（单块亦适用）；整段模式（<r01_merged_en.txt>）保留兼容历史产物。
+统一反馈：默认只输出「问题数目 + 提示」（违规/未定位只计数，不输出内容/上下文）；--expand 展开每处违规详情；
+--chunk <k> 只校验涉及该块的空隙点并默认展开（修复单块时防其他块报错占用上下文）。
 
 用法（命令根 = Project_Main/）：
-  python scripts/srt_check_r01_breaks.py <01.srt> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md
+  python scripts/srt_reflow_check_breaks.py <01.srt> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md            # 默认只给问题数
+  python scripts/srt_reflow_check_breaks.py <01.srt> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md --expand  # 展开每处违规详情
+  python scripts/srt_reflow_check_breaks.py <01.srt> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md --chunk 3 # 只查涉及 chunk_003 的空隙点
 退出码：0 = 全部通过；1 = 存在违规（打回信号）。
 """
 import argparse
@@ -78,7 +82,12 @@ def main():
     ap.add_argument("--chunks", default=None, help="chunks 目录（块级模式必填，解析块↔cue区间；单块亦适用）")
     ap.add_argument("--gaps", default=None, help="r00_gaps.md（可选，空隙点清单；不传则脚本自行探测，但建议复用已验证的 r00_gaps）")
     ap.add_argument("--verbose", action="store_true", help="展开打印全部通过项（默认折叠计数）")
+    ap.add_argument("--expand", action="store_true", help="展开每处违规/未定位的详细上下文（默认只给问题数+提示）")
+    ap.add_argument("--chunk", type=int, default=None, metavar="k",
+                    help="只校验涉及指定块的空隙点（如 --chunk 3）；单块模式默认展开该块详情（修复单块时防其他块报错占用上下文）")
     args = ap.parse_args()
+    # 单块模式默认展开（只查一块，输出量小且是修复目标）
+    args.expand = args.expand or args.chunk is not None
 
     cues = parse_srt(args.src)
 
@@ -88,6 +97,8 @@ def main():
     if os.path.isdir(args.r01):
         main_block(args, cues, breaks)
     else:
+        if args.chunk is not None:
+            sys.exit("--chunk 仅块级模式支持（r01 为目录时用）")
         main_whole(args, cues, breaks)
 
 
@@ -138,7 +149,8 @@ def main_whole(args, cues, breaks):
         rb = aligns[ib - 1]
         if ra is None or rb is None:
             n_skip += 1
-            print(f"❓ c{ia}→c{ib}（{gap/1000:.1f}s）: 未能定位 cue 文本，跳过校验")
+            if args.expand:
+                print(f"❓ c{ia}→c{ib}（{gap/1000:.1f}s）: 未能定位 cue 文本，跳过校验")
             continue
         raw_a_end = idx_map[ra[1]]
         raw_b_start = idx_map[rb[0]]
@@ -152,21 +164,24 @@ def main_whole(args, cues, breaks):
                 print(f"   复核: 断句方式是否合理（独立成句 / 分段 / 归前句）——影响 r03 游离停顿词归属，见 r01_breaks.md 复核清单")
         else:
             n_violate += 1
-            gap_snippet = between.strip()
-            la, fa = ctx_snippet(r01_raw, max(0, raw_a_end))
-            lb, fb = ctx_snippet(r01_raw, raw_b_start)
-            print(f"❌ c{ia}→c{ib}（{gap/1000:.1f}s）: 跨空隙合句（两锚间无句末标点，仅 {repr(gap_snippet[:60])}）")
-            print(f"   {os.path.basename(args.r01)} 行 {la}｜{fa}")
-            print(f"   {os.path.basename(args.r01)} 行 {lb}｜{fb}")
-            print(f"   前 cue c{ia}: `{a_text}`")
-            print(f"   后 cue c{ib}: `{b_text}`")
-            print(f"   → 默认处置: 打回步骤 1，复核 r01_breaks.md 断句点清单后按空隙标记（【强制断句】先验知识注入补标点 subagent）重跑")
-            print(f"   受控例外: 若你判定该空隙为语义停顿（非剪辑跳转、语义本就连贯），可放行——")
-            print(f"   但须在 r03 分句对应时确保不跨空隙成单元，并在 r04 告警对照中记录（与 r00_gaps.md 对照）")
+            if args.expand:
+                gap_snippet = between.strip()
+                la, fa = ctx_snippet(r01_raw, max(0, raw_a_end))
+                lb, fb = ctx_snippet(r01_raw, raw_b_start)
+                print(f"❌ c{ia}→c{ib}（{gap/1000:.1f}s）: 跨空隙合句（两锚间无句末标点，仅 {repr(gap_snippet[:60])}）")
+                print(f"   {os.path.basename(args.r01)} 行 {la}｜{fa}")
+                print(f"   {os.path.basename(args.r01)} 行 {lb}｜{fb}")
+                print(f"   前 cue c{ia}: `{a_text}`")
+                print(f"   后 cue c{ib}: `{b_text}`")
+                print(f"   → 默认处置: 打回步骤 1，复核 r01_breaks.md 断句点清单后按空隙标记（【强制断句】先验知识注入补标点 subagent）重跑")
+                print(f"   受控例外: 若你判定该空隙为语义停顿（非剪辑跳转、语义本就连贯），可放行——")
+                print(f"   但须在 r03 分句对应时确保不跨空隙成单元，并在 r04 告警对照中记录（与 r00_gaps.md 对照）")
     print("-" * 60)
     print(f"结果: 通过 {n_pass} / 违规 {n_violate} / 未定位 {n_skip}（共 {len(breaks)}）")
     if n_violate:
         print("❌ 存在跨空隙合句 —— r01 需打回步骤 1 重跑（硬性断句）")
+        if not args.expand:
+            print("   提示：--expand 展开每处违规详情（空隙点+块+上下文）；--chunk <k> 只查单个块")
         sys.exit(1)
     if n_skip:
         print("⚠️ 存在未定位空隙点，建议人工核对")
@@ -197,6 +212,17 @@ def main_block(args, cues, breaks):
     if n_wrapped:
         print(f"   ✅ 已就地折行 {n_wrapped} 个块文件（显示性换行非语义分行，继续校验）")
 
+    # --chunk k：只校验涉及块 k 的空隙点（前块或后块 = k），单块默认展开详情
+    if args.chunk is not None:
+        if args.chunk not in block_cues:
+            sys.exit(f"❌ --chunk {args.chunk}: chunks 无该块（可用块: {sorted(block_cues)}）")
+        cmin, cmax = block_cues[args.chunk]
+        breaks = [(ia, ib, gap) for ia, ib, gap in breaks
+                  if cmin <= ia <= cmax or cmin <= ib <= cmax]
+        if not breaks:
+            print(f"ℹ️ chunk_{args.chunk:03d}: 无涉及该块的空隙点，无需校验")
+            return
+
     print(f"r01_results: {args.r01}  空隙点: {len(breaks)} 处")
     print("-" * 60)
     n_violate, n_pass, n_skip = 0, 0, 0
@@ -210,14 +236,16 @@ def main_block(args, cues, breaks):
                 kb = k
         if ka is None or kb is None:
             n_skip += 1
-            print(f"❓ c{ia}→c{ib}（{gap/1000:.1f}s）: 未找到含该 cue 的块（块↔cue 映射缺失），跳过")
+            if args.expand:
+                print(f"❓ c{ia}→c{ib}（{gap/1000:.1f}s）: 未找到含该 cue 的块（块↔cue 映射缺失），跳过")
             continue
         # 读前块结果末尾 + 后块结果开头（保留原始折行定位行号）
         res_a = os.path.join(results_dir, "chunk_%03d.txt" % ka)
         res_b = os.path.join(results_dir, "chunk_%03d.txt" % kb)
         if not os.path.exists(res_a) or not os.path.exists(res_b):
             n_skip += 1
-            print(f"❓ c{ia}→c{ib}: 块结果缺失（chunk_{ka:03d} / chunk_{kb:03d}），跳过")
+            if args.expand:
+                print(f"❓ c{ia}→c{ib}: 块结果缺失（chunk_{ka:03d} / chunk_{kb:03d}），跳过")
             continue
         raw_a = strip_stitch_marks(open(res_a, encoding="utf-8").read())
         raw_b = strip_stitch_marks(open(res_b, encoding="utf-8").read())
@@ -230,9 +258,10 @@ def main_block(args, cues, breaks):
         # 避免把「无文本」误报为「前块末尾无句末标点」（打回信号）
         if not text_a or not text_b:
             n_skip += 1
-            wa = "空" if not text_a else "有"
-            wb = "空" if not text_b else "有"
-            print(f"❓ c{ia}→c{ib}（{gap/1000:.1f}s）: 块剥离衔接句标记后无文本（chunk_{ka:03d}:{wa} / chunk_{kb:03d}:{wb}），无法判定断句，跳过")
+            if args.expand:
+                wa = "空" if not text_a else "有"
+                wb = "空" if not text_b else "有"
+                print(f"❓ c{ia}→c{ib}（{gap/1000:.1f}s）: 块剥离衔接句标记后无文本（chunk_{ka:03d}:{wa} / chunk_{kb:03d}:{wb}），无法判定断句，跳过")
             continue
         ends_punct = bool(SENT_END_RE.search(text_a.rstrip()[-8:]))
         if ends_punct:
@@ -241,17 +270,20 @@ def main_block(args, cues, breaks):
                 print(f"✅ c{ia}→c{ib}（{gap/1000:.1f}s）: 前块以句末标点结尾（chunk_{ka:03d}→chunk_{kb:03d}）  `…{a_text[-20:]}` | `{b_text[:20]}…`")
         else:
             n_violate += 1
-            la, fa = ctx_snippet(raw_a, max(0, len(raw_a.rstrip()) - 1))
-            lb, fb = ctx_snippet(raw_b, 0)
-            print(f"❌ c{ia}→c{ib}（{gap/1000:.1f}s）: 前块末尾无句末标点（chunk_{ka:03d}→chunk_{kb:03d}）")
-            print(f"   前块 {os.path.basename(res_a)} 行 {la}｜{fa}")
-            print(f"   后块 {os.path.basename(res_b)} 行 {lb}｜{fb}")
-            print(f"   前 cue c{ia}: `{a_text}`  |  后 cue c{ib}: `{b_text}`")
-            print(f"   → 默认处置: 打回该块重跑（空隙标记处强制断句）；语义停顿可作受控例外，须 r03 不跨空隙成单元")
+            if args.expand:
+                la, fa = ctx_snippet(raw_a, max(0, len(raw_a.rstrip()) - 1))
+                lb, fb = ctx_snippet(raw_b, 0)
+                print(f"❌ c{ia}→c{ib}（{gap/1000:.1f}s）: 前块末尾无句末标点（chunk_{ka:03d}→chunk_{kb:03d}）")
+                print(f"   前块 {os.path.basename(res_a)} 行 {la}｜{fa}")
+                print(f"   后块 {os.path.basename(res_b)} 行 {lb}｜{fb}")
+                print(f"   前 cue c{ia}: `{a_text}`  |  后 cue c{ib}: `{b_text}`")
+                print(f"   → 默认处置: 打回该块重跑（空隙标记处强制断句）；语义停顿可作受控例外，须 r03 不跨空隙成单元")
     print("-" * 60)
     print(f"结果: 通过 {n_pass} / 违规 {n_violate} / 未定位 {n_skip}（共 {len(breaks)}）")
     if n_violate:
         print("❌ 存在跨空隙合句 —— 打回对应块重跑（硬性断句）")
+        if not args.expand:
+            print("   提示：--expand 展开每处违规详情（空隙点+块+上下文）；--chunk <k> 只查单个块")
         sys.exit(1)
     if n_skip:
         print("⚠️ 存在未定位空隙点，建议人工核对")

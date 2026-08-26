@@ -288,7 +288,7 @@ def join_r03(r03_dir, out_path, chunks_dir=None):
 
 
 def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True, check_mismatch=True,
-              cue_range=None, r02_text=None, full_warnings=False):
+              cue_range=None, r02_text=None, full_warnings=False, expand=False):
     """r03 写时即合规预检（步骤 4 产出后、步骤 5 回填前必跑）：
 
     - 锚定唯一性：每个整句 EN 在 01 唯一命中（未命中 / 重复命中均报告）
@@ -303,6 +303,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
       调整切分点或依赖回填阅读插值
 
     有硬违规输出清单并返回 1（打回 r03 改写），仅存疑预警则通过并打印提示（Agent 智能判断）。全部通过返回 0。
+    统一反馈：默认只输出「问题数 + 分类 + 提示」；expand=True 逐条输出每处问题/预警明细。
     """
     sentences = parse_r03(r03_path)
     base = Path(r03_path).name   # 告警定位：r03 文件 + 整句标题行号（## S<n> 所在行）
@@ -450,31 +451,40 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
                     f"；r03 多出「{added}」/ r02 有而 r03 缺「{removed}」"
                 )
     if warnings:
-        if full_warnings or len(warnings) <= WARN_PRINT_MAX:
+        show_all = full_warnings or expand
+        if show_all or len(warnings) <= WARN_PRINT_MAX:
             print(f"🔪 check-r03 存疑预警 {len(warnings)} 条（估算值，供 Agent 判断：合并相邻单元 / 调整切分点 / 接受 / 依赖回填插值）:")
             for w in warnings:
                 print("  " + w)
         else:
             kind_str = " / ".join(f"{KIND_NAMES[k]} {n} 条" for k, n in Counter(w[0] for w in warnings).most_common())
-            print(f"🔪 check-r03 存疑预警 {len(warnings)} 条（{kind_str}，估算值，供 Agent 判断）——默认折叠显示前 {WARN_PRINT_MAX} 条，需全量用 --full-warnings:")
+            print(f"🔪 check-r03 存疑预警 {len(warnings)} 条（{kind_str}，估算值，供 Agent 判断）——默认折叠显示前 {WARN_PRINT_MAX} 条，需全量用 --expand/--full-warnings:")
             for w in warnings[:WARN_PRINT_MAX]:
                 print("  " + w)
     if not problems:
         print(f"✅ check-r03 通过：{len(sentences)} 整句，锚定唯一 / 互斥 / 行宽 / ZH忠实均合规")
         return 0
-    print(f"❌ check-r03 发现 {len(problems)} 处问题（r03 需改写后重跑）:")
-    for p in problems:
-        print("  " + p)
+    # 统一反馈：默认只给问题数+分类+提示；expand 逐条输出
+    if expand:
+        print(f"❌ check-r03 发现 {len(problems)} 处问题（r03 需改写后重跑）:")
+        for p in problems:
+            print("  " + p)
+    else:
+        kinds = " / ".join(f"{k} {n} 处" for k, n in Counter(p.split(" ", 1)[0] for p in problems).most_common())
+        print(f"❌ check-r03 发现 {len(problems)} 处问题（{kinds}；r03 需改写后重跑）")
+        print("   提示：--expand 查看每处问题明细；块级模式 --chunk <k> 只查单个块")
     return 1
 
 
 def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
-                     check_frag=True, check_mismatch=True, full_warnings=False):
+                     check_frag=True, check_mismatch=True, full_warnings=False,
+                     chunk_only=None, expand=False):
     """块级 check-r03：逐块校验（r03_results/ + chunks/ 骨架 + r02_results/）。
 
     - 每块 = 一个空隙组-片（chunks/ 的块 ↔ cue 区间）；锚定缩到块内 cue 区间
     - ZH 忠实缩到该块 r02 段（r02_results/ 对应块）
     - 拼回 r03_plan.md 后的整段 check-r03（锚定 01 全文 + 全量 r02）仍建议最后跑一次兜底
+    - chunk_only=<k>：只校验该块（单块默认展开详情）；expand=True：逐块逐条输出问题/预警明细
     """
     import os
     import re
@@ -502,7 +512,10 @@ def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
 
     n_block_err = 0
     n_blocks = 0
-    for k in sorted(chunk_files):
+    if chunk_only is not None and chunk_only not in chunk_files:
+        sys.exit(f"❌ --chunk {chunk_only}: chunks 无该块（可用块: {sorted(chunk_files)}）")
+    to_check = [chunk_only] if chunk_only is not None else sorted(chunk_files)
+    for k in to_check:
         r03_blk = os.path.join(r03_dir, "chunk_%03d.txt" % k)
         r02_blk = os.path.join(r02_dir, "chunk_%03d.txt" % k)
         if not os.path.exists(r03_blk):
@@ -518,13 +531,15 @@ def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
         print(f"--- chunk_{k:03d} (c{cue_range[0]}-c{cue_range[1]}) ---")
         rc = check_r03(r03_blk, srt_path, r02_path=None, cjk_speed=cjk_speed,
                        check_frag=check_frag, check_mismatch=check_mismatch,
-                       cue_range=cue_range, r02_text=r02_text, full_warnings=full_warnings)
+                       cue_range=cue_range, r02_text=r02_text, full_warnings=full_warnings, expand=expand)
         n_blocks += 1
         if rc != 0:
             n_block_err += 1
     print("=" * 60)
     if n_block_err:
         print(f"❌ 块级 check-r03 失败：{n_block_err}/{n_blocks} 块异常（打回对应块 r03 改写）")
+        if not expand:
+            print("   提示：--expand 查看每块问题明细；--chunk <k> 只查单个块")
         return 1
     print(f"✅ 块级 check-r03 通过：{n_blocks} 块全部合规（锚定缩块内 / ZH 忠实缩块内）")
     print("   ⚠️ 拼回 r03_plan.md 后仍建议整段 check-r03 兜底（锚定 01 全文唯一性）")

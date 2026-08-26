@@ -5,7 +5,7 @@
 01 侧先应用**明确修正**（含 `→` 的映射）再对比，其余差异 = 断句违规（错词/缺词/多词）。
 
 difflib 一次列出每段全部分歧（沿用 `srt_reflow_check_words.py` 思路，不再只报第一处）；
-带段号 + plan 行号 + 01 cue 定位；默认每处一行摘要，--expand 展开上下文。
+带段号 + plan 行号 + 01 cue 定位；默认只输出「问题数 + 提示」（各分歧段一行统计，不输出错误内容），--expand 展开每处上下文。
 
 用法（命令根 = Project_Main/）：
   python scripts/srt_check_plan_words.py <01.srt> <s03_plan.md> [--asr-fixes <02_terms.md>] [--expand]
@@ -133,7 +133,7 @@ def main():
     ap.add_argument("--asr-fixes", default=None,
                     help="02_terms.md（可选：ASR 修正列含 → 的映射应用到 01 侧再对比，容错组装期修正）")
     ap.add_argument("--expand", action="store_true",
-                    help="展开每处分歧的上下文/行号/cue 定位（默认每处一行摘要）")
+                    help="展开每处分歧的上下文/行号/cue 定位（默认只给问题数+提示）")
     args = ap.parse_args()
 
     cues = parse_srt_cues(args.srt)
@@ -162,13 +162,11 @@ def main():
             continue
         n_err += 1
         entries = word_diff_entries(srt_terms, plan_terms)
-        print(f"❌ 段 {seg} (c{cs}-c{ce}) s03_plan.md:行{lineno}: 词序列分歧 {len(entries)} 处"
-              f"（01={len(srt_terms)} s03={len(plan_terms)}）")
-        for idx, e in enumerate(entries, 1):
-            print(f"   [{idx}/{len(entries)}] {diff_describe(e)}")
-        if entries and not args.expand:
-            print("   （用 --expand 展开每处的上下文/行号/cue 定位）")
         if args.expand:
+            print(f"❌ 段 {seg} (c{cs}-c{ce}) s03_plan.md:行{lineno}: 词序列分歧 {len(entries)} 处"
+                  f"（01={len(srt_terms)} s03={len(plan_terms)}）")
+            for idx, e in enumerate(entries, 1):
+                print(f"   [{idx}/{len(entries)}] {diff_describe(e)}")
             for idx, (tag, i1, i2, j1, j2, a, b) in enumerate(entries, 1):
                 print(f"   ── [{idx}/{len(entries)}] {diff_describe((tag, i1, i2, j1, j2, a, b))} ──")
                 ctx1 = " ".join(srt_terms[max(0, i1 - 6):i2 + 8])
@@ -188,9 +186,13 @@ def main():
                             acc += len(ws)
                     if c:
                         print(f"   01 cue c{c}: `{cues.get(c, '')}`")
+        else:
+            print(f"❌ 段 {seg} (c{cs}-c{ce}) s03_plan.md:行{lineno}: 词序列分歧 {len(entries)} 处（01={len(srt_terms)} s03={len(plan_terms)}）")
 
     if n_err:
         print(f"\n❌ 断句措辞校验失败：{n_err} 段措辞不一致（打回）")
+        if not args.expand:
+            print("   提示：--expand 展开每处详细上下文（词差异/行号/cue 定位）")
         sys.exit(1)
     print(f"\n✅ 断句措辞校验通过：{n_ok} 段词序列一致")
     return 0

@@ -103,7 +103,7 @@ ASR 可能完全无标点，**合并的唯一判据是语义完整性**——一
 
 - 断句定稿写入 `s03_plan.md`（格式见 [translate-redstone#阶段二正式翻译](../translate-redstone/SKILL.md#阶段二正式翻译) · 产物契约）
 - 每次合并/分割后**立即校验**（**必须通过**才能进入下一步）：
-  1. 时间不重叠 + 边界归属 + 段序：`python scripts/srt_check_segments.py <03_segments.md 或 draft.srt> --orig <01_subtitle_asr_fixed.srt>`（检查相邻段 `end_i ≤ start_{i+1}` 不重叠、时间边界 ⊆ 原边界集、不逆序、cue 覆盖完整）
+  1. 时间不重叠 + 边界归属 + 段序：`python scripts/srt_check_segments.py <03_segments.md 或 draft.srt> --orig <01_subtitle_asr_fixed.srt>`（检查相邻段 `end_i ≤ start_{i+1}` 不重叠、时间边界 ⊆ 原边界集、不逆序、cue 覆盖完整；默认只给问题数，`--expand` 看每条明细）
   2. 中文行宽：`python scripts/srt_check_width.py <draft.srt> --order en-zh`
 - 成稿（04_translation_draft.srt）用 `srt_check_segments.py` 复核一次；含标注 `~` 的估算切分点时加 `--allow-estimated`（新造时间点降为告警）
 - 一次性辅助脚本随视频放 `_work/<视频>/`，用后即弃；可复用的检测脚本在 `scripts/`

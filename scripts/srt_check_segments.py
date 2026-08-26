@@ -24,6 +24,8 @@
   每条缺失 cue 的标号+时间+文本 + 每侧 N 条上下句，供 agent 直接定位（无需
   自写定位脚本）；0=只报缺失/多余总数（默认，防输出过多挤爆上下文）。
 
+统一反馈：默认只输出「问题数目 + 提示」（错误/警告只计数，不输出明细）；--expand 展开每条错误/警告明细。
+
 退出码：0=全部通过；1=发现问题。
 """
 import argparse
@@ -41,6 +43,8 @@ ap.add_argument('--cue-exact', action='store_true',
                 help='SRT 模式：目标为逐 cue 流（如 01 修正字幕），要求 cue 数一致且逐 cue 时间戳与原始完全一致')
 ap.add_argument('--missing-ctx', type=int, default=0, metavar='N',
                 help='cue 数不一致时输出缺失 cue 明细（标号+时间+文本+每侧 N 条上下句）；0=只报缺失/多余总数，防输出挤爆上下文')
+ap.add_argument('--expand', action='store_true',
+                help='展开每条错误/警告明细（默认只给问题数+提示）')
 args = ap.parse_args()
 
 TS_RE = re.compile(r'(\d{2}):(\d{2}):(\d{2}),(\d{3})')
@@ -243,16 +247,23 @@ else:
     print('目标: %s（SRT%s）  段数: %d  原字幕 cue 数: %d'
           % (args.target, '，逐 cue 对齐' if args.cue_exact else '', len(segs), len(orig_cues)))
 
-for w in warnings_:
-    print('  !! %s' % w)
+if args.expand:
+    for w in warnings_:
+        print('  !! %s' % w)
 if errors:
     print('校验失败（%d 处）：' % len(errors))
-    for e in errors[:60]:
-        print('  - %s' % e)
-    if missing_details:
-        print('缺失 cue 明细（--missing-ctx %d）：' % args.missing_ctx)
-        for d in missing_details:
-            print('  %s' % d)
+    if args.expand:
+        for e in errors[:60]:
+            print('  - %s' % e)
+        if missing_details:
+            print('缺失 cue 明细（--missing-ctx %d）：' % args.missing_ctx)
+            for d in missing_details:
+                print('  %s' % d)
+    else:
+        print('   提示：--expand 展开每条错误/警告明细（缺失 cue 明细受 --missing-ctx N 控制）')
     sys.exit(1)
-print('校验通过：时间不重叠、边界 ⊆ 原边界集、段序不逆序' +
-      ('（含估算切分点告警 %d 条）' % len(warnings_) if warnings_ else ''))
+if warnings_:
+    print('校验通过：时间不重叠、边界 ⊆ 原边界集、段序不逆序' +
+          '（含估算切分点告警 %d 条；--expand 查看明细）' % len(warnings_))
+else:
+    print('校验通过：时间不重叠、边界 ⊆ 原边界集、段序不逆序')

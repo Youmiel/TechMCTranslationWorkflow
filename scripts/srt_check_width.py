@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 """检查 SRT 各段中文行视觉宽度（CJK=1, latin≈0.5, digit≈0.5, space≈0.5，半角标准）。
 
-用法: python srt_check_width.py <draft.srt> [--warn 22] [--hard 26] [--order en-zh|zh-en]
+用法: python srt_check_width.py <draft.srt> [--warn 22] [--hard 26] [--order en-zh|zh-en] [--expand]
 --warn: 软告警阈值（默认 22，>warn 且 ≤hard 提示，软告警）；--hard: 硬限制阈值（默认 26，>hard 必切）。
 --order: 双语行语言顺序，en-zh=英文行在前中文行在后（默认），zh-en=中文行在前英文行在后。
-硬闸门：>hard 计 ERROR 并定位「文件:行号」，退出码 1 = 打回信号；软告警不阻断。
+统一反馈：默认只输出「超限段数 + 提示」（不输出每处内容/行号）；--expand 展开每处 文件:行号+内容。
+硬闸门：>hard 计 ERROR 并定位「文件:行号」（--expand），退出码 1 = 打回信号；软告警不阻断。
 """
 import argparse, os, re, sys
 sys.stdout.reconfigure(encoding='utf-8')
@@ -15,6 +16,8 @@ ap.add_argument('--warn', type=float, default=22, help='软告警阈值，默认
 ap.add_argument('--hard', type=float, default=26, help='硬限制阈值，默认 26（>hard 必切）')
 ap.add_argument('--order', choices=('en-zh', 'zh-en'), default='en-zh',
                 help='双语行语言顺序：en-zh=英文行在前中文行在后（默认）；zh-en=中文行在前英文行在后')
+ap.add_argument('--expand', action='store_true',
+                help='展开每处超限段的「文件:行号 + 内容」（默认只给超限段数+提示）')
 args = ap.parse_args()
 
 CJK = re.compile(r'[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]')
@@ -65,10 +68,13 @@ for num, start, zh in blocks:
     flag = 'ERROR' if w > args.hard else ('WARN' if w > args.warn else 'ok')
     if w > args.warn:
         warn.append((num, start, w, zh))
-        print(f'[{flag}] {os.path.basename(args.srt)}:行{start} 段{num} 宽={w:.1f}: {zh}')
+        if args.expand:
+            print(f'[{flag}] {os.path.basename(args.srt)}:行{start} 段{num} 宽={w:.1f}: {zh}')
 
 n_hard = sum(1 for x in warn if x[2] > args.hard)
 print(f'\n>软阈值 {args.warn} 的段数: {len(warn)}（其中 >硬阈值 {args.hard} 必切: {n_hard}）')
+if warn and not args.expand:
+    print('   提示：--expand 查看每处超限段的 文件:行号+内容')
 if n_hard:
     print(f'❌ 退出码 1：{n_hard} 段超过硬限制（> {args.hard} 必切），打回')
     sys.exit(1)

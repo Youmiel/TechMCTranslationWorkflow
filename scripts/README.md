@@ -16,9 +16,9 @@
 
 | 脚本 | 用途 | 用法 |
 |------|------|------|
-| `srt_check_width.py` | 检查 SRT 中文行视觉宽度（行宽规则；`--warn` 软告警 / `--hard` 硬限制；`--order` 指定双语语言顺序）；**硬闸门**：>hard 计 ERROR 并定位 `文件:行号`，退出码 1 = 打回信号 | `python scripts/srt_check_width.py <draft.srt> [--warn 22] [--hard 26] [--order en-zh|zh-en]` |
-| `srt_check_segments.py` | 校验分段/成稿时间约束：相邻段时间不重叠、时间边界 ⊆ 原边界集、段序不逆序、cue 覆盖完整（segment-subtitles Skill 用；`03_segments.md` 的 `~`=估算切分点；`--cue-exact` 用于 01 修正字幕：cue 数一致 + 逐 cue 时间戳与原始完全一致，输出目标/原始时间戳供返工） | `python scripts/srt_check_segments.py <目标> --orig <原字幕.srt> [--allow-estimated] [--cue-exact]` |
-| `srt_check_plan_words.py` | 断句措辞一致性校验（translate 阶段二）：s03_plan.md 各段英文词序列 == 01 对应 cue 区间（断句只合并/分割、不改措辞）；difflib 一次列全部分歧（错词/缺词/多词）；`--asr-fixes` 把 02_terms.md ASR 修正列（含 `→` 映射）应用到 01 侧再对比（容错组装期修正）；退出码 1 = 有分歧（打回） | `python scripts/srt_check_plan_words.py <01.srt> <s03_plan.md> [--asr-fixes <02_terms.md>] [--expand]` |
+| `srt_check_width.py` | 检查 SRT 中文行视觉宽度（行宽规则；`--warn` 软告警 / `--hard` 硬限制；`--order` 指定双语语言顺序）；**硬闸门**：>hard 计 ERROR 并定位 `文件:行号`（`--expand`），退出码 1 = 打回信号；默认只给超限段数 | `python scripts/srt_check_width.py <draft.srt> [--warn 22] [--hard 26] [--order en-zh|zh-en] [--expand]` |
+| `srt_check_segments.py` | 校验分段/成稿时间约束：相邻段时间不重叠、时间边界 ⊆ 原边界集、段序不逆序、cue 覆盖完整（segment-subtitles Skill 用；`03_segments.md` 的 `~`=估算切分点；`--cue-exact` 用于 01 修正字幕：cue 数一致 + 逐 cue 时间戳与原始完全一致，输出目标/原始时间戳供返工；`--missing-ctx N` 缺失 cue 明细窗口）；默认只给问题数，`--expand` 展开每条明细 | `python scripts/srt_check_segments.py <目标> --orig <原字幕.srt> [--allow-estimated] [--cue-exact] [--missing-ctx N] [--expand]` |
+| `srt_check_plan_words.py` | 断句措辞一致性校验（translate 阶段二）：s03_plan.md 各段英文词序列 == 01 对应 cue 区间（断句只合并/分割、不改措辞）；difflib 一次列全部分歧（错词/缺词/多词）；`--asr-fixes` 把 02_terms.md ASR 修正列（含 `→` 映射）应用到 01 侧再对比（容错组装期修正）；默认只给问题数，`--expand` 展开每处上下文；退出码 1 = 有分歧（打回） | `python scripts/srt_check_plan_words.py <01.srt> <s03_plan.md> [--asr-fixes <02_terms.md>] [--expand]` |
 | `text_chunk.py` | **长视频通用分块（SRT 与非 SRT 统一，新任务入口）**：SRT 默认按「N cue 负责 + M 上下文」；`--gaps` 按空隙组分组成「空隙组-片」（reflow 从 01 分块用，块边界优先在空隙点）；非 SRT（r01/r02/r03）按语义单位（段/句/整句组），超长单位自动细分「组-片」；输出统一块格式（含块头元数据 + manifest）；`--inherit` 已弃用 | `python scripts/text_chunk.py <输入> --out <dir> [--type srt\|text] [--unit 段\|句\|整句组] [--owned N] [--ctx M] [--max-chars N] [--gaps]` |
 | `text_merge.py` | **长视频分块合并（A 模式：全自动拼接 + 异常清单）**：按块序读 subagent 结果归位拼接；无异常直接产出，异常出报告 + 异常块头尾窗口供 Agent 决策；替代主 Agent 手工读头尾组装 | `python scripts/text_merge.py <chunks_dir> <results_dir> --out <合并产物> [--report <报告>] [--window N]` |
 | `srt_join_parts.py` | **SRT 片段拼接（第一次遍历合并链路）**：各块 SRT 片段（`chunk_<k>.srt`，保留原时间码）按块序拼接 + 全局段号重排 + cue 数强制校验（`--chunks`，漏/多 cue 拦截）；时间轴精确校验交 `srt_check_segments --cue-exact`；区别于 text_merge（其 srt 模式丢时间码，面向断句合并） | `python scripts/srt_join_parts.py <results_dir> --out <01.srt> [--chunks <chunks_dir>]` |
@@ -36,16 +36,16 @@
 
 | 脚本 | 用途 | 用法 |
 |------|------|------|
-| `srt_reflow.py` | 语义回填确定性时间运算：`reflow`（r03 方案 + 01 → r04 时间轴 + `r03_anchored.jsonl` 锚定明细（JSONL 每行一整句）；整句锚定 + 单元级 cue 锚定 + 分割点就近吸附真实边界 + 100ms 预测点）、`attach-en`（双语组装，英文行 = r03 互斥英文片段）、`check-r03`（r03 写时即合规预检：锚定唯一性 / 拆句互斥 / 行宽 ≤26（软 22 硬 26） / ZH 忠实，违规退出码 1 打回） | `python scripts/srt_reflow.py reflow <r03> <01> [-o r04_draft.srt] [--anchored r03_anchored.jsonl]` / `... attach-en <r04> <r03> [-o r04_bilingual.srt]` / `... check-r03 <r03_results/> <01> <r02_results/> --chunks <chunks/>` |
+| `srt_reflow.py` | 语义回填确定性时间运算：`reflow`（r03 方案 + 01 → r04 时间轴 + `r03_anchored.jsonl` 锚定明细（JSONL 每行一整句）；整句锚定 + 单元级 cue 锚定 + 分割点就近吸附真实边界 + 100ms 预测点）、`attach-en`（双语组装，英文行 = r03 互斥英文片段）、`check-r03`（r03 写时即合规预检：锚定唯一性 / 拆句互斥 / 行宽 ≤26（软 22 硬 26） / ZH 忠实，违规退出码 1 打回；默认只给问题数+分类，`--expand` 展开每处明细，`--chunk <k>` 只校验单块） | `python scripts/srt_reflow.py reflow <r03> <01> [-o r04_draft.srt] [--anchored r03_anchored.jsonl]` / `... attach-en <r04> <r03> [-o r04_bilingual.srt]` / `... check-r03 <r03_results/> <01> <r02_results/> --chunks <chunks/> [--expand] [--chunk k]` |
 | `srt_reflow_gap_scan.py` | 空隙探测（长停顿 >5s / 剪辑跳转 >10s）→ `r00_gaps.md` | `python scripts/srt_reflow_gap_scan.py <01> [-o reflow/r00_gaps.md]` |
 | `srt_reflow_breaks.py` | r01 硬性断句输入：断句点清单（含 Agent 复核字段）→ `r01_breaks.md` | `python scripts/srt_reflow_breaks.py <01> [-o reflow/r01_breaks.md]` |
-| `srt_reflow_check_breaks.py` | r01 硬性断句校验：逐空隙点查句末标点 `.?!`；违规退出码 1（打回信号，受控例外 Agent 裁决）；块级模式（`--chunks <chunks目录> --gaps r00_gaps.md`，复用已验证空隙点清单；N=1 为单块骨架） | `python scripts/srt_reflow_check_breaks.py <01> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md` |
-| `srt_reflow_check_words.py` | r01 措辞校验：词序列与 01 一致（不得改动措辞）；块级模式（`--chunks <chunks目录>`，逐块对比块↔cue 区间词序列；N=1 为单块骨架）；difflib 一次列出全部分歧（错词/缺词/多词，不再只报第一处），默认每处一行摘要，`--expand` 展开每处上下文/行号/cue 定位 | `python scripts/srt_reflow_check_words.py <01> <r01_results/> --chunks <chunks/> [--expand]` |
+| `srt_reflow_check_breaks.py` | r01 硬性断句校验：逐空隙点查句末标点 `.?!`；违规退出码 1（打回信号，受控例外 Agent 裁决）；块级模式（`--chunks <chunks目录> --gaps r00_gaps.md`，复用已验证空隙点清单；N=1 为单块骨架）；默认只给问题数，`--expand` 展开每处违规详情，`--chunk <k>` 只查涉及该块的空隙点 | `python scripts/srt_reflow_check_breaks.py <01> <r01_results/> --chunks <chunks/> --gaps r00_gaps.md [--expand] [--chunk k]` |
+| `srt_reflow_check_words.py` | r01 措辞校验：词序列与 01 一致（不得改动措辞）；块级模式（`--chunks <chunks目录>`，逐块对比块↔cue 区间词序列；N=1 为单块骨架）；difflib 一次列出全部分歧（错词/缺词/多词，不再只报第一处）；默认只给问题数，`--expand` 展开每处上下文/行号/cue 定位，`--chunk <k>` 只查单块 | `python scripts/srt_reflow_check_words.py <01> <r01_results/> --chunks <chunks/> [--expand] [--chunk k]` |
 | `srt_reflow_normalize.py` | 块目录归一化（两种输入形态自动检测）：chunks 模式（步骤 3，`## 分区` cue 文本合并 + 折行 → `r01_normalized/`）、纯文本模式（r02 折行副本 **已停用**——由预分句 `srt_reflow_presplit.py` → `r03_normalized_2/` 取代）；折行 ≤1000 字符/行（英文不拆词、中文按字符），一次跑完整个目录，命令只运行一次 | `python scripts/srt_reflow_normalize.py <chunks/> -o reflow/r01_normalized/` |
 | `srt_reflow_presplit.py` | 预分句 + ZH 机械化断句（方案 4，步骤 5 分句输入）：EN 按句末标点 `.?!`（`r01_results/`）→ `r03_normalized_1/`（E1..En）；ZH 按句号 `。！？`（`r02_results/` 直读原稿）→ `r03_normalized_2/`（**r03 模板骨架**：Z 句 + 句内切分段预填 [15,22] 硬 ≤26，分句 agent 填空后即 r03_results）；缩写/省略号/括号配平保护；折行合并保留中英/数字空格（`Carpet 的 fillUpdates`、`139 147 11`）；切分标点/句长区间全参数化（`--punct-levels/--soft-min/--soft-max/--hard-max/--min-unit`，默认 CJK）；切分标点按优先级层级（`--punct-levels` 可多次，默认逗号族>破折号>顿号，超宽段才降级）；忠实铁律由结构保证（段只在标点处切、不增删改） | `python scripts/srt_reflow_presplit.py <r01_results/> <r02_results/> -o reflow/` |
 | `srt_reflow_build_r03.py` | 脚本断句填回（步骤 5 路径 A 脚本断句，2026-08-21）：由「匹配文件 `r03_matches/`（LLM 句子匹配）+ EN 预分句 `r03_normalized_1/` + ZH 模板骨架 `r03_normalized_2/`」机械生成 `r03_results/`——子单元复用模板子句段（机械断句）、EN 整句按匹配 E 组拼接、子单元 EN 按宽度比例机械切分（互斥拼接 == 整句）；**漏句留空**（匹配未覆盖的 Z/E 句产物写 `> ⚠️ 脚本断句·未匹配` 标记，不静默消失）；退出码 1 = 匹配解析问题 | `python scripts/srt_reflow_build_r03.py <r03_matches/> <r03_normalized_1/> <r03_normalized_2/> -o r03_results/` |
-| `srt_reflow_check_sentence_len.py` | r01 补标点质量校验（步骤 3）：按 `.?!` 分句检测补标点质量——**分级告警**：硬（打回）单句逗号 >10（实测 11 逗号 E5/E22 为堆砌）/ 单句 >600 字符 / 句均 >350（断句稀疏）；软（提示复核，不阻断）单句逗号 ≥8 且字符 ≥250（疑似可断句，如 E15 式）；带文件:行号+上下文；退出码 1 = 有硬命中 | `python scripts/srt_reflow_check_sentence_len.py <r01_results/> [--max-comma 10] [--max-sent 600] [--max-avg 350] [--soft-comma 8] [--soft-sent 250] [--verbose]` |
-| `srt_check_terms.py` | 译文术语全量核对（reflow r02 / translate 共用）：逐条遍历 02_terms.md——01 定位原文出现单元 → 该单元译文须含确认译名（变体容错/长术语覆盖）；支持三种产物形态：reflow 块级（`<r02_results/> --chunks`）、translate 块级（`<_trans_results/> --chunks`，剥离 CARRY 结转行）、translate 合并稿（`<s04_draft.srt> --plan <s03_plan.md>`，段→cue 区间映射）；⚠️/ℹ️ 带定位 + 上下文供 Agent 直接核对编辑；退出码 1 = 有未命中（复核后才放行） | `python scripts/srt_check_terms.py <01> <02_terms.md> <译文目录或srt> --chunks <chunks/> 或 --plan <s03_plan.md> [--verbose]` |
+| `srt_reflow_check_sentence_len.py` | r01 补标点质量校验（步骤 3）：按 `.?!` 分句检测补标点质量——**分级告警**：硬（打回）单句逗号 >10（实测 11 逗号 E5/E22 为堆砌）/ 单句 >600 字符 / 句均 >350（断句稀疏）；软（提示复核，不阻断）单句逗号 ≥8 且字符 ≥250（疑似可断句，如 E15 式）；默认只给问题数，`--expand` 展开每处文件:行号+上下文，`--chunk <k>` 只查单块；退出码 1 = 有硬命中 | `python scripts/srt_reflow_check_sentence_len.py <r01_results/> [--max-comma 10] [--max-sent 600] [--max-avg 350] [--soft-comma 8] [--soft-sent 250] [--expand] [--chunk k] [--verbose]` |
+| `srt_check_terms.py` | 译文术语全量核对（reflow r02 / translate 共用）：逐条遍历 02_terms.md——01 定位原文出现单元 → 该单元译文须含确认译名（变体容错/长术语覆盖）；支持三种产物形态：reflow 块级（`<r02_results/> --chunks`）、translate 块级（`<_trans_results/> --chunks`，剥离 CARRY 结转行）、translate 合并稿（`<s04_draft.srt> --plan <s03_plan.md>`，段→cue 区间映射）；默认只给问题数，`--expand` 展开每条 ⚠️/ℹ️ 明细（行号/上下文/01 原句），`--chunk <k>` 只核对单块（ℹ️ 原文未命中与单块无关，单块模式跳过）；退出码 1 = 有未命中（复核后才放行） | `python scripts/srt_check_terms.py <01> <02_terms.md> <译文目录或srt> --chunks <chunks/> 或 --plan <s03_plan.md> [--expand] [--chunk k] [--verbose]` |
 
 > `srt_reflow_core/` 是 `srt_reflow.py` 的实现包（io / plan / anchor / allocate / alerts / reflow / attach），**非独立工具，勿直接调用**；入口只有 `srt_reflow.py`。
 
@@ -59,6 +59,16 @@
 | `refresh_cache.py` | 统一入口：检查三类缓存；Mojang/TechMC 自动刷新；Wiki 只告警不自动抓取（Agent 按 wiki-tools 降级链按需刷新） | `python scripts/refresh_cache.py [--force\|--dry-run\|--ttl N]` |
 | `check_index_stale.py` | 对比 submodule 当前 commit 与索引记录 commit，报告哪些索引需更新 | `python scripts/check_index_stale.py [--only <repo>]` |
 | `setup_editors.py` | 编辑器适配初始化（跨平台，创建 Claude Code 等所需的 symlink） | `python scripts/setup_editors.py [--force]` |
+
+## 验证脚本统一反馈约定
+
+所有校验闸门脚本（`srt_check_width` / `srt_check_segments` / `srt_check_plan_words` / `srt_check_terms` / `srt_reflow_check_*` / `check-r03`）统一反馈策略，控制上下文占用：
+
+- **默认（不带展开参数）**：只输出「问题数目 + 提示」——各问题定位一行统计（块/段/空隙点 + 数量），**不输出错误内容、不输出上下文**（行号/片段/原文）。
+- **`--expand`**：展开每处问题的详细内容 + 上下文（文件:行号 + 片段，供 Agent 直接定位编辑；主会话收集 task-fix 错误清单时用）。
+- **`--chunk <k>`**（仅块级验证脚本：`srt_check_terms` / `srt_reflow_check_breaks` / `srt_reflow_check_words` / `srt_reflow_check_sentence_len` / `check-r03`）：只校验/对比块 k，**单块模式默认展开该块详情**——针对某块修复时其他块的问题零输出、零占用上下文。
+- **`--verbose`**（部分脚本）：展开通过项统计，与 `--expand` 正交。
+- 退出码语义不变（0=通过；1=打回/有未命中）。
 
 每个脚本的详细说明见 `python <script>.py --help`。
 

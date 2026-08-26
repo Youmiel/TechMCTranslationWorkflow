@@ -21,8 +21,10 @@ reflow 步骤 4 / translate 阶段二共用校验：翻译后全量核对译文�
   b. translate 块级：<_trans_results/> 目录 + --chunks <chunks/>（srt 类型块：每行 `段号|cue范围|文本`，剥离 CARRY 结转行）
   c. translate 合并稿：<s04_draft.srt> 单文件 + --plan <s03_plan.md>（段→cue 区间映射）+ [--order en-zh|zh-en]
 用法（命令根 = Project_Main/）：
-  python scripts/srt_check_terms.py <01.srt> <02_terms.md> <r02_results/> --chunks <chunks/> [--verbose]
-  python scripts/srt_check_terms.py <01.srt> <02_terms.md> <s04_draft.srt> --plan <s03_plan.md> [--order en-zh] [--verbose]
+  python scripts/srt_check_terms.py <01.srt> <02_terms.md> <r02_results/> --chunks <chunks/> [--expand] [--chunk 3]
+  python scripts/srt_check_terms.py <01.srt> <02_terms.md> <s04_draft.srt> --plan <s03_plan.md> [--order en-zh] [--expand]
+统一反馈：默认只输出「问题数目 + 提示」（⚠️/ℹ️ 各一条定位行，不输出行号/上下文/01 原句）；--expand 展开每条明细；
+--chunk <k> 只核对单块并默认展开（修复单块时防其他块报错占用上下文；ℹ️ 原文未命中与单块无关，单块模式跳过）。
 默认只打印 ⚠️/ℹ️ 与汇总（✅ 折叠）；--verbose 展开全部 ✅。
 退出码：0 = 全部命中；1 = 有未命中（⚠️ 或 ℹ️，Agent 复核后才可放行）。
 """
@@ -201,7 +203,12 @@ def main():
     ap.add_argument("--order", choices=("en-zh", "zh-en"), default="en-zh",
                     help="双语行语言顺序（SRT 单文件模式中文行定位，默认 en-zh）")
     ap.add_argument("--verbose", action="store_true", help="展开打印全部 ✅ 命中（默认折叠）")
+    ap.add_argument("--expand", action="store_true", help="展开每条 ⚠️/ℹ️ 明细（块行号/上下文/01 原句；默认只给问题数+提示）")
+    ap.add_argument("--chunk", type=int, default=None, metavar="k",
+                    help="只核对指定块（块级模式；如 --chunk 3）；单块模式默认展开该块详情（修复单块时防其他块报错占用上下文）")
     args = ap.parse_args()
+    single_chunk = args.chunk is not None
+    expand = args.expand or single_chunk  # 单块模式默认展开（只查一块，输出量小且是修复目标）
 
     cues = parse_srt(args.srt)
     cue_map = {idx: body for idx, body in cues}
@@ -211,6 +218,8 @@ def main():
 
     srt_mode = os.path.isfile(args.r02)  # 单文件（s04_draft.srt）→ SRT 模式；目录 → 块级模式
     if srt_mode:
+        if args.chunk is not None:
+            sys.exit("--chunk 仅块级模式支持（r02 为目录时用；合并稿 SRT 用 --plan）")
         if not args.plan:
             sys.exit("SRT 单文件模式需要 --plan <s03_plan.md>（段→cue 区间映射）")
         # 段 → cue 区间（plan）+ 段 → 中文译文（双语 SRT，SRT 序号 = 段号）
@@ -260,6 +269,12 @@ def main():
         def unit_label(k):
             return os.path.basename(os.path.join(args.r02, "chunk_%03d.txt" % k))
 
+        # --chunk k：只核对块 k（单块默认展开）
+        if args.chunk is not None:
+            if args.chunk not in chunk_text:
+                sys.exit(f"❌ --chunk {args.chunk}: chunks 无该块（可用块: {sorted(chunk_text)}）")
+            chunk_text = {args.chunk: chunk_text[args.chunk]}
+
     # 预计算：每条术语的"更长术语"索引（其词形以独立词形式包含于更长词形，如 column ⊂ water column）
     term_index = {i: term_forms(en) for i, (en, _, _) in enumerate(terms)}
     longer_terms = {}
@@ -289,8 +304,13 @@ def main():
         hit = [k for k, (_, _, text, ctext) in sorted(chunk_text.items())
                if any(p.search(text) for p in pats) or any(p.search(ctext) for p in cpat)]
         if not hit:
+            if single_chunk:
+                continue  # 单块模式：该术语在目标块 01 未出现，与目标块无关，不报全局 ℹ️
             n_absent += 1
-            print(f"ℹ️ {en} → {zh}\n    01 全文未命中——查 ASR 修正列/词形变体（措辞变体或大小写，必要时更新 02_terms.md 行 {tline}）")
+            if expand:
+                print(f"ℹ️ {en} → {zh}\n    01 全文未命中——查 ASR 修正列/词形变体（措辞变体或大小写，必要时更新 02_terms.md 行 {tline}）")
+            else:
+                print(f"ℹ️ {en} → {zh}: 01 全文未命中")
             continue
         # ② 长术语优先覆盖：命中块中，01 原文里该词若全部被更长术语覆盖（更长术语译文已✅）则放行
         real = []
@@ -330,36 +350,43 @@ def main():
                 miss.append((k, "", ctx))
         if miss:
             n_miss += 1
-            # 01 原句：术语在首个真实命中块内的首现 cue 文本（供 Agent 对照原文判断意译/漂移）
-            first_k = miss[0][0]
-            src_snip = ""
-            for p in pats:
-                m = p.search(chunk_text[first_k][2])
-                if m:
-                    s = max(0, m.start() - 25)
-                    src_snip = chunk_text[first_k][2][s:m.end() + 25]
-                    break
-            print(f"⚠️ {en} → {zh}")
-            for k, why, ctx in miss:
-                fname = unit_label(k)
-                extra = f"（{why}）" if why else ""
-                print(f"    {fname}{extra} 译文未见确认译名")
-                for c in ctx:
-                    print(f"        · {c}")
-            if src_snip:
-                print(f"    01 原句（块 {first_k}）: …{src_snip}…")
-            print(f"    02_terms.md 行 {tline}：`{en}` → `{zh}`")
-            ok = "/".join(str(k) for k in real if k not in [m[0] for m in miss])
-            print(f"    Agent 复核：意译 / 漏译 / 漂移（漂移回写 r02 对应块）" +
-                  (f"（其余命中块 {ok} 已正确）" if ok else ""))
+            if expand:
+                # 01 原句：术语在首个真实命中块内的首现 cue 文本（供 Agent 对照原文判断意译/漂移）
+                first_k = miss[0][0]
+                src_snip = ""
+                for p in pats:
+                    m = p.search(chunk_text[first_k][2])
+                    if m:
+                        s = max(0, m.start() - 25)
+                        src_snip = chunk_text[first_k][2][s:m.end() + 25]
+                        break
+                print(f"⚠️ {en} → {zh}")
+                for k, why, ctx in miss:
+                    fname = unit_label(k)
+                    extra = f"（{why}）" if why else ""
+                    print(f"    {fname}{extra} 译文未见确认译名")
+                    for c in ctx:
+                        print(f"        · {c}")
+                if src_snip:
+                    print(f"    01 原句（块 {first_k}）: …{src_snip}…")
+                print(f"    02_terms.md 行 {tline}：`{en}` → `{zh}`")
+                ok = "/".join(str(k) for k in real if k not in [m[0] for m in miss])
+                print(f"    Agent 复核：意译 / 漏译 / 漂移（漂移回写 r02 对应块）" +
+                      (f"（其余命中块 {ok} 已正确）" if ok else ""))
+            else:
+                miss_blocks = "/".join(str(k) for k, _, _ in miss)
+                print(f"⚠️ {en} → {zh}: {len(miss)} 块未见确认译名（{miss_blocks}）")
         else:
             n_hit += 1
             if args.verbose:
                 print(f"✅ {en} → {zh}  （块 {'/'.join(str(k) for k in real)} 均含译名）")
 
-    print(f"\n汇总：{len(terms)} 条术语 / ✅ {n_hit} / ⚠️ {n_miss} / ℹ️ {n_absent} / 🔒长术语覆盖 {n_covered}")
+    scope = f"（单块 chunk_{args.chunk:03d}）" if single_chunk else ""
+    print(f"\n汇总：{len(terms)} 条术语 / ✅ {n_hit} / ⚠️ {n_miss} / ℹ️ {n_absent} / 🔒长术语覆盖 {n_covered}{scope}")
     if n_miss or n_absent:
         print("❌ 退出码 1：有未命中项，Agent 复核后才可放行")
+        if not expand:
+            print("   提示：--expand 查看每条明细（块行号/上下文/01 原句）；--chunk <k> 只核对单个块")
         sys.exit(1)
     print("✅ 术语全量核对通过：全部术语在对应块译文中使用了确认译名")
     return 0

@@ -4,12 +4,15 @@
 回填工作流（reflow-redstone）步骤 1：LLM 合并补标点后，词序列必须与 01 一致（只加标点、不改措辞）。
 
 块级模式（产物单轨）：<01.srt> <r01_results目录> --chunks <chunks目录>——逐块对比（块 ↔ 01 cue 区间由 chunks 块头解析；单块亦适用）。
-差异定位：difflib 一次列出全部分歧（错词/缺词/多词），不再只报第一处；默认每处一行摘要，--expand 展开每处的上下文/行号/cue 定位。
+差异定位：difflib 一次列出全部分歧（错词/缺词/多词），不再只报第一处。
+统一反馈：默认只输出「问题数目 + 提示」（各问题块一行统计，不输出错误内容/上下文）；--expand 展开每处的上下文/行号/cue 定位；
+--chunk <k> 只校验单块并默认展开该块详情（修复单块时防其他块报错占用上下文）。
 整段模式（<01.srt> <r01_merged_en.txt>）保留兼容历史产物，同样一次列出全部分歧。
 
 用法（命令根 = Project_Main/）：
-  python scripts/srt_reflow_check_words.py <01.srt> <r01_results/> --chunks <chunks/>            # 块级（--chunks 必填）
-  python scripts/srt_reflow_check_words.py <01.srt> <r01_results/> --chunks <chunks/> --expand  # 块级：展开每处分歧的上下文/行号/cue 定位（默认每处一行摘要）
+  python scripts/srt_reflow_check_words.py <01.srt> <r01_results/> --chunks <chunks/>            # 块级（--chunks 必填）：默认只给问题数
+  python scripts/srt_reflow_check_words.py <01.srt> <r01_results/> --chunks <chunks/> --expand  # 块级：展开每处分歧的上下文/行号/cue 定位
+  python scripts/srt_reflow_check_words.py <01.srt> <r01_results/> --chunks <chunks/> --chunk 3 # 只查 chunk_003（默认展开该块详情）
 退出码：0 = 一致；1 = 存在分歧。
 """
 import argparse
@@ -89,8 +92,11 @@ def main():
     ap.add_argument("r01", help="r01_results 目录（块级，--chunks 必填；单块亦适用）")
     ap.add_argument("--chunks", default=None, help="chunks 目录（块级模式必填，解析块↔cue区间；单块亦适用）")
     ap.add_argument("--verbose", action="store_true", help="展开打印全部通过项（默认折叠计数）")
-    ap.add_argument("--expand", action="store_true", help="展开每处分歧的详细上下文/行号/cue 定位（默认每处一行摘要）")
+    ap.add_argument("--expand", action="store_true", help="展开每处分歧的详细上下文/行号/cue 定位（默认只给问题数+提示）")
+    ap.add_argument("--chunk", type=int, default=None, metavar="k",
+                    help="只校验指定块（chunk_<k>.txt，如 --chunk 3）；单块模式默认展开该块详情（修复单块时防其他块报错占用上下文）")
     args = ap.parse_args()
+    expand = args.expand or args.chunk is not None  # 单块模式默认展开（只查一块，输出量小且是修复目标）
 
     if os.path.isdir(args.r01):
         # 块级模式
@@ -111,7 +117,10 @@ def main():
             print(f"   ✅ 已就地折行 {n_wrapped} 个块文件（显示性换行非语义分行，继续校验）")
         n_err = 0
         n_ok = 0
-        for k in sorted(chunks):
+        if args.chunk is not None and args.chunk not in chunks:
+            sys.exit(f"❌ --chunk {args.chunk}: chunks 目录无该块（可用块: {sorted(chunks)}）")
+        to_check = [args.chunk] if args.chunk is not None else sorted(chunks)
+        for k in to_check:
             rng = parse_owned_cue_range(chunks[k])
             if rng is None:
                 print(f"⚠️ chunk_{k:03d}: 无 OWNED cue，跳过")
@@ -146,13 +155,11 @@ def main():
                 entries = word_diff_entries(srt_terms, r01_terms)
                 n_diff = len(entries)
                 print(f"❌ chunk_{k:03d} (c{cmin}-c{cmax}): 词序列分歧 {n_diff} 处（01={len(srt_terms)} r01={len(r01_terms)}）")
-                # 一次列出全部问题（默认每处一行摘要；--expand 展开详情）
-                for idx, e in enumerate(entries, 1):
-                    print(f"   [{idx}/{n_diff}] {diff_describe(e)}")
-                if n_diff and not args.expand:
-                    print(f"   （用 --expand 展开每处的上下文/行号/cue 定位）")
-                if args.expand:
+                # 统一反馈：默认只给问题数；--expand / 单块（--chunk）展开每处详情
+                if expand:
                     stripped = strip_stitch_marks(raw)
+                    for idx, e in enumerate(entries, 1):
+                        print(f"   [{idx}/{n_diff}] {diff_describe(e)}")
                     for idx, (tag, i1, i2, j1, j2, a, b) in enumerate(entries, 1):
                         print(f"   ── [{idx}/{n_diff}] {diff_describe((tag, i1, i2, j1, j2, a, b))} ──")
                         # 01/r01 词级上下文并列（±6 词，措辞差异一眼可辨）
@@ -184,6 +191,8 @@ def main():
                                 print(f"   01 cue c{c}: `{cue_map.get(c, '')}`")
         if n_err:
             print(f"\n❌ 块级措辞校验失败：{n_err} 块异常（打回）")
+            if not expand:
+                print("   提示：--expand 展开每处详细上下文；--chunk <k> 只查单个块（修复单块时防其他块报错占用上下文）")
             sys.exit(1)
         print(f"\n✅ 块级措辞校验通过：{n_ok} 块词序列一致（含跨块句标记块）")
         return
@@ -199,17 +208,17 @@ def main():
     entries = word_diff_entries(w1, w2)
     n_diff = len(entries)
     print(f"❌ 词序列分歧 {n_diff} 处（01={len(w1)} r01={len(w2)}）")
-    for idx, e in enumerate(entries, 1):
-        print(f"  [{idx}/{n_diff}] {diff_describe(e)}")
-    if n_diff and not args.expand:
-        print("  （用 --expand 展开每处详细上下文）")
     if args.expand:
+        for idx, e in enumerate(entries, 1):
+            print(f"  [{idx}/{n_diff}] {diff_describe(e)}")
         for idx, (tag, i1, i2, j1, j2, a, b) in enumerate(entries, 1):
             print(f"  ── [{idx}/{n_diff}] {diff_describe((tag, i1, i2, j1, j2, a, b))} ──")
             ctx1 = " ".join(w1[max(0, i1 - 4):i2 + 5])
             ctx2 = " ".join(w2[max(0, j1 - 4):j2 + 5])
             print(f"  01 上下文: ...{ctx1}...")
             print(f"  r01 上下文: ...{ctx2}...")
+    else:
+        print("  （用 --expand 展开每处详细上下文）")
     sys.exit(1)
 
 

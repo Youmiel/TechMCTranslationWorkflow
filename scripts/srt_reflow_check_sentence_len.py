@@ -16,11 +16,13 @@
 硬指标确凿打回（chunk_003 整块 7000+ 字符仅 1 句 / 106 逗号 → 多指标命中）；软指标把
 "该断未断"的中等长句列出供主会话/用户复核（与硬命中一并 task-fix 补句号，或放行真实长句）。
 通过项只汇总计数（`--verbose` 展开每块句数/句均/最大逗号数）。
+统一反馈：默认只输出「问题数目 + 提示」（每块一行统计，不输出行号/上下文）；--expand 展开每处详情；
+--chunk <k> 只校验单块并默认展开（修复单块时防其他块报错占用上下文）。
 退出码：任一**硬**命中 → 1；软提示不计退出码。
 
 用法（命令根 = Project_Main/）：
   python scripts/srt_reflow_check_sentence_len.py reflow/r01_results/
-    [--max-comma 15] [--max-sent 600] [--max-avg 350] [--soft-comma 8] [--soft-sent 250] [--verbose]
+    [--max-comma 15] [--max-sent 600] [--max-avg 350] [--soft-comma 8] [--soft-sent 250] [--expand] [--chunk 3] [--verbose]
 """
 import argparse
 import re
@@ -41,15 +43,22 @@ def main():
     ap.add_argument("--soft-comma", type=int, default=8, help="软：单句逗号数提示阈值（默认 8，与 --soft-sent 联合）")
     ap.add_argument("--soft-sent", type=int, default=250, help="软：单句字符提示阈值（默认 250，与 --soft-comma 联合）")
     ap.add_argument("--verbose", action="store_true", help="展开打印每块句数/句均/最大逗号数/最大句长")
+    ap.add_argument("--expand", action="store_true", help="展开每处问题的行号+上下文（默认只给问题数+提示）")
+    ap.add_argument("--chunk", type=int, default=None, metavar="k",
+                    help="只校验指定块（chunk_<k>.txt，如 --chunk 3）；单块模式默认展开该块详情（修复单块时防其他块报错占用上下文）")
     args = ap.parse_args()
+    expand = args.expand or args.chunk is not None  # 单块模式默认展开（只查一块，输出量小且是修复目标）
 
     blocks = collect_chunk_files(args.src)
     if not blocks:
         sys.exit(f"❌ 输入目录无块文件：{args.src}")
+    if args.chunk is not None and args.chunk not in blocks:
+        sys.exit(f"❌ --chunk {args.chunk}: 输入目录无该块（可用块: {sorted(blocks)}）")
+    to_check = [args.chunk] if args.chunk is not None else sorted(blocks)
 
     issues = 0
     n_soft = 0
-    for k in sorted(blocks):
+    for k in to_check:
         with open(blocks[k], encoding="utf-8") as fh:
             raw = fh.read()
         flat = re.sub(r"\s+", " ", raw).strip()
@@ -62,31 +71,43 @@ def main():
         avg = total / len(sents)
         if args.verbose:
             print(f"   chunk_{k:03d}: {len(sents)} 句 / 总 {total} 字符 / 句均 {avg:.0f} / 最大逗号 {max(commas)} / 最大句长 {max(lens)}")
+        hard_this = []
+        soft_this = []
         if avg > args.max_avg:
-            issues += 1
-            print(f"⚠️ chunk_{k:03d}.txt 断句稀疏：{len(sents)} 句 / {total} 字符 / 句均 {avg:.0f}（>{args.max_avg}，疑似逗号堆砌未用句号断句）")
+            hard_this.append(("块级", f"断句稀疏：{len(sents)} 句 / {total} 字符 / 句均 {avg:.0f}（>{args.max_avg}，疑似逗号堆砌未用句号断句）"))
         for s, nc in zip(sents, commas):
             ln = len(s)
             hard = nc > args.max_comma or ln > args.max_sent
             if hard:
-                issues += 1
                 pos = flat.find(s)
                 line_no, frag = ctx_snippet(flat, pos)
                 if nc > args.max_comma:
-                    print(f"⚠️ chunk_{k:03d}.txt:行{line_no} 逗号连接 {nc} 个（>{args.max_comma}，疑似应用句号断句）：{frag}")
+                    hard_this.append((f"行{line_no}", f"逗号连接 {nc} 个（>{args.max_comma}，疑似应用句号断句）：{frag}"))
                 if ln > args.max_sent:
-                    print(f"⚠️ chunk_{k:03d}.txt:行{line_no} 超长句 {ln} 字符（>{args.max_sent}）：{frag}")
+                    hard_this.append((f"行{line_no}", f"超长句 {ln} 字符（>{args.max_sent}）：{frag}"))
             elif nc >= args.soft_comma and ln >= args.soft_sent:
-                n_soft += 1
                 pos = flat.find(s)
                 line_no, frag = ctx_snippet(flat, pos)
-                print(f"ℹ️ chunk_{k:03d}.txt:行{line_no} 疑似可断句：逗号 {nc} 个 / {ln} 字符（≥{args.soft_comma} 且 ≥{args.soft_sent}，语义断点建议复核）：{frag}")
+                soft_this.append((f"行{line_no}", f"疑似可断句：逗号 {nc} 个 / {ln} 字符（≥{args.soft_comma} 且 ≥{args.soft_sent}，语义断点建议复核）：{frag}"))
+        issues += len(hard_this)
+        n_soft += len(soft_this)
+        if hard_this or soft_this:
+            if expand:
+                print(f"⚠️ chunk_{k:03d}.txt: 硬 {len(hard_this)} 项 / 软 {len(soft_this)} 处")
+                for tag, msg in hard_this:
+                    print(f"   ⚠️ chunk_{k:03d}.txt {tag} {msg}")
+                for tag, msg in soft_this:
+                    print(f"   ℹ️ chunk_{k:03d}.txt {tag} {msg}")
+            else:
+                print(f"⚠️ chunk_{k:03d}: 硬 {len(hard_this)} 项 / 软 {len(soft_this)} 处")
     if issues:
         print(f"❌ 补标点质量校验未通过：{issues} 项硬命中 → 复核（明显逗号堆砌走 task-fix 补句号；真实长句可放行）")
+        if not expand:
+            print("   提示：--expand 展开每处详情（文件:行号+上下文）；--chunk <k> 只查单个块")
         return 1
     if n_soft:
         print(f"ℹ️ 另有 {n_soft} 处疑似可断句（软提示，不阻断）→ 主会话/用户复核语义断点，确认后一并 task-fix")
-    print(f"✅ 补标点质量通过：{len(blocks)} 块无硬命中（逗号 ≤{args.max_comma}、单句 ≤{args.max_sent}、句均 ≤{args.max_avg}）")
+    print(f"✅ 补标点质量通过：{len(to_check)} 块无硬命中（逗号 ≤{args.max_comma}、单句 ≤{args.max_sent}、句均 ≤{args.max_avg}）")
     return 0
 
 
