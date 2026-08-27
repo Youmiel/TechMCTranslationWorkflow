@@ -2,7 +2,7 @@
 cell,,农场中单个复制单元,[农场通用] 来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 c142/c204；2026-08-13 用户确认,单元,
 lag-to-output,,速度与卡顿的比值（农场效率评价指标）,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:13:27；2026-08-13 用户确认,延迟产出比,
 yield rate,,农场产量速率,来源：uVOFckoMdIU 视频 00:18:47；2026-08-14 用户确认,产出率,
-locking line,,锁定线：schematic 内对中继器补货线（repeater restock line）的命名,[推断：01 字幕 00:32:32] 来源：uVOFckoMdIU 视频；注意 00:14:25 individual clocking（单独时钟）非 locking line；2026-08-20 用户确认,锁定线,
+locking line,,锁定线，锁定各个单元的开关，或者锁定一排漏斗等红石元件的线路,[推断：01 字幕 00:32:32] 来源：uVOFckoMdIU 视频；注意 00:14:25 individual clocking（单独时钟）非 locking line；2026-08-20 用户确认,锁定线,
 downtime,,空闲时长（等待的时间）,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:16:10；2026-08-13 用户确认,空窗期/停机时间,
 global clock,,整个农场共用的统一时钟（对比 per-cell 单独时钟）,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:14:18；2026-08-13 用户确认,全局时钟,
 trigger mechanism,,激活/复位飞行器移动的输入机制；本视频特指反向延伸的双触发输入,[推断：trigger 词根扩展] 来源：22UL5d4G3mY 视频；2026-08-10 用户审核无意见确认,触发机制,
@@ -11,3 +11,4 @@ spamming; spam,,高频刷信号：以极快频率反复激活红石元件（本�
 offset,,偏移：模块相对位置的错位量。,[推断：视频上下文] 来源：22UL5d4G3mY 视频；2026-08-07 测试工作流阶段一 §1.3,偏移,
 wave,,信号的传播波：激活波（fast wave）/ 重置波（wave of resetting）,[推断：视频上下文] 来源：22UL5d4G3mY 视频；2026-08-10 用户审核无意见确认,波,
 single cell,,单个（装置）单元,来源：uVOFckoMdIU 视频 00:05:29；2026-08-14 用户确认,单个单元,
+dueling hopper,,嘴对嘴放置的漏斗,,嘴对嘴漏斗,

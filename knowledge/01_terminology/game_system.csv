@@ -14,3 +14,6 @@ entity portal collision checking,,实体传送门碰撞检测：1.19.3 起对每
 aggro,,游戏机制通用词：吸引仇恨,来源：uVOFckoMdIU 视频 00:02:59；2026-08-12 用户确认,仇恨,
 blast range,,TNT 爆炸范围（ASR 误听 range of the shulker）,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:18:25；2026-08-13 用户确认,爆炸范围,
 explosion-proof block,,防爆的方块,来源：uVOFckoMdIU 视频 00:19:32；2026-08-14 用户确认,防爆方块,
+build limit,,建筑上限：本视频语境指水平 32k×垂直 256 的方块变更坐标上限（一般译「建筑高度限制」）。,[推断：字幕语境] 来源：p-k5MPhBSjk 视频 00:10:41；2026-08-25 用户确认,建筑上限,
+random number generator;RNG,,随机数生成器：产生随机数的函数/算法（本视频用坐标做种子锚定）。,来源：标准译名；p-k5MPhBSjk 视频 00:04:19；2026-08-25 用户确认,随机数生成器,
+world generation,,世界生成的机制：区块、地形、生物群系等由算法生成的过程。,来源：zh wiki「世界生成」页同名；2026-08-25 用户确认,世界生成,

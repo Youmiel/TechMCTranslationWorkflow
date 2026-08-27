@@ -15,3 +15,5 @@ geode,,紫晶洞：主世界地下生成的地物，内含紫水晶簇与紫水�
 duration one/two/three,,烟花火箭一级/二级/三级（不同飞行时长；本视频颜色编码：粉=一、红=二、橙=三）。,[推断：视频上下文 jargon] 来源：QSDpdXT9SPs 视频 c101-c102/c169-c171；2026-08-13 用户确认,烟花火箭一/二/三级,
 waterlogged stair,,含水楼梯：被水淹没的楼梯方块,[方块] 来源：uVOFckoMdIU 视频 00:33:33（ASR water like there→waterlogged stair）；全局 asr_fixes 映射 + 中文 Wiki 标准译名；2026-08-20 用户确认,含水楼梯,
 item entity,,物品掉落形成的实体,来源：uVOFckoMdIU 视频 00:16:58；2026-08-14 用户确认,物品实体,
+vein,,矿脉：矿石在地下成簇生成的形态。,来源：zh wiki 矿脉页（Ore Vein）官方译名；2026-08-25 用户确认,矿脉,
+stack size,,堆叠数量：单组物品的最大数量（本视频用 8 bit 编码）。,[推断：字幕语境] 来源：p-k5MPhBSjk 视频 00:17:21；2026-08-25 用户确认,堆叠数量,
