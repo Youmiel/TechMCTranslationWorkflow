@@ -78,7 +78,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 
 ### 1.3 术语确认
 
-输出术语清单供用户确认，**ASR 误识别单独一栏**集中批注。**决策行（`[ASR 推测]`/`[推断]`/`[待审核]`）必须附字幕时间戳**；普通行同样填写：
+输出术语清单供用户确认，**ASR 误识别单独一栏**集中批注。**决策行（`[ASR 推测]`/`[推断]`/`[待审核]`）必须附字幕时间戳**；普通行同样填写；判定为通用标准译名的词在来源列标 `[通用词]`（确认后不入库，见 §1.4）
 
 ```
 | 时间戳 | 原文 | 译名 | 来源 | ASR 修正 |
@@ -98,7 +98,8 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 
 按 [term-registration#同步步骤](../term-registration/SKILL.md#同步步骤)：
 1. 筛选已确认术语（排除 `[待审核]`）
-2. 写 `_uncategorized.csv`（查重不覆盖）
-3. ASR 映射登记 `asr_fixes.md`
+2. **通用标准译名过滤**：判定为通用学科公认标准译名的词（如 bilinear interpolation 双线性插值、quicksort 快速排序、Perlin noise）标 `[通用词]` 且**不入库**（判定准则见 [term-registration#通用标准译名判定](../term-registration/SKILL.md#通用标准译名判定)）
+3. 写 `_uncategorized.csv`（查重不覆盖）
+4. ASR 映射登记 `asr_fixes.md`
 
 > `_uncategorized.csv` 变动不更新 `indexes/knowledge/`（纯静态索引，见 `indexing-rules`）
