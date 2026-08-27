@@ -16,6 +16,11 @@ pip install -r requirements.txt
 # 初始化 submodule（知识仓库 + humanizer-zh Skill）
 git submodule update --init --recursive
 
+# storage-archive（Storage-Catalog 存储科技术语词典）仅稀疏检出 dictionary/（体积大、含向量大文件）。
+# 新 clone 后 sparse 配置不随仓库传播，需手动启用：
+git -C _repos/storage-archive sparse-checkout init --no-cone
+git -C _repos/storage-archive sparse-checkout set /dictionary/
+
 # 编辑器适配（为 Claude Code 等编辑器创建 Skill 链接）
 python scripts/setup_editors.py
 ```
@@ -78,7 +83,7 @@ python scripts/setup_editors.py
 - **同步上游知识**：当 `_repos/` 下的知识仓库有更新时，运行 `git submodule update --remote` 拉取
 - **清理临时产物**：`.cache/`（爬取缓存）与 `_work/`（翻译中间产物）均为临时文件，如需清理可手动删除（项目禁止自动删除）
 
-> 知识按来源分为三类：**人工维护知识库**（`knowledge/`，译名标准，Git 追踪）、**脚本生成与抓取缓存**（`.cache/`，含官方词汇表、Wiki 页面、社区资料）、**外部仓库**（`_repos/`，只读 submodule 引用）。翻译术语以 `knowledge/` 与 `.cache/` 为据，外部仓库内容经索引定位后参考。
+> 知识按来源分为三类：**人工维护知识库**（`knowledge/`，译名标准，Git 追踪）、**脚本生成与抓取缓存**（`.cache/`，含官方词汇表、Wiki 页面、社区资料）、**外部仓库**（`_repos/`，只读 submodule 引用）。翻译术语以 `knowledge/` 与 `.cache/` 为据，外部仓库内容经索引定位后参考。其中 **storage-archive**（`_repos/storage-archive/`）为 Storage-Catalog 社区的**存储科技**术语词典（sparse 检出 `dictionary/`，116 条术语含定义/缩写），用 `scripts/dictionary_lookup.py` 查询（`query`/`scan`/`list`），详见 `indexes/repos/storage-archive.md`。
 
 ## 相关文档
 
@@ -104,6 +109,7 @@ python scripts/setup_editors.py
 - [Youmiel/ArticlesAndDevNotes](https://github.com/Youmiel/ArticlesAndDevNotes)
 - [TechMCDocs/pages](https://github.com/TechMCDocs/pages)
 - [acaciachan/tree-hole](https://github.com/acaciachan/tree-hole)
+- [Storage-Catalog/Archive](https://github.com/Storage-Catalog/Archive)
 
 ### 工具
 

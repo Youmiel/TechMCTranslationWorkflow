@@ -19,3 +19,6 @@
 [submodule "_repos/pages"]
 	path = _repos/TechMCDocs
 	url = git@github.com:TechMCDocs/pages.git
+[submodule "_repos/storage-archive"]
+	path = _repos/storage-archive
+	url = git@github.com:Storage-Catalog/Archive.git

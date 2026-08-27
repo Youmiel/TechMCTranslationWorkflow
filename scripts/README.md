@@ -9,6 +9,7 @@
 | `glossary_split.py` | 将上游合并术语 CSV 按类别拆分到 `.cache/glossary/` | `python scripts/glossary_split.py [--check\|--help]` |
 | `glossary_fetch_mojang.py` | 从 Mojang 官方 API 下载最新翻译词汇表 | `python scripts/glossary_fetch_mojang.py [--check]` |
 | `glossary_lookup.py` | 按 L1→L1.5→L2 查术语中文译名（只读） | `python scripts/glossary_lookup.py <term> [<term> ...]` |
+| `dictionary_lookup.py` | 查 `_repos/storage-archive` 存储科技术语词典（词→英文定义/条目，L2 社区源；与 glossary_lookup 正交：定义 vs 译名） | `python scripts/dictionary_lookup.py query <term>` / `scan <srt>` / `list` |
 
 > `mojang_glossary/` 是 `glossary_fetch_mojang.py` 的实现包（内部逻辑），**非独立工具，勿直接调用**；`__init__.py`、`LICENSE` 非工具。
 

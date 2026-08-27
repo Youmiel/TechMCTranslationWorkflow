@@ -40,7 +40,7 @@ Project_Main/
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
 | `.cache/` | 脚本生成缓存，Git 忽略，可清理 | `glossary_split.py` 拆分的分类 CSV（`glossary/`）、Mojang 官方词汇表（`mojang/`）、Wiki 抓取页；`community/` 为社区博客网页预留（暂无数据源）；社区资料当前走 `_repos/` |
-| `_repos/` | 外部知识仓库 | git submodule（只读引用，不直接修改） |
+| `_repos/` | 外部知识仓库 | git submodule（只读引用，不直接修改）。**storage-archive** = Storage-Catalog 存储科技术语词典（sparse 仅检出 `dictionary/`，查询用 `scripts/dictionary_lookup.py`，见 `indexes/repos/storage-archive.md`） |
 
 ## 知识资产（Git 追踪）
 

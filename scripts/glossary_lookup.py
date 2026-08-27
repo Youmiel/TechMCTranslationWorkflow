@@ -5,7 +5,13 @@
 按 skill 的 L1 → L1.5 → L2 顺序在项目术语源中检索：
   L1   knowledge/01_terminology/*.csv、.cache/mojang/redstone.csv
   L1.5 .cache/mojang/{blocks,items,entities,misc}.csv
-  L2   .cache/glossary/*.csv
+  L2   .cache/glossary/*.csv（techmc-glossary 社区拆分译名缓存）
+
+与 dictionary_lookup.py 的分工（勿混淆）：本脚本只查**中文译名**（词→译名，源为
+L1/L1.5/L2 译名 CSV）；storage-archive 社区词典（L2 社区源，词→英文定义/条目）用
+scripts/dictionary_lookup.py 查询——其数据无中文译名列，并入本脚本会破坏
+「命中=有标准译名」的输出契约，故保持独立。翻译流程两工具并用：先
+dictionary_lookup 理解含义，再本脚本定译名。
 
 子命令：
   query <term> [<term> ...]                   查单个/多个术语译名（词→译名，词典式）

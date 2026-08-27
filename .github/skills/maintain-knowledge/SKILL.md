@@ -151,7 +151,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 |------|------|
 | 拆分术语表 | `python scripts/glossary_split.py` |
 | 检查术语表 | `python scripts/glossary_split.py --check` |
-| 同步 submodule | `git submodule update --remote` |
+| 同步 submodule | `git submodule update`（**同步第三方仓库纪律**；拉上游最新并重新锁定 → `git submodule update --remote`） |
 | 检查索引是否过期 | `python scripts/check_index_stale.py` |
 
 ## 安全规则

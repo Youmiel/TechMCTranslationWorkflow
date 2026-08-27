@@ -39,11 +39,11 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 |----|------|----------|------|
 | **L1** | 热数据 | `knowledge/01_terminology/*.csv`、`.cache/mojang/redstone.csv` | `glossary_lookup.py` 自动 |
 | **L1.5** | Mojang 非红石 | `.cache/mojang/*.csv` | `glossary_lookup.py` 自动；grep 兜底 |
-| **L2** | 温数据 | `.cache/glossary/*.csv`（社区拆分） | `glossary_lookup.py` 自动 |
+| **L2** | 温数据 | `.cache/glossary/*.csv`（techmc 社区拆分译名）、`_repos/storage-archive/dictionary/`（存储科技术语词典，2026-08-28 新增源） | `glossary_lookup.py`、`dictionary_lookup.py` |
 | **L3** | 未命中 | — | 入"待查列表" → translate-redstone §1.2 集中补齐 |
 
-- **执行建议**：首选 `python scripts/glossary_lookup.py <term> [<term>...]`（只读，自动按 L1→L1.5→L2 批量查询，命中输出来源）；工具不覆盖时用 grep_search 按上表位置兜底
-- **新增词汇表源**：按上表「查找位置」判断归属级（新增 Mojang 表→L1.5；新增社区分类→L2；新增项目库 CSV→L1），更新位置即可，Agent 据表快速识别
+- **执行建议**：首选 `python scripts/glossary_lookup.py <term> [<term>...]`（只读，自动按 L1→L1.5→L2 批量查询，命中输出来源）；**L2 存储科技术语词典（`_repos/storage-archive`）另用 `python scripts/dictionary_lookup.py query/scan` 查（含完整定义/缩写）**；工具不覆盖时用 grep_search 按上表位置兜底
+- **新增词汇表源**：按上表「查找位置」判断归属级（新增 Mojang 表→L1.5；新增社区分类/词典→L2；新增项目库 CSV→L1），更新位置即可，Agent 据表快速识别（storage-archive 与 techmc 同属社区源，仅查询工具不同，**不新增层级**）
 
 ## 工作流程
 
