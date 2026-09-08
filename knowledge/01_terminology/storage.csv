@@ -17,3 +17,4 @@ plumbing,,管线布局：决定物品在装置中的路由走向。,[推断：�
 boxing,,将物品装入潜影盒（loader 语境）,来源：uVOFckoMdIU 视频 00:18:28；2026-08-14 用户确认,打包,
 shulker box loader,,将物品装入潜影盒并破坏输出的打包机（box loader 全称）,[存储] 来源：uVOFckoMdIU 视频 00:45:59（ASR box letters→box loaders）；派生 .cache/glossary/storage.csv Box Loader=打包机；2026-08-20 用户确认（全称 shulker box loader）,潜影盒打包机,
 indefinite unloading,,一种卸货模式：不设数量上限，持续从存储卸出物品，直到手动停止。,[推断：视频上下文] 来源：QSDpdXT9SPs 视频 c227-c228；2026-08-13 用户确认（与 increments of five=按5辆一批 相对）,无限量卸载,
+cyclical variable sorter,,一种通过自适应分类器循环处理装有混合物品的潜影盒，输出单类型盒且残余最少的装置。,来源：storage-archive,循环分盒器,
