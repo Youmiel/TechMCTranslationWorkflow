@@ -40,7 +40,7 @@ TASKS = {
         "format_section": "r01_results/chunk_<k>.txt（补标点块）",
         "inputs": ["reflow/r01_normalized/chunk_<k>.txt"],
         "output": "reflow/r01_results/chunk_<k>.txt",
-        "prior": ["breaks", "terms"],
+        "prior": ["breaks"],
     },
     "task-translate": [
         {

@@ -72,7 +72,7 @@
 ##### 处理
 
 1. **补标点（逐块）**：每块派一个 subagent，**完整 prompt 由渲染脚本生成**（见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)），派发时按「派发引用 prompt」只给引用路径
-  - 渲染命令：`python scripts/render_subagent_prompt.py task-punctuate --video <工作目录> [--chunk <k> | --all]`（先验知识自动注入空隙断句标记 + 术语表；派发前数据文件只验证、不读取，见 subagent-dispatch「派发前主 Agent 准备」）
+  - 渲染命令：`python scripts/render_subagent_prompt.py task-punctuate --video <工作目录> [--chunk <k> | --all]`（先验知识自动注入**空隙断句标记**——补标点只加标点/断句、不查中文译名，**不注入术语表**；派发前数据文件只验证、不读取，见 subagent-dispatch「派发前主 Agent 准备」）
   - 输入：`reflow/r01_normalized/chunk_<k>.txt`（已归一化：OWNED 为合并连续文本），**数据文件引用**（渲染脚本注入 `## 本块数据`）——**行尾换行为显示性折行、非语义分行，subagent 按整段解析忽略**
   - 产物：`reflow/r01_results/chunk_<k>.txt`，各块独立文件
     - 整段文字，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件，**中间不拼全文**；
