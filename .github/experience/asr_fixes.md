@@ -157,3 +157,4 @@
 | my old mate | me old mate | 口语语法 |
 | design in snapshot | design snapshot | ASR 漏介词 in |
 | cut it | carry | 剪辑用语（"我要切掉这段"） |
+| though | through | 连词 though（"The biomes themselves, though"） |

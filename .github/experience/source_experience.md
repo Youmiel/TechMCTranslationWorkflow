@@ -28,6 +28,7 @@
 - 当术语涉及「快照新增生物/方块」时 → 查中文 Wiki，因为 Mojang 官方表不收录快照特性。（案例：Copper Golem→铜傀儡）
 - 当术语是「机制性」的、可整页覆盖多项时 → 一次抓取页面可多收，因为 Wiki 页面常包含相关子概念。（案例：下界页一次解决 nether ceiling + 8:1 坐标比）
 - 当术语属于「凋灵笼/凋灵类机制」时 → 查中文 Wiki 教程页。（案例：窒息伤害、蓝色凋灵之首、wither cage）
+- 当术语属于「合成/工作台 UI」时 → 查 zh wiki 合成页，因为官方用词是「合成方格」（非「合成网格」）与「合成配方」，「网格」属直觉直译的常见误译。（案例：p-k5MPhBSjk crafting grid / crafting recipe）
 - 盲区：Wiki 教程页可能不存在（案例：Tutorials/Item sorter 页面 404）。
 
 ## _repos/TechMCDocs（Technical Minecraft Wiki）
@@ -47,6 +48,7 @@
 - 当出现「人名/服务器名」时 → 先查 `knowledge/01_terminology/proper_nouns.csv`，直接覆盖则复用。（案例：cubicmetre、Wavetech）
 - 当术语属「数字电路/逻辑门」时 → 直接用[数电常识]标准译名，因为数电译名固定、无需网络源。（案例：xyw455piBUE 视频 22 条逻辑门/锁存器/半加器/进位/LSB/MSB/时钟电路全数电常识命中）
 - 当术语属「世界生成/噪声算法」（Perlin noise、octave、生物群系参数等）时 → 查 zh wiki 生物群系页/噪声页，因为 1.18+ 世界生成参数与噪声术语有官方中文译名（温度/湿度/大陆性/侵蚀度/奇异性/深度、倍频程、柏林噪声），一次整页覆盖多项。（案例：p-k5MPhBSjk 69 词 L3 查证中 6 参数 + octave 全由 zh wiki 两页覆盖）
+- 当术语属「算法/编程」类（噪声算法、数据结构等）时 → 除 Wiki 外并查 `.cache/glossary/coding.csv`，因为该分类收录算法术语且部分与 worldgen 主题交叉（Perlin Noise→柏林噪声、Noise Map→噪声图），可省一次网络请求。（案例：p-k5MPhBSjk 由 coding.csv 直接命中 2 词）
 - 当字幕是「手动转录」（非 YouTube ASR 自动生成）时 → 跳过 ASR 误识别解码，直接按原文语义翻译，因为词汇正确率高、过度“修正”反而破坏原意。（案例：22UL5d4G3mY 用户明确要求保留 Mxi、free pistons 原文拼写）
 - 当技术语境出现「裸数字版本号修饰词」时 → 先确认指代（1.5 flying machine = “MC 1.5 版本的飞行器”，非数量），译文显式加 “MC” 前缀防止误读成物理/渲染引擎。（案例：22UL5d4G3mY 段 21/50/57）
 - 当视频属非 Minecraft 领域（人物传记/科普/纪实）时 → 跳过项目术语表与知识库加载（不适用），技术事实与专名拼写以维基百科等权威网络源为准，因为项目资产只覆盖 Minecraft 技术域。（案例：Terry Davis/TempleOS 传记，TempleOS 行数 119,667、ASU 电气工程硕士等从维基 Terry A. Davis 词条确认）
@@ -55,6 +57,7 @@
 - 当术语是「OS/编程语言/作品等专有名词」时 → 保留原名不译，因为无通行中文译名、保留原名最准确（与技术 Wiki 站点名保留同类）。（案例：TempleOS/HolyC/LoseThos/J Operating System/printf/Commodore 64/Apple II/VAX/Ring 0 环 0 亦仅取通用译法）
 - 当装置名以「数字+gt（游戏刻）」修饰（如 16 gametick box crafter）时 → 先确认该数字指运行周期还是单次耗时，因为装置命名中的 gt 常指每 N 刻循环一次的周期（16gt = 每 0.8s 一个合成循环）而非处理耗时，误读会歪曲机制理解；译名建议「以 16gt 为周期的」而非字面直译「16 游戏刻」。（案例：QSDpdXT9SPs c106 16 gametick box crafter，用户确认 16gt 为周期，通用知识卡 `02_mechanic/box-crafter.md`）
 - 当红石语境出现 wire（单复数/组合词 wires、wireless、redstone wire 等）时 → 译「线路」（广义布线/走线）或「红石（粉）线」（狭义 redstone wire），**绝不译「电线」**，因为 Minecraft 红石领域没有电工意义上的电线，wire 只指逻辑线路或红石粉线，译「电线」会窜出游戏语境。（案例：QSDpdXT9SPs r02「不需要那么多电线绕着到处走」系错翻，对应 "don't need as many wires going around the place"（c249），正确应为「线路/布线」）
+- 当术语指「网络传输 packet」（客户端-服务端通信）时 → 译「网络包」，因为游戏内 `data pack` 已占用「数据包」这一译名，packet 同译「数据包」会造成两类概念混淆；单说「封包」虽可区分但非项目约定。（案例：p-k5MPhBSjk 用户裁定 packet→网络包，data pack→数据包）
 
 ## 时间戳对齐（方法论）
 
