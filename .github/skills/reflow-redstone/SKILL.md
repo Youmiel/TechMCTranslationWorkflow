@@ -50,7 +50,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
      - 步骤 3 归一化 → `r01_normalized/chunk_<k>.txt`
      - 步骤 3 处理（补标点）→ `r01_results/chunk_<k>.txt`
      - 步骤 4 处理（翻译 + 术语核对）→ `r02_results/chunk_<k>.txt`
-     - 步骤 5 归一化（预分句 + ZH 机械化断句）→ `r03_normalized_1/chunk_<k>.txt`（EN 预分句 E 号）+ `r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架：Z 句 + 子句段预填）
+     - 步骤 5 归一化（预分句 + ZH 机械化断句）→ `r03_normalized_1/chunk_<k>.txt`（EN 预分句 E 号）+ `r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架：Z 句 + 子句段预填）+ `r03_zslim/chunk_<k>.txt`（**独立产物**：ZH 整句级精简列表，`--zh-list-out` 生成，仅 5-2 task-match 输入，见 PRODUCT_FORMATS）
      - 步骤 5 处理（分句，5-1/5-2 二选一）→ **5-1 LLM 语义分句**（老，现状）：`task-split` 直接写；**5-2 脚本断句**（新，省 token）：`r03_matches/chunk_<k>.txt`（匹配文件，LLM 只做句子匹配）→ `build-r03` 机械填回——两路径产物 `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号；**回填输入 = 目录直读**，`parse_r03_dir` 按块序解析 + 全局重编号，零拼接）——`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
      - 步骤 6 处理（回填）→ `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
      - 步骤 7 处理（组装）→ `r04_bilingual.srt`（双语预览 en-zh）

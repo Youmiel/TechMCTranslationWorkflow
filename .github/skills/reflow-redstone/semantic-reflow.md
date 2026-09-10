@@ -147,9 +147,10 @@
 
 ###### 归一化
 
-1. **预分句 + ZH 机械化断句（脚本，方案 4——断句基线机械化）**：`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/`
+1. **预分句 + ZH 机械化断句（脚本，方案 4——断句基线机械化）**：`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/ --zh-list-out reflow/r03_zslim`
   - EN 按句末标点 `.?!`（`r01_results/`，衔接归位后）预分句标号 `E1..En` → `reflow/r03_normalized_1/chunk_<k>.txt`
   - ZH 按句号 `。！？`（`r02_results/` 译文原稿，脚本读取不受行宽限制）预分句标号 `Z1..Zm` + **句内按标点切候选段 + 贪心拼合 [15,22]（硬 ≤26）** → `reflow/r03_normalized_2/chunk_<k>.txt`（**r03 模板骨架**：每 Z 句一组 `## S?_Z<n>`，ZH 整句原文 + 子句段预填、关系预填 1:1/1:n、EN 待填——分句 agent 填空后即 r03_results）
+  - **`--zh-list-out reflow/r03_zslim`（独立产物路径，5-2 task-match 输入）**：额外生成整句级 Z 精简列表 `reflow/r03_zslim/chunk_<k>.txt`（每行 `Z<n> <整句文本>`，省 ~80% 脚手架）——**只供 5-2 句子匹配读**（task-match 只需整句级 Z 文本，不需子句段/占位/注释）；5-1 task-split 不用此文件（仍读模板骨架 r03_normalized_2 填空）；5-2 时 build-r03 填回仍读 r03_normalized_2（子句段机械切分）——故 r03_normalized_2 与 r03_zslim 并存、各司其职，不相替代
   - **不形成中英对照**（EN/ZH 各自编号；`S?_Z<n>` 默认按序提示对应 `E<n>`，启发式须核对）；**忠实铁律由结构保证**（段只在标点处切、不增删改——段拼接 == Z 原文 == r02）；**长短/宽度/断句类型机械化**，agent 不再自行判长短
   - **多语言通用**：切分标点（`--punct-levels` 有序层级，默认逗号族>破折号>顿号，超宽才降级）、句长区间（`--soft-min/--soft-max/--hard-max/--min-unit`）全参数化，默认 CJK；宽度复用 `srt_reflow_common.text_width`（Unicode 块通用）
   - 一次性全目录跑完（r02 折行副本不再需要——预分句输出已逐句折行，脚本直读 r02_results 原稿）
@@ -190,12 +191,12 @@
 
 ###### 归一化
 
-（同步骤 5-1 归一化，见上——`r03_normalized_1/` + `r03_normalized_2/` 已生成则直接复用，不重复跑）
+（同步骤 5-1 归一化，见上——`r03_normalized_1/` + `r03_normalized_2/` + `r03_zslim/` 已生成则直接复用，不重复跑；presplit 命令已含 `--zh-list-out reflow/r03_zslim`，故 r03_zslim 与模板骨架同时生成）
 
 ###### 处理
 
 1. **句子匹配（每块派一个 subagent）**：`python scripts/render_subagent_prompt.py task-match --video <工作目录> [--chunk <k> | --all]`（派发引用 prompt，见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）
-  - **输入**：`r03_normalized_1/chunk_<k>.txt`（EN E 号预分句）+ `r03_normalized_2/chunk_<k>.txt`（ZH Z 句模板骨架）对照（**数据文件引用**，渲染脚本注入 `## 本块数据`）
+  - **输入**：`r03_normalized_1/chunk_<k>.txt`（EN E 号预分句）+ `r03_zslim/chunk_<k>.txt`（ZH **整句级精简列表**——独立产物路径，非模板骨架）对照（**数据文件引用**，渲染脚本注入 `## 本块数据`；r03_zslim 与 r03_normalized_2 的 Z 号一一对应）
   - LLM **只输出匹配文件** `reflow/r03_matches/chunk_<k>.txt`（每行 `Z组 = E组`，如 `Z5+Z6+Z7+Z8 = E5`；**覆盖全部 Z/E 号各恰好一次**）——**不抄文本、不断句、不写 r03**（规则见 `task-match.md`；`r03_matches` 格式见 [PRODUCT_FORMATS#r03_matches](../../../docs/PRODUCT_FORMATS.md)）
   - **覆盖完整性是第一要务**：漏任何 Z/E 句都会在 r03 产物留空标记（脚本断句允许不完整，缺处人工核对或升级 5-1）
 2. **机械断句填回（脚本，一次性全目录）**：`python scripts/srt_reflow_build_r03.py reflow/r03_matches/ reflow/r03_normalized_1/ reflow/r03_normalized_2/ -o reflow/r03_results/`
