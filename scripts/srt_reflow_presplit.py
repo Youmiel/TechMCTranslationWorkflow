@@ -26,6 +26,10 @@ ZH 按句末标点 。！？… 预分句标号 Z1..Zm，并按标点切候选�
   python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/
     → reflow/r03_normalized_1/chunk_<k>.txt（EN 预分句 E1..En）
     → reflow/r03_normalized_2/chunk_<k>.txt（ZH r03 模板骨架：Z 句 + 子句段预填）
+  # 可选独立产物：5-2 task-match 的整句级 Z 精简列表（省 ~80%，独立路径不复用模板骨架）
+  python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/ \
+      --zh-list-out reflow/r03_zslim
+    → 额外生成 reflow/r03_zslim/chunk_<k>.txt（整句级 Z 列表，供 task-match 语义匹配）
 退出码：0 = 全部块预分句完成；1 = 输入目录无块文件。
 """
 import argparse
@@ -289,6 +293,23 @@ def render_zh_template(zh_sentences, soft_min, soft_max, hard_max, min_unit, pun
     return "\n".join(lines).rstrip() + "\n"
 
 
+def render_zslim(zh_sentences):
+    """渲染整句级 Z 精简列表（task-match 输入，独立产物路径 r03_zslim/）。
+
+    只含 `Z<n> <整句文本>` 每句一行——无 `## S?_Z<n>` 标题、`- EN: <待填>` 占位、`- 关系:`、
+    `> 段宽/⚠️` 注释等脚手架（那些是 r03_normalized_2 模板骨架给 5-1 task-split 填空用的，
+    对只做整句语义对应的 5-2 task-match 是纯噪音——实证 m5SvZsN 整句级信息仅占模板 20%）。
+    Z 号与 r03_normalized_2 的 Z1..Zm 一一对应（同源 split_zh），build-r03 仍读模板骨架做子句段填回。
+    """
+    if not zh_sentences:
+        return "# Z 精简列表（空块）\n"
+    lines = [f"# Z 整句列表 — 与 r03_normalized_2 的 Z1..Z{len(zh_sentences)} 一一对应；每行一个整句，供语义匹配"]
+    for i, (zn, s) in enumerate(zh_sentences, 1):
+        # 整句文本可能因显示折行被 wrap 成多行，但列表本身逐句一行；文本不折行（≤1000 由消费端 read 处理）
+        lines.append(f"Z{i} {s}")
+    return "\n".join(lines) + "\n"
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="预分句 + ZH 机械化断句：EN（r01_results）按 .?! 分句 → r03_normalized_1/（E1..En）；ZH（r02_results）按 。！？ 分句 + 句内切分 → r03_normalized_2/（r03 模板骨架：Z 句 + 子句段预填）"
@@ -296,6 +317,9 @@ def main():
     ap.add_argument("en_dir", help="EN 输入目录：reflow/r01_results/（补标点整段）")
     ap.add_argument("zh_dir", help="ZH 输入目录：reflow/r02_results/（整段译文原稿）")
     ap.add_argument("-o", "--out", required=True, help="输出基目录（生成 r03_normalized_1/ 与 r03_normalized_2/）")
+    ap.add_argument("--zh-list-out", default=None,
+                    help="可选：额外输出整句级 Z 精简列表目录（生成 <此目录>/ 下 chunk_<k>.txt，供 5-2 task-match "
+                         "语义匹配输入——独立产物路径，不替代 r03_normalized_2 模板骨架；不传则仅生成模板骨架）")
     ap.add_argument("--verbose", action="store_true", help="展开打印每块句数")
     ap.add_argument("--soft-min", type=float, default=DEFAULT_SOFT_MIN, help=f"目标区间下限（默认 {DEFAULT_SOFT_MIN}）")
     ap.add_argument("--soft-max", type=float, default=DEFAULT_SOFT_MAX, help=f"目标区间上限/软（默认 {DEFAULT_SOFT_MAX}；check-r03 ③ 软 22）")
@@ -314,9 +338,12 @@ def main():
     zh_out = os.path.join(args.out, "r03_normalized_2")
     os.makedirs(en_out, exist_ok=True)
     os.makedirs(zh_out, exist_ok=True)
+    zh_list_out = os.path.join(args.zh_list_out, "") if args.zh_list_out else None
+    if zh_list_out:
+        os.makedirs(zh_list_out, exist_ok=True)
 
     keys = sorted(set(en_blocks) | set(zh_blocks))
-    n_en = n_zh = 0
+    n_en = n_zh = n_zl = 0
     for k in keys:
         if k in en_blocks:
             with open(en_blocks[k], encoding="utf-8") as fh:
@@ -334,9 +361,16 @@ def main():
             with open(os.path.join(zh_out, "chunk_%03d.txt" % k), "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(render_zh_template(zh_sents, args.soft_min, args.soft_max, args.hard_max,
                                             args.min_unit, punct_levels))
+            if zh_list_out:
+                with open(os.path.join(zh_list_out, "chunk_%03d.txt" % k), "w", encoding="utf-8", newline="\n") as fh:
+                    fh.write(render_zslim(zh_sents))
+                n_zl += len(sents)
             if args.verbose:
-                print(f"   chunk_{k:03d}（ZH）: {len(sents)} 句（r03 模板骨架）")
+                print(f"   chunk_{k:03d}（ZH）: {len(sents)} 句（r03 模板骨架"
+                      + (" + 精简 Z 列表" if zh_list_out else "") + "）")
     print(f"✅ 预分句完成：EN {len(en_blocks)} 块 / {n_en} 句 → {en_out}；ZH {len(zh_blocks)} 块 / {n_zh} 句（r03 模板骨架）→ {zh_out}")
+    if zh_list_out:
+        print(f"   ZH 整句级精简列表 {len(zh_blocks)} 块 / {n_zl} 句 → {zh_list_out}")
     print(f"   ZH 断句参数: 目标区间 [{args.soft_min:.0f},{args.soft_max:.0f}] 硬 ≤{args.hard_max:.0f} 最小单元 ≥{args.min_unit:.0f}；"
           f"切分标点层级（高→低）{' → '.join(punct_levels)}")
     return 0

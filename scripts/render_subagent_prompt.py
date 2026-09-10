@@ -33,15 +33,26 @@ FILL_MARKER = "> **渲染步骤"
 
 # 任务名 → 渲染配置
 TASKS = {
-    "task-punctuate": {
-        "skill": "reflow-redstone",
-        "template": "task-punctuate.md",
-        "role": "补标点",
-        "format_section": "r01_results/chunk_<k>.txt（补标点块）",
-        "inputs": ["reflow/r01_normalized/chunk_<k>.txt"],
-        "output": "reflow/r01_results/chunk_<k>.txt",
-        "prior": ["breaks"],
-    },
+    "task-punctuate": [
+        {
+            "skill": "reflow-redstone",
+            "template": "task-punctuate.md",
+            "role": "补标点",
+            "format_section": "r01_results/chunk_<k>.txt（补标点块）",
+            "inputs": ["reflow/r01_normalized/chunk_<k>.txt"],
+            "output": "reflow/r01_results/chunk_<k>.txt",
+            "prior": ["breaks"],
+        },
+        {
+            "skill": "reflow2",
+            "template": "task-punctuate.md",
+            "role": "补标点",
+            "format_section": "r01_results/chunk_<k>.txt（补标点块）",
+            "inputs": ["reflow2/r01_normalized/chunk_<k>.txt"],
+            "output": "reflow2/r01_results/chunk_<k>.txt",
+            "prior": ["breaks"],
+        },
+    ],
     "task-translate": [
         {
             "skill": "reflow-redstone",
@@ -50,6 +61,15 @@ TASKS = {
             "format_section": "r02_results/chunk_<k>.txt（翻译块）",
             "inputs": ["reflow/r01_results/chunk_<k>.txt"],
             "output": "reflow/r02_results/chunk_<k>.txt",
+            "prior": ["humanizer", "terms"],
+        },
+        {
+            "skill": "reflow2",
+            "template": "task-translate.md",
+            "role": "整段翻译",
+            "format_section": "r02_results/chunk_<k>.txt（翻译块）",
+            "inputs": ["reflow2/r01_results/chunk_<k>.txt"],
+            "output": "reflow2/r02_results/chunk_<k>.txt",
             "prior": ["humanizer", "terms"],
         },
         {
@@ -89,15 +109,26 @@ TASKS = {
         "output": "reflow/r03_results/chunk_<k>.txt",
         "prior": ["terms"],
     },
-    "task-match": {
-        "skill": "reflow-redstone",
-        "template": "task-match.md",
-        "role": "句子匹配",
-        "format_section": "r03_matches/chunk_<k>.txt（匹配文件）",
-        "inputs": ["reflow/r03_normalized_1/chunk_<k>.txt", "reflow/r03_normalized_2/chunk_<k>.txt"],
-        "output": "reflow/r03_matches/chunk_<k>.txt",
-        "prior": [],
-    },
+    "task-match": [
+        {
+            "skill": "reflow-redstone",
+            "template": "task-match.md",
+            "role": "句子匹配",
+            "format_section": "r03_matches/chunk_<k>.txt（匹配文件）",
+            "inputs": ["reflow/r03_normalized_1/chunk_<k>.txt", "reflow/r03_zslim/chunk_<k>.txt"],
+            "output": "reflow/r03_matches/chunk_<k>.txt",
+            "prior": [],
+        },
+        {
+            "skill": "reflow2",
+            "template": "task-match.md",
+            "role": "句子匹配",
+            "format_section": "align/chunk_<k>.txt（对齐文件）",
+            "inputs": ["reflow2/en_timeline/chunk_<k>.txt", "reflow2/zh_sentences/chunk_<k>.txt"],
+            "output": "reflow2/align/chunk_<k>.txt",
+            "prior": [],
+        },
+    ],
 }
 
 
@@ -167,7 +198,10 @@ def collect_priors(cfg, video_dir, chunk, prior_files):
     video_name = os.path.basename(os.path.normpath(video_dir))
 
     if "breaks" in cfg["prior"]:
-        breaks_path = os.path.join(video_dir, "reflow", "r01_breaks.md")
+        # r01_breaks.md 所在目录 = 输入路径首段（reflow/ 或 reflow2/；breaks 先验只用于 reflow 系任务）
+        first = cfg["inputs"][0]
+        sub = first.split("/", 1)[0] if "/" in first and first.split("/", 1)[0] in ("reflow", "reflow2") else "reflow"
+        breaks_path = os.path.join(video_dir, sub, "r01_breaks.md")
         if os.path.exists(breaks_path):
             parts.append(
                 "### 空隙断句标记（r01_breaks 复核结果，补标点强制断句依据）\n\n"
@@ -294,7 +328,16 @@ def main():
     args = ap.parse_args()
 
     video_dir = os.path.join(PROJECT_ROOT, args.video) if not os.path.isabs(args.video) else args.video
-    chunks_dir = args.chunks_dir or os.path.join(video_dir, "reflow", "chunks")
+    # 默认 chunks 目录按 skill 推导：reflow2 → <video>/reflow2/chunks；translate → <video>/chunks；
+    # reflow-redstone（默认）→ <video>/reflow/chunks；可 --chunks-dir 覆盖
+    if args.chunks_dir:
+        chunks_dir = args.chunks_dir
+    elif args.skill == "reflow2":
+        chunks_dir = os.path.join(video_dir, "reflow2", "chunks")
+    elif args.skill == "translate-redstone":
+        chunks_dir = os.path.join(video_dir, "chunks")
+    else:
+        chunks_dir = os.path.join(video_dir, "reflow", "chunks")
 
     if args.all:
         nums = list_chunks(chunks_dir)

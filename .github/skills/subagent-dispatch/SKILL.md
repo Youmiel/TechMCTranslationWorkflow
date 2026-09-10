@@ -124,7 +124,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 3. **超出定点能力 → C 档**：错误多、散，或属语义级（整句翻译腔、锚定需改写原文）——直接重派，不空转定点修
 4. **纪律分层不可破**：r03 只许切不许译（忠实铁律；改译文词 → 回 r02，非定点修范围）；r01 仅加标点 / 按 01 改回措辞，不自行改写
 5. **修正后复验闭环（方案 3 = 单轮批量 + 残留增量）**：B 档修正后重跑触发它的校验（`check_breaks`/`check_words`/`check-r03` 均脚本全块跑，成本可忽略）——**通过才继续**；仍有残留错误（FALLBACK 或新错）→ **第二轮 B 档只派增量残留清单**（小，逐轮收敛）；连续多轮仍失败 → 升级 C 档，不空转定点修
-6. **方案定型**：定点修复采用 **B 档批量（方案 3）**；**逐处派发（方案 2）弃用**——主会话每轮要完整输出 N 份 prompt（含 `dispatch`）为确定性高单价劣势；**不实现 subagent 内部自主循环（方案 4）**——实现繁琐且实际修复大概率一轮过（权衡理由见 `Project_Plan/2026-08-17_定点修复方案权衡.md`）；未来若实测多轮频繁，优先上「规则引用化」轻量增强（主会话每轮只输出增量清单）。**A 档（主会话定点改）一并废弃（2026-08-20）**——主会话任何 read/edit 均永久入历史，定点修复一律 B 档派发（见「定点修正」弃用注）
+6. **方案定型**：定点修复采用 **B 档批量（方案 3）**；**逐处派发（方案 2）弃用**——主会话每轮要完整输出 N 份 prompt（含 `dispatch`）为确定性高单价劣势；**不实现 subagent 内部自主循环（方案 4）**——实现繁琐且实际修复大概率一轮过；未来若实测多轮频繁，优先上「规则引用化」轻量增强（主会话每轮只输出增量清单）。**A 档（主会话定点改）一并废弃（2026-08-20）**——主会话任何 read/edit 均永久入历史，定点修复一律 B 档派发（见「定点修正」弃用注）
 
 ## 任务导航表（任务 → 任务文件）
 
@@ -139,6 +139,9 @@ subagent prompt = 任务文件内容（含任务特有规则）
 | 整段翻译（reflow 步骤 4） | `reflow-redstone/task-translate` | `reflow/r02_results/chunk_<k>.txt` |
 | 分句·5-1 LLM 语义分句（reflow 步骤 5-1） | `reflow-redstone/task-split` | `reflow/r03_results/chunk_<k>.txt` |
 | 句子匹配·5-2 脚本断句（reflow 步骤 5-2） | `reflow-redstone/task-match` | `reflow/r03_matches/chunk_<k>.txt` |
+| 补标点（reflow2 步骤 3） | `reflow2/task-punctuate`（派发渲染用 `--skill reflow2`） | `reflow2/r01_results/chunk_<k>.txt` |
+| 整段翻译（reflow2 步骤 5） | `reflow2/task-translate`（派发渲染用 `--skill reflow2`） | `reflow2/r02_results/chunk_<k>.txt` |
+| 句子匹配（reflow2 步骤 6） | `reflow2/task-match`（派发渲染用 `--skill reflow2`） | `reflow2/align/chunk_<k>.txt` |
 | 定点修复（校验打回 B 档） | `reflow-redstone/task-fix` | 覆盖写 `## 目标文件` 同一路径 |
 | 前文摘要（reflow 步骤 4 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
 | 合并断句（translate 阶段二） | `translate-redstone/task-merge` | `_merge_results/chunk_<k>.txt` |

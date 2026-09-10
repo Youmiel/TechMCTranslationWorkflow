@@ -21,10 +21,11 @@
 
 - 翻译工作流 → `translate-redstone` Skill（细节在各扩展 Skill，见其「扩展 Skill 地图」）
 - 语义回填工作流 → `reflow-redstone` Skill（共享阶段〇/一/二½/三，见其「依赖（扩展 Skill 地图）」）
+- 时间轴源头固化工作流（新） → `reflow2` Skill（共享阶段〇/一/二½/三；阶段二 = 源头固化 E 句时间 + 中文继承，见其「依赖」）
 - 知识/索引维护 → `maintain-knowledge` Skill（决策路由见其「维护任务决策」）
 - Wiki 抓取/兜底 → `wiki-tools` Skill
 - 对外视频摘要（发布简介用） → `video-abstract` Skill（主会话直接执行，不派 subagent）
-- **主会话调度纪律（仅约束 translate/reflow 派发-校验阶段）**：零定点编辑、验证性读禁止等 token 纪律权威在 `subagent-dispatch`「主会话读写最小化 / 定点修正」，随两工作流 Skill 引用加载；**maintain-knowledge / wiki-tools 等日常维护不适用、不受影响**
+- **主会话调度纪律（仅约束 translate/reflow/reflow2 派发-校验阶段）**：零定点编辑、验证性读禁止等 token 纪律权威在 `subagent-dispatch`「主会话读写最小化 / 定点修正」，随工作流 Skill 引用加载；**maintain-knowledge / wiki-tools 等日常维护不适用、不受影响**
 
 ## 工作流程
 
