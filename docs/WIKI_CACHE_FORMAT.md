@@ -6,7 +6,9 @@
 
 - 文件名 = **MediaWiki 解析后的规范标题（中文）**，如 `红石比较器.md`
 - 同一页面只保留一份缓存；**禁止**再用英文查询词命名（如 `Redstone_Comparator.md`），以免中英文并存导致重复抓取
-- 文件名字符安全化：`/` `\` 空格 替换为 `_`（中文规范标题通常无空格，文件名即标题）
+- 文件名字符安全化（Windows 禁 `:` `/` `\` 及首尾空格）：
+  - `Tutorial:` 前缀 → `（教程）` 后缀，如 `Tutorial:凋灵笼` → `凋灵笼（教程）.md`
+  - 其余 `/` `\` 空格替换为 `_`（中文规范标题通常无空格，文件名即标题）
 - Agent 的工作方式：先查术语表（`.cache/glossary/`、`knowledge/`）得到中文译名 → 用中文译名命中 `.cache/wiki/` → 未命中才去联网获取
 
 ## 文件模板
@@ -81,7 +83,9 @@ Agent 读缓存时根据 `fidelity` 决定是否回源补精确数据：
 
 - 统一入口：`python scripts/refresh_cache.py`（检查三类缓存；Mojang/TechMC 自动刷新）
 - Wiki 缓存过期判断：基于文件 mtime，TTL 默认 7 天（`--ttl` 可调）
-- **Wiki 缓存只检查过期并告警，不自动抓取**——刷新由 Agent 在查找时按 wiki-tools 降级链按需做（MCP-2 lossless 优先），避免脚本用 `plain` 降级覆盖已有高保真缓存
+- **`refresh_cache.py` 只检查过期并告警，不自动抓取**——刷新由 Agent 按需执行，避免脚本用 `plain` 降级覆盖已有高保真缓存
+- **`python scripts/wiki_refresh.py`**：批量按 lossless 源刷新现有缓存（维护场景，用户触发）——直连 `mcwiki` API 抓 wikitext 写盘，**不经 MCP 工具**（避免大量 wikitext 涌入 Agent 上下文）；`--dry-run` 只探测、`--only <页面...>` 只刷指定页
+- 翻译时的按需刷新仍走 `wiki-tools` 降级链（MCP-2 lossless 优先）
 - `.cache/metadata.json` **已废弃**：时间戳 / 来源由各文件 front matter 承担
 
 ## 数据源特征备忘（Agent 实测，2026-08-01）

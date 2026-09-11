@@ -7,8 +7,8 @@
 ```
 indexes/
 ├── repos/          # 第三类：外部 Git 仓库的内容索引
-├── wiki/           # 第二类：Wiki 抓取缓存的内容索引（延后至 v0.2，当前量少无需索引）
-└── knowledge/      # 第一类：人工维护知识的内容索引（待建）
+├── wiki/           # 第二类：Wiki 抓取缓存的内容索引（当前量少无需索引，页面清单见 `python scripts/refresh_cache.py` 报告）
+└── knowledge/      # 第一类：人工维护知识的内容索引
 ```
 
 ## 索引格式

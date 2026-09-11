@@ -1,12 +1,14 @@
 # Discovering-Minecraft 内容索引
 
 > 生成时间：2026-08-06
-> 上游 commit：603259fb19217f51114ca44277feac84e374be1c
+> 最近更新：2026-09-11
+> 上游 commit：078a349e3da9c5f39868cfda33707c1bf5a55f03
 > 仓库：https://github.com/lovexyn0827/Discovering-Minecraft
+> 本次上游变更：`Minecraft实体运动研究与应用/AlgebraicApproach.tex` 修订
 
 ## 实体运动研究与应用
 
-- **Minecraft实体运动研究与应用/0-*.md** — 总目录与前言 [1.16.4]
+- **Minecraft实体运动研究与应用/0-Minecraft实体运动相关研究与应用.md** — 总目录与前言 [1.16.4]
   - 关键词：实体运动, 总目录, 研究历程
 - **Minecraft实体运动研究与应用/1-Chapter-1.md** — 绪论：研究背景、思路、知识基础 [1.16.4]
   - 关键词：实体运动, 绪论, 公式推导, TNT炮
@@ -30,6 +32,8 @@
   - 关键词：附录, 公式汇总, 数据表
 - **Minecraft实体运动研究与应用/AlgebraicApproach.tex** — 《Motion Of Entities — An Algebraic Approach》实体运动代数方法专著 LaTeX 源文件 [通用]
   - 关键词：实体运动, 代数方法, LaTeX, 公式推导
+- **Minecraft实体运动研究与应用/OffMainline.md** — 主线之外的研究札记 [通用]
+  - 关键词：札记, 研究记录, 实体运动
 
 ## 区块管理系统
 
@@ -48,7 +52,9 @@
   - 关键词：Mixin, CoreMod, 模组开发, 调试
 - **Minecraft启动流程与常见崩溃的解决/** — 启动流程 + CrashReport 解读 + 崩溃修复 [1.16.4]
   - 关键词：启动流程, 崩溃, CrashReport, 故障排除
-- **理论应用（一）：边境炮/** — 弱加载珍珠炮边境炮 [1.16.4]
+- **理论应用（一）：区块生成量极低的边境炮/** — 弱加载珍珠炮边境炮 [1.16.4]
   - 关键词：边境炮, 弱加载, 末影珍珠, 世界边境
+- **无索引随记/掠夺者箭矢传送概率.md** — 掠夺者箭矢的传送概率笔记 [通用]
+  - 关键词：掠夺者, 箭矢, 传送概率
 - **Minecraft教科书/0-大纲.md** — Minecraft 教科书大纲草稿 [通用]
   - 关键词：教科书, 大纲, 教育, 知识体系

@@ -1,7 +1,8 @@
 # techmc-glossary 内容索引
 
 > 生成时间：2026-07-30
-> 上游 commit：1f4da98548598cdd5d1c9c72818195cdab3bd6f5
+> 最近更新：2026-09-11（上游 2 提交：仅多语言 README 更新，术语 CSV 未变化，`.cache/glossary/` 无需重新拆分）
+> 上游 commit：4a34643f1133d24839f482aefe37aa2f73ad9d96
 > 仓库：https://github.com/TechMC-Glossary/TechMC-Glossary
 > 在线浏览：http://beta.techmc.wiki/glossary
 

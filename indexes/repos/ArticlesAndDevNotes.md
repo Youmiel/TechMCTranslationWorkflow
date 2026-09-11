@@ -38,7 +38,7 @@
 
 ## 其他
 
-- **the_others/2023-05__how_to_learn_TMC_efficiently.md** — 如何高效参与技术社区 [通用]
+- **the_others/2023-05__how_to_learn_redstone_efficiently/2023-05-01__how_to_learn_TMC_efficiently.md** — 如何高效参与技术社区 [通用]
   - 关键词：技术社区, TMC, 学习方法
 - **the_others/2023-12__entity_wallstone/** — 无延迟墙电信号下传（盔甲架） [通用]
   - 关键词：墙电, 盔甲架, 实体阶段, 无延迟
