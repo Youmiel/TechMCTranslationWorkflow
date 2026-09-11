@@ -54,7 +54,9 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 - 相邻段时间**不得重叠**：`end_i ≤ start_{i+1}`（允许相接不允许交叉）
 - 每次分句/合并后**立即校验**，不要最后抽查：时间/重叠/逆序用 `srt_check_segments.py`，行宽用 `srt_check_width.py`（校验脚本默认只给问题数，`--expand` 看明细）
 - **时间边界规则差异**（工作流特有，见各自主 skill）：translate 输出边界**必须 ⊆ 原字幕边界集合**；reflow 允许预测点（100ms 取整、不入原边界集）
-- **时间引用格式统一（agent 手写/反馈）**：agent 手写产物与向用户反馈（术语表 `02_terms.md`、ASR 修正、审核意见、r03 注释等）一律用**时间戳 `HH:MM:SS`**（无毫秒）；**cue 编号（`c<idx>`）只存在于脚本生成/解析产物**（`s03` 的 `cstart-cend`、chunks 骨架、`r03_anchored.jsonl`），agent 手写**不写 cue 编号**。时间戳须从字幕时间码**精确读取**（SRT 时间码 `HH:MM:SS,mmm` 去毫秒即得），**禁止凭记忆推算或按 cue 号换算**
+- **时间引用格式统一（agent 手写 / 反馈）**：agent 手写产物与向用户反馈（术语表 `02_terms.md`、ASR 修正、审核意见、r03 注释等）一律用**时间戳 `HH:MM:SS`**（无毫秒）。
+  - **cue 编号（`c<idx>`）只存在于脚本生成 / 解析产物**（`s03` 的 `cstart-cend`、chunks 骨架、`r03_anchored.jsonl`），agent 手写**不写 cue 编号**
+  - 时间戳须从字幕时间码**精确读取**（SRT 时间码 `HH:MM:SS,mmm` 去毫秒即得），**禁止凭记忆推算或按 cue 号换算**
 
 ## 长视频分块（全流程通用机制）
 
@@ -69,7 +71,10 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 ### 1. 前置判断（读前必做，脚本确定性判定）
 
 - **预检（读前）**：确认 `configs/context_window.json` 存在。若缺失，则询问用户各项参数，并缺省信息填默认值，写入该文件（后续可直接读）。
-- **判定工具**：读前先跑 `python scripts/context_estimate.py <输入> [--window <窗口>] [--split-ratio <比例>] [--no-amplification]`——确定性输出 类型（SRT cue 数 / 非 SRT 全文）/ 字符数 / 估算 token / 当前占窗口比例 / 是否超阈值；`<输入>` 支持 SRT 与 reflow 非 SRT 产物（`r03_plan.md` 等 txt/md/json）；**CLI 参数 / 计算方式 / 算法解释见 [PRODUCT_FORMATS#configs/context_window.json](../../../docs/PRODUCT_FORMATS.md)**
+- **判定工具**：读前先跑 `python scripts/context_estimate.py <输入> [--window <窗口>] [--split-ratio <比例>] [--no-amplification]`。
+  - 确定性输出：类型（SRT cue 数 / 非 SRT 全文）、字符数、估算 token、当前占窗口比例、是否超阈值
+  - `<输入>` 支持 SRT 与 reflow 非 SRT 产物（`r03_plan.md` 等 txt / md / json）
+  - **CLI 参数 / 计算方式 / 算法解释见 [PRODUCT_FORMATS#configs/context_window.json](../../../docs/PRODUCT_FORMATS.md)**
 - **判定时机**：**每阶段派发前跑一次 `context_estimate.py`，根据输出计算 `--owned` 参数数值**（材料不落主会话，无「前步全文残留」问题）；字幕翻译**不接受上下文压缩**（压缩→失真），宁低勿高
 - **超阈值即拆片**（块数 >1），不得靠规模直觉直接定 `--owned`（"恰好没超"是运气不是流程保证）
 - **大 JSONL 按行 grep、不整读**（`r03_anchored.jsonl` 等逐行审查型产物）
@@ -80,7 +85,10 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 
 > 工具本身不绑工作流；translate 与 reflow 的分块用法见 §3 / §4。
 
-- **工具**：`python scripts/text_chunk.py <输入> --out <dir> [--type srt|text] [--unit 段|句|整句组] [--owned <每块单位数>] [--ctx <衔接单位数>] [--max-chars <字符>] [--order en-zh|zh-en] [--gaps]`（默认自动判型：`.srt` 为 srt、否则 text；srt 默认 `--owned 100`/`--ctx 6`；text 默认 `--owned 1`/`--ctx 1`；输出统一块格式见 [PRODUCT_FORMATS#通用文本分块](../../../docs/PRODUCT_FORMATS.md)）
+- **工具**：`python scripts/text_chunk.py <输入> --out <dir> [--type srt|text] [--unit 段|句|整句组] [--owned <每块单位数>] [--ctx <衔接单位数>] [--max-chars <字符>] [--order en-zh|zh-en] [--gaps]`
+  - 默认自动判型：`.srt` 为 srt、否则 text
+  - srt 默认 `--owned 100` / `--ctx 6`；text 默认 `--owned 1` / `--ctx 1`
+  - 输出统一块格式见 [PRODUCT_FORMATS#通用文本分块](../../../docs/PRODUCT_FORMATS.md)
 - **分块根基 = 01_subtitle_asr_fixed.srt（阶段一产物、阶段二入口）**——r01/r02/r03 都是 01 的派生，**从 01 分块**后所有阶段锚定同一套块（块 ↔ cue 区间天然存在），无需中间合并、无需继承边界。**禁止从 r01/r02/r03 文本分块**（那些文本本就需先合并才能切，是弯路）
 - **srt 分块两种模式**：
   - **默认**：每 `--owned` 个 cue 一块，块边界 = 纯 cue 数切（translate 用，见 §3）
@@ -91,7 +99,11 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 
 ### 3. translate 工作流分块（默认 srt 模式）
 
-> translate 阶段二（合并/断句 → 翻译）：从 01 分块 → 逐块派 subagent → **text_merge 合并全文** → **全局校验**（时间约束跨块，必须合并后验）。
+> translate 阶段二（合并 / 断句，再翻译）：
+> 1. 从 01 分块
+> 2. 逐块派 subagent
+> 3. `text_merge` 合并全文
+> 4. **全局校验**（时间约束跨块，必须合并后验）
 
 - **分块**：`python scripts/text_chunk.py <01.srt> --type srt --owned <N> --ctx <M> --out <任务chunks目录>`（默认模式，每 N cue 一块；N 按 `context_estimate.py` 反推，默认 100）
 - **逐块派发**：每块 subagent 做合并/断句（`_merge_results/`）或翻译（`_trans_results/`），prompt 按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装；CARRY 结转规则见 §5
@@ -101,24 +113,55 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、抓取注意事
 
 ### 4. reflow 工作流分块（--gaps 模式，块级流水线）
 
-> reflow 阶段二（补标点 → 整段翻译 → 分句）：从 01 分块（空隙组优先）→ 逐块独立处理、中间**不拼全文** → **校验逐块化** → 仅 r03/r04 合并。目标：各子块独立处理、按块传递，减少"拼全文→整读→再分块"的反复。
+> reflow 阶段二（补标点 → 整段翻译 → 分句）：
+> 1. 从 01 分块（空隙组优先）
+> 2. 逐块独立处理，中间**不拼全文**
+> 3. **校验逐块化**
+> 4. 仅 r03 / r04 合并
+>
+> 目标：各子块独立处理、按块传递，减少「拼全文 → 整读 → 再分块」的往返开销。
 
 - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps` 把 01 按空隙点切成「空隙组」，**每个空隙组至少一块**——块数下限 = 空隙点数+1；仅 01 无空隙点才 1 块
-- **`--owned` 只控组内拆片（容量，非块数）**：空隙组 cue 数 > `--owned` 时组内再拆多片；块数 = 空隙组数 × 组内片数。**`--owned` 按最重环节（分句）由 `context_estimate.py` 反推**（推导见 [PRODUCT_FORMATS#configs/context_window.json](../../../docs/PRODUCT_FORMATS.md)「算法解释·放大倍数」）：**反推公式** `--owned ≈ 单块容量上限 × 1.5 ÷ 每 cue 平均字符数`——单块容量上限（token，`context_estimate.py` 输出 = min(输入预算, 输出预算÷amplification)，**经 min 统一、已含分句放大**）×1.5（token→字符）→ 单块字符预算、再 ÷ 每 cue 平均字符数（拿不准用保守兜底，宁小勿大）；各阶段共用同一套块（01 骨架），**块定即全局、无法在分句阶段中途改**，宁小勿大
-- **分块前先验证 gap 准确性（必做）**：跑 `python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md` 得到空隙点清单（长停顿 >5s / 剪辑跳转 >10s），**人工确认后**再用 `--gaps` 分块——`--gaps` 的 `detect_gap_groups` 用同一空隙点算法，与 r00_gaps.md 应一致；**已有 r00_gaps.md 则复用，勿重复探测**（探测结果与人工复核以 r00_gaps.md 为准）
+- **`--owned` 只控组内拆片（容量，非块数）**：
+  - 空隙组 cue 数 > `--owned` 时组内再拆多片
+  - 块数 = 空隙组数 × 组内片数
+  - **`--owned` 按最重环节（分句）由 `context_estimate.py` 反推**（推导见 [PRODUCT_FORMATS#configs/context_window.json](../../../docs/PRODUCT_FORMATS.md)「算法解释·放大倍数」）
+    - 反推公式：`--owned ≈ 单块容量上限 × 1.5 ÷ 每 cue 平均字符数`
+      - 单块容量上限（token）= `context_estimate.py` 输出 = `min(输入预算, 输出预算÷amplification)`，**经 min 统一、已含分句放大**
+      - ×1.5 = token→字符；再 ÷ 每 cue 平均字符数（拿不准用保守兜底，宁小勿大）
+    - 各阶段共用同一套块（01 骨架），**块定即全局、无法在分句阶段中途改**，宁小勿大
+- **分块前先验证 gap 准确性（必做）**：跑 `python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md` 得到空隙点清单（长停顿 >5s / 剪辑跳转 >10s），**人工确认后**再用 `--gaps` 分块。
+  - `--gaps` 的 `detect_gap_groups` 用同一空隙点算法，与 r00_gaps.md 应一致
+  - **已有 r00_gaps.md 则复用，勿重复探测**（探测结果与人工复核以 r00_gaps.md 为准）
 - **一次分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——块 = 「空隙组-片」（块0 单独、块1 拆多片...），块边界 = 明确 cue 区间；**`--ctx` 建议 10**（每侧衔接 cue 数，约覆盖前块末尾 1–2 句）
 - **各阶段共用同一套块**：：r01 合并文本读 `chunks/`、r01 补标点读 `r01_normalized/`、r02 翻译读 `r01_results/` 对应块、r03 分句读 `r01_results/` + `r02_results/` 对应块对照——**块边界始终来自 01 分块骨架，不做链式继承**
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态——分块/不分块产物契约统一
-- **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，**不需要先合并全文**；**全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)——避免每块 subagent 重复跑全量校对）
+- **校验逐块化**：`check_words` / `check_breaks` / `check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，**不需要先合并全文**。
+  - **全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**
+  - subagent 不调用全局校验（见 [subagent-dispatch#纪律母版](../subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)「五、工作区与工具纪律」——避免每块 subagent 重复跑全量校对）
 - **必须合并的**：`r03_plan.md`（`srt_reflow.py` 回填输入，各块 r03 方案按块序直接拼接）、`r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）——这两个合并后走全局校验
-- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行 / `text_merge --wrap`，subagent 输出不折行）——产物单行 ≤1000 字符（英文词边界不拆词），属**显示性换行、非语义分行**，校验按整段解析不受影响（read_file 可读）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
+- **约束（r01/r02/r03 块文件格式）**：reflow 补标点 / 翻译块（`r01_results/` / `r02_results/`）为**整段文字**，每块一个空隙组-片 = 一段连续文字。
+  - 块内**不按 cue / 句分行、不带 cue 前缀**（逐句 / cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）
+  - **折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行 / `text_merge --wrap`，subagent 输出不折行）——产物单行 ≤1000 字符（英文词边界不拆词），属**显示性换行、非语义分行**，校验按整段解析不受影响
+  - 仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）
+  - 仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀
+  - 分句语义对应仍需全貌（块内保持整句 / 单元语义完整，不跨块拆句——空隙为硬边界）
 - **旧 `--inherit` 已弃用（deprecated）**：仅兼容旧流程，新方案从 01 分块 + 块级独立流转，不再需要继承边界
 
 ### 5. 逐块派发与合并（两工作流共用）
 
 - **每块 prompt（派发配方）**：任务文件 + 纪律母版 + 产物格式约定 + 知识卡 + 块数据，按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装
-- **跨块未完成句（结转规则，仅 translate/srt）**：每块只产出语义完整句且其 start cue 落在 OWNED 区；负责区末尾句在可见上下文（OWNED+CONTEXT）内仍不完整则标记 `CARRY: c<起始idx>` 结转、不产出；下一块在 CONTEXT 看到该句开头则正常产出（start 落 CONTEXT 的结转句允许产出）；合并脚本对结转句只采用 start 最早的版本
-- **每块结果由 subagent 直接写独立文件**：subagent 把结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`（translate→`_merge_results/`/`_trans_results/`、term→`_term_results/`、humanize→`_humanize_results/`、reflow→`reflow/r01_results/`/`r02_results/`/`r03_results/`），写后报告文件名（**不数行数**，行数/非空由主会话脚本统计）、**不返回全文给主会话**（勿只存会话，压缩后恢复极耗时）
+- **跨块未完成句（结转规则，仅 translate/srt）**：
+  - 每块只产出语义完整句且其 start cue 落在 OWNED 区
+  - 负责区末尾句在可见上下文（OWNED + CONTEXT）内仍不完整则标记 `CARRY: c<起始idx>` 结转、不产出
+  - 下一块在 CONTEXT 看到该句开头则正常产出（start 落 CONTEXT 的结转句允许产出）
+  - 合并脚本对结转句只采用 start 最早的版本
+- **每块结果由 subagent 直接写独立文件**：subagent 把结果写入 `_work/<视频名>/<任务目录>/chunk_<k>.txt`，写后报告文件名、**不返回全文给主会话**（勿只存会话，压缩后恢复极耗时）。任务目录：
+  - translate → `_merge_results/` / `_trans_results/`
+  - term → `_term_results/`
+  - humanize → `_humanize_results/`
+  - reflow → `reflow/r01_results/` / `r02_results/` / `r03_results/`
+  - 报告时**不数行数**（行数 / 非空由主会话脚本统计）
 - **合并用脚本（替代主 Agent 手工读头尾组装）**：`python scripts/text_merge.py <chunks_dir> <results_dir> --out <合并产物> [--report <报告>] [--window N]`
   - **默认全自动**：按块序读结果、归位拼接成完整产物，主 Agent **零读取**（text 同组无缝/组间空行；srt 全局段号重排）
   - **异常时**：脚本产出 `<merged>.report.md` 异常清单（缺块 / 行数不符 / 重复 / 片号不连续 / cue 重叠 / 缺口 / CARRY）+ **异常块头尾窗口**——主 Agent **只读报告**决策即可，不整读中间

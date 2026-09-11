@@ -29,7 +29,11 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 3. **使用前检查是否需要更新**
 4. **查词/扫描用 `glossary_lookup.py`**（只读，自动 L1→L1.5→L2；手工 grep 仅作兜底）
    - 查单个词：`python scripts/glossary_lookup.py query <term> [<term>...]`
-   - **扫文本找已收录术语（数据驱动触发，取代"像不像术语"判断）**：`python scripts/glossary_lookup.py scan <srt|chunk> --categories <分类> --levels L1,L2`。`--categories` **只按文件名过滤 L2**（`.cache/glossary/<文件名>.csv`）；L2 文件名与 `glossary_categories.yaml` 分类**部分重叠但不对应**（L2 另有 `general/other/people`），勿假设完全对应；**L1 始终全量加载**（体量小，文件分类与 yaml 是另一套命名）；L1.5（Mojang，再一套命名）需显式 `--levels L1,L1.5,L2`
+   - **扫文本找已收录术语（数据驱动触发，取代「像不像术语」判断）**：`python scripts/glossary_lookup.py scan <srt|chunk> --categories <分类> --levels L1,L2`。
+     - `--categories` **只按文件名过滤 L2**（`.cache/glossary/<文件名>.csv`）
+     - L2 文件名与 `glossary_categories.yaml` 分类**部分重叠但不对应**（L2 另有 `general` / `other` / `people`），勿假设完全对应
+     - **L1 始终全量加载**（体量小，文件分类与 yaml 是另一套命名）
+     - L1.5（Mojang，再一套命名）需显式 `--levels L1,L1.5,L2`
 
 > **语义联想为主，机械查找补漏**（2026-08-03 用户定调）：ASR 误识别修正、术语语义/语境理解、相关性判断靠 **Agent 自身的语义联想/推理**（注入领域术语集作上下文），**不用字符串相似度等算法**；"联想"=Agent 自己的语言理解，**非调用外部 LLM/API**。机械查找（`scan`）仅作**补充**——字面精确匹配把"已登记词确实出现"找全，治"已收录却漏翻"，不做任何理解/判定。
 
@@ -42,7 +46,7 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 | **L2** | 温数据 | `.cache/glossary/*.csv`（techmc 社区拆分译名）、`_repos/storage-archive/dictionary/`（存储科技术语词典，2026-08-28 新增源） | `glossary_lookup.py`、`dictionary_lookup.py` |
 | **L3** | 未命中 | — | 入"待查列表" → translate-redstone §1.2 集中补齐 |
 
-- **执行建议**：首选 `python scripts/glossary_lookup.py <term> [<term>...]`（只读，自动按 L1→L1.5→L2 批量查询，命中输出来源）；**L2 存储科技术语词典（`_repos/storage-archive`）另用 `python scripts/dictionary_lookup.py query/scan` 查（含完整定义/缩写）**；工具不覆盖时用 grep_search 按上表位置兜底
+- **执行建议**：首选 `python scripts/glossary_lookup.py <term> [<term>...]`（只读，自动按 L1→L1.5→L2 批量查询，命中输出来源）；**L2 存储科技术语词典（`_repos/storage-archive`）另用 `python scripts/dictionary_lookup.py query/scan` 查（含完整定义/缩写）**；工具不覆盖时用**全文搜索工具**按上表位置兜底
 - **新增词汇表源**：按上表「查找位置」判断归属级（新增 Mojang 表→L1.5；新增社区分类/词典→L2；新增项目库 CSV→L1），更新位置即可，Agent 据表快速识别（storage-archive 与 techmc 同属社区源，仅查询工具不同，**不新增层级**）
 
 ## 工作流程
@@ -69,7 +73,9 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 
 > **语义扩展（非机械对应）**：关键词命中只是**提示起点**，识别出的类别**不是唯一输出**——一个视频往往横跨多个方面（存储视频也可能涉及机械/人名/通用）。Agent 应在命中基础上**按语义关系**判断还要加载哪些相关词汇表（`scan --categories` 传可多个的 L2 文件名）；`knowledge/01_terminology/`（L1）由 `scan` 始终全量加载，其文件名与 yaml 分类是两套命名，勿按同名机械对应。勿把"命中≥2"当成机械的 1:1 加载规则。
 
-> **领域确认（阶段〇必做交互，不得静默跳过）**：无论关键词命中与否，预判都要产出一个**领域判断**（分类 + 依据：命中关键词/语义线索），并在阶段〇**报告给用户确认**（轻量一句，如「预判领域：slimestone，依据 flying machine/piston ×3，对吗？」）。**当无法确定时**——所有分类命中均 <2 次、语义判断拿不准、或拿不准是否跨领域——**必须停下来**进入下方「无法判断时的处理」，列出候选请用户选择；**不得靠语义扩展静默加载跳过确认**（曾发生：Agent 凭语义直接加载分类、跳过领域确认，导致 `glossary_categories.yaml` 关键词长期零增长）。确认后若本视频暴露了该分类未收录的高频词，**顺手追加**到 yaml `keywords`（见下方「配置文件自维护」），使预判文件随正常流程积累。
+> **领域确认（阶段〇必做交互，不得静默跳过）**：无论关键词命中与否，预判都要产出一个**领域判断**（分类 + 依据：命中关键词 / 语义线索），并在阶段〇**报告给用户确认**（轻量一句，如「预判领域：slimestone，依据 flying machine/piston ×3，对吗？」）。
+> - **当无法确定时**（所有分类命中均 <2 次、语义判断拿不准、或拿不准是否跨领域）——**必须停下来**进入下方「无法判断时的处理」，列出候选请用户选择；**不得靠语义扩展静默加载跳过确认**（曾发生：Agent 凭语义直接加载分类、跳过领域确认，导致 `glossary_categories.yaml` 关键词长期零增长）
+> - 确认后若本视频暴露了该分类未收录的高频词，**顺手追加**到 yaml `keywords`（见下方「配置文件自维护」），使预判文件随正常流程积累。
 
 ### 无法判断时的处理（必须交互，配置文件自维护入口）
 
@@ -126,7 +132,7 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 ### CSV 解析注意事项
 
 - 编码、解析、写入统一按 `csv-rules` Skill 执行（`utf-8-sig` 读 / `utf-8` 写、`csv` 模块解析）
-- 一句话要点：`definition`/`description`/`notes` 列常含逗号，**禁止** `split(',')` 或 `grep_search` 按逗号分列，提取译名务必读取完整行用 `csv.DictReader` 解析
+- 一句话要点：`definition`/`description`/`notes` 列常含逗号，**禁止** `split(',')` 或**全文搜索工具**按逗号分列，提取译名务必读取完整行用 `csv.DictReader` 解析
 
 ## 注意事项
 

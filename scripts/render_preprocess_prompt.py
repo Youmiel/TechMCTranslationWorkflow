@@ -38,9 +38,13 @@ SKILLS_DIR = os.path.join(PROJECT_ROOT, ".github", "skills")
 DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md")
 ASR_FIXES_GLOBAL = os.path.join(PROJECT_ROOT, ".github", "experience", "asr_fixes.md")
 
-# 模板正文中「渲染步骤说明」注释的起点（渲染时剥离——该注释是给 agent/维护者看的元信息，
-# 不是 subagent 执行内容，不应出现在最终 prompt）
-FILL_MARKER = "> **渲染步骤"
+# 模板尾部「渲染步骤」说明区的起点（渲染时剥离——该区块给主会话/维护者看：
+# 声明本任务按什么顺序、用哪些内容拼接，不是 subagent 执行内容）。含前置分隔线，一并剥离避免残留孤立 `---`。
+FILL_MARKERS = (
+    "\n---\n\n> **渲染步骤",
+    "\n---\n\n## 组装内容",
+    "\n> **渲染步骤",
+)
 
 # 任务名 → 渲染配置（chunks 目录默认 = <视频工作目录>/<chunks_key>）
 TASKS = {
@@ -235,11 +239,13 @@ def render(task, video_dir, chunk, scan_path, glossary_paths, asr_fixes_paths, c
     cfg = TASKS[task]
     video_name = os.path.basename(os.path.normpath(video_dir))
 
-    # 1. 模板正文（剥离「渲染步骤说明」注释）
+    # 1. 模板正文（剥离尾部「组装与派发」说明区）
     template_path = os.path.join(SKILLS_DIR, cfg["skill"], cfg["template"])
     text = read(template_path)
-    if FILL_MARKER in text:
-        text = text.split(FILL_MARKER)[0].rstrip()
+    for marker in FILL_MARKERS:
+        if marker in text:
+            text = text.split(marker)[0].rstrip()
+            break
     # 2. 占位替换（模板正文零改动，仅正则替换）
     text = text.replace("<视频名>", video_name)
     text = text.replace("chunk_<k>", f"chunk_{chunk:03d}")

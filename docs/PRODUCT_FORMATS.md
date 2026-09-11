@@ -16,7 +16,11 @@
 改动任何产物的**格式 / 分隔符 / 字段**时必须同步：
 
 1. **本文件**（PRODUCT_FORMATS.md）
-2. **生成/解析脚本**：`srt_reflow_gap_scan.py`、`srt_reflow_breaks.py`、`srt_reflow_check_breaks.py`、`srt_reflow_check_words.py`、`srt_reflow_check_sentence_len.py`、`srt_reflow_presplit.py`、`srt_reflow_build_r03.py`、`srt_reflow_core/{io,plan,allocate,alerts,reflow,attach}.py`、`srt_check_segments.py`、`srt_check_width.py`、`srt_check_plan_words.py`（translate 断句措辞）、`srt_check_terms.py`（reflow r02 / translate 译文术语，跨工作流）、`srt_reflow2_etimeline.py`、`srt_reflow2_zsent.py`、`srt_reflow2_backfill.py`（reflow2 源头固化链）
+2. **生成 / 解析脚本**：
+   - reflow：`srt_reflow_gap_scan.py`、`srt_reflow_breaks.py`、`srt_reflow_check_breaks.py`、`srt_reflow_check_words.py`、`srt_reflow_check_sentence_len.py`、`srt_reflow_presplit.py`、`srt_reflow_build_r03.py`、`srt_reflow_core/{io,plan,allocate,alerts,reflow,attach}.py`
+   - reflow2：`srt_reflow2_etimeline.py`、`srt_reflow2_zsent.py`、`srt_reflow2_backfill.py`（源头固化链）
+   - 字幕通用：`srt_join_parts.py`、`text_chunk.py`、`text_merge.py`
+   - 校验：`srt_check_segments.py`、`srt_check_width.py`、`srt_check_plan_words.py`（translate 断句措辞）、`srt_check_terms.py`（reflow r02 / translate 译文术语，跨工作流）
 3. **引用 SKILL 步骤**：`reflow-redstone`（步骤 1/2/4/5/6）、`reflow2`（步骤 1-7）、`translate-redstone`（阶段二）、`redstone-preprocess`（产物契约）、`segment-subtitles`（断句/行宽）
 4. **脚本 docstring**（格式描述与实现一致）
 
@@ -60,15 +64,29 @@
 
 ## 通用文本分块（text_chunk / text_merge）
 
-> 长视频分块的**统一格式契约**——SRT 与非 SRT 产物共用。工具：`scripts/text_chunk.py`（分块）+ `scripts/text_merge.py`（合并）。用法与调度见 [redstone-conventions#长视频分块](../.github/skills/redstone-conventions/SKILL.md#长视频分块全流程通用机制) 与 [subagent-dispatch](../.github/skills/subagent-dispatch/SKILL.md)。
-> 旧 `scripts/srt_chunk.py` 保留兼容（历史产物/旧流程），**新任务一律用 `text_chunk.py`**。
-> **产物一律块级（产物单轨）**：分块与不分块同一处理逻辑、同一产物契约——块级 `chunk_<k>.txt` + 需合并的产物（如 reflow 的 `r04_draft.srt`）按块序/骨架拼接；每块 OWNED+CONTEXT、独立处理、中间不拼全文。reflow 回填**直读 `r03_results/` 目录**（`parse_r03_dir` 按块序解析 + S 号全局重编号），无需拼 r03_plan.md。逻辑一致 ⇒ 小输入即可验证分块流程逻辑（reflow 的**空隙点强制切块**与 `--owned` 语义见「块级流水线」节）。
+> 长视频分块的**统一格式契约**——SRT 与非 SRT 产物共用。
+> - 工具：`scripts/text_chunk.py`（分块）+ `scripts/text_merge.py`（合并）
+> - 用法与调度见 [redstone-conventions#长视频分块](../.github/skills/redstone-conventions/SKILL.md#长视频分块全流程通用机制) 与 [subagent-dispatch](../.github/skills/subagent-dispatch/SKILL.md)
+> - 旧 `scripts/srt_chunk.py` 保留兼容（历史产物 / 旧流程），**新任务一律用 `text_chunk.py`**
+>
+> **产物一律块级（产物单轨）**：分块与不分块同一处理逻辑、同一产物契约。
+> - 块级 `chunk_<k>.txt` + 需合并的产物（如 reflow 的 `r04_draft.srt`）按块序 / 骨架拼接
+> - 每块 OWNED + CONTEXT、独立处理、中间不拼全文
+> - reflow 回填**直读 `r03_results/` 目录**（`parse_r03_dir` 按块序解析 + S 号全局重编号），无需拼 r03_plan.md
+> - 逻辑一致 ⇒ 小输入即可验证分块流程逻辑（reflow 的**空隙点强制切块**与 `--owned` 语义见「块级流水线」节）
 
 ### 块文件格式（`text_chunk.py` 输出，`chunk_<k>.txt`）
 
 - **块头（首行，机器可解析元数据）**：`# CHUNK <k>/<N>  SRC: <文件名>  TYPE: <srt|text>  UNIT: <语义单位>  OWN: <组标识列表>  CTX: BEFORE <B> AFTER <A>`
-- **标记语言统一（全英文大写简单词）**：`#` = 说明/元数据行（块头 `# CHUNK`、分区内 `# SOURCE`/`--- PREV/NEXT ---` 等标注）；`##` = 分区标记（`## BEFORE`/`## OWNED`/`## AFTER`，脚本硬依赖）；不用中文/`###` 混标
-- **分区顺序（LLM 语义优先）**：`## BEFORE`（本块之前，只读，非空才输出）→ `## OWNED`（本块负责产出）→ `## AFTER`（本块之后，只读，非空才输出）——前文在前、内容中间、后文在后，subagent 按语义顺序阅读；首块无 BEFORE、末块无 AFTER
+- **标记语言统一（全英文大写简单词）**：
+  - `#` = 说明 / 元数据行（块头 `# CHUNK`、分区内 `# SOURCE` / `--- PREV/NEXT ---` 等标注）
+  - `##` = 分区标记（`## BEFORE` / `## OWNED` / `## AFTER`，脚本硬依赖）
+  - 不用中文 / `###` 混标
+- **分区顺序（LLM 语义优先）**：
+  1. `## BEFORE`（本块之前，只读，非空才输出）
+  2. `## OWNED`（本块负责产出）
+  3. `## AFTER`（本块之后，只读，非空才输出）
+  - 前文在前、内容中间、后文在后，subagent 按语义顺序阅读；首块无 BEFORE、末块无 AFTER
 - **`## OWNED`**：subagent 必须产出的内容；srt 每行一条 `c<idx>\t<时间码>\t<文本>`；text **单元间空行分隔**、单元首行 `<组>-<片>\t<内容>`（内容可多行，如 r03 markdown）
 - **`## BEFORE` / `## AFTER`**：前后只读上下文，格式同 OWNED；解析脚本按 `## ` 分区通用判断切 OWNED（任意分区标题切换），不受顺序/缺区影响；旧块头格式（`# chunk ... 源:`）不兼容新解析，历史产物不再重新合并
 - **`manifest.md`**：块清单（组/片 → 块号映射），`text_merge.py` 与人工核对用
@@ -80,24 +98,52 @@
 
 ### 块级流水线（从 01 分块，reflow r01→r02→r03 中间不拼全文）
 
-> 目标：让 reflow 的 r01→r02→r03 各子块**独立处理、按块传递**，中间**不拼全文**，校验**逐块化**——只有最终 r04 是必须合并的；r03 回填**直读 `r03_results/` 目录**（零拼接、LLM 不读全量），`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成。减少"拼全文→整读→再分块"的反复。
+> 目标：让 reflow 的 r01 / r02 / r03 各子块**独立处理、按块传递**：
+> - 中间**不拼全文**，校验**逐块化**——只有最终 r04 是必须合并的
+> - r03 回填**直读 `r03_results/` 目录**（零拼接、LLM 不读全量）
+> - `r03_plan.md` 仅审核 / 审计时 `join-r03` 按需生成
+>
+> 减少「拼全文 → 整读 → 再分块」的反复。
 
-- **一次分块（从 01）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——块 = 「空隙组-片」（**空隙点强制切块=语义硬边界**、组内按 `--owned` 分片=容量控制）；块边界 = 明确 cue 区间
-- **分块前先验证 gap**：`srt_reflow_gap_scan.py` → `r00_gaps.md` 空隙点清单（长停顿 >5s / 剪辑跳转 >10s）人工确认后作为 `--gaps` 分块的组边界依据；**已有 r00_gaps.md 则复用，勿重复探测**
+- **一次分块（从 01）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`
+  - 块 = 「空隙组-片」（**空隙点强制切块 = 语义硬边界**、组内按 `--owned` 分片 = 容量控制）
+  - 块边界 = 明确 cue 区间
+- **分块前先验证 gap**：`srt_reflow_gap_scan.py` → `r00_gaps.md` 空隙点清单（长停顿 >5s / 剪辑跳转 >10s）人工确认后作为 `--gaps` 分块的组边界依据。
+  - **已有 r00_gaps.md 则复用，勿重复探测**
 - **各阶段共用同一套块**：：r01 合并文本读 `chunks/`、r01 补标点读 `r01_normalized/`、r02 翻译读 `r01_results/` 对应块、r03 分句读 `r01_results/` + `r02_results/` 对应块对照——**块边界始终来自 01 分块骨架，不做链式继承**
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态
-- **校验逐块化**：`check_words`/`check_breaks`/`check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，不需要先合并全文；**全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**，subagent 不调用全局校验（见 [subagent-dispatch#subagent 纪律](../.github/skills/subagent-dispatch/SKILL.md#subagent-纪律生成-prompt-时必须包含)）
-- **回填直读 r03_results/（零拼接）**：`srt_reflow.py reflow/attach-en/check-duration` 的 r03 参数接受目录（`parse_r03_dir` 按块序解析 + **S 号全局重编号**）或单文件 r03_plan.md（兼容）——**必须合并的**仅 `r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）；合并后走全局校验
-- **约束（r01/r02/r03 块文件格式）**：reflow 补标点/翻译块（`r01_results/`/`r02_results/`）为**整段文字**——每块一个空隙组-片 = 一段连续文字，块内**不按 cue/句分行、不带 cue 前缀**（逐句/cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行 / `text_merge --wrap`，subagent 输出不折行）——产物单行 ≤1000 字符（英文词边界不拆词），属**显示性换行、非语义分行**，校验按整段解析不受影响（read_file 可读）；仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）、仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀。分句语义对应仍需全貌（块内保持整句/单元语义完整，不跨块拆句——空隙为硬边界）
+- **校验逐块化**：`check_words` / `check_breaks` / `check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，不需要先合并全文。
+  - **全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**
+  - subagent 不调用全局校验（见 [subagent-dispatch#纪律母版](../.github/skills/subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)「五、工作区与工具纪律」）
+- **回填直读 r03_results/（零拼接）**：`srt_reflow.py reflow` / `attach-en` / `check-duration` 的 r03 参数接受目录（`parse_r03_dir` 按块序解析 + **S 号全局重编号**）或单文件 r03_plan.md（兼容）。
+  - **必须合并的**仅 `r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）；合并后走全局校验
+- **约束（r01/r02/r03 块文件格式）**：reflow 补标点 / 翻译块（`r01_results/` / `r02_results/`）为**整段文字**，每块一个空隙组-片 = 一段连续文字。
+  - 块内**不按 cue / 句分行、不带 cue 前缀**（逐句 / cue 分行会孤立 ASR 残片导致误译；校验脚本按整段解析）
+  - **折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行 / `text_merge --wrap`，subagent 输出不折行）——产物单行 ≤1000 字符（英文词边界不拆词），属**显示性换行、非语义分行**，校验按整段解析不受影响
+  - 仅 r03 分句块（`r03_results/`）用整句分组格式（`## S<n>`）
+  - 仅 translate 的 srt 类型结果保留 `段号|cue范围|` 前缀
+  - 分句语义对应仍需全貌（块内保持整句 / 单元语义完整，不跨块拆句——空隙为硬边界）
 - **旧 `--inherit` 已弃用（deprecated）**：仅兼容旧流程，新方案从 01 分块 + 块级独立流转，不再需要继承边界
 
 ### subagent 结果文件（`text_merge.py` 输入）
 
-- 命名：`_work/<视频名>/<任务目录>/chunk_<k>.txt`（merge→`_merge_results/`、translate→`_trans_results/`、term→`_term_results/`、humanize→`_humanize_results/`）
-- **text 类型**（组-片前缀契约权威所在）：单元间空行分隔；每单元首行 `<组>-<片>\t<产出文本>`（内容可多行；**保留输入 OWNED 的组-片前缀**；单元数 = 该块 OWNED 单元数）——text 类型任务文件输出节引用本节
+- 命名：`_work/<视频名>/<任务目录>/chunk_<k>.txt`。任务目录：
+  - merge → `_merge_results/`
+  - translate → `_trans_results/`
+  - term → `_term_results/`
+  - humanize → `_humanize_results/`
+- **text 类型**（组-片前缀契约权威所在）：
+  - 单元间空行分隔
+  - 每单元首行 `<组>-<片>\t<产出文本>`（内容可多行；**保留输入 OWNED 的组-片前缀**；单元数 = 该块 OWNED 单元数）
+  - text 类型任务文件输出节引用本节
 - **srt 类型**：每行 `段号|cue范围[~]|文本`（`~`=估算切分点，同 `s03_plan.md`）；`CARRY: c<idx>` 结转标记行独立成行
-- **reflow 例外**：r01/r02/r03 块文件**不经 text_merge**（r01/r02 = 整段文字、r03 = `## S<n>` 整句分组，均无 `# CHUNK` 块头元数据，`parse_chunk_head` 无法解析）；回填**直读 `r03_results/` 目录**（`parse_r03_dir`），`r03_plan.md` 由 `join-r03` 按需生成（审核/审计用）。term 结果（`_term_results`）由主会话按 `term_en` 合并去重，亦不经 text_merge
-- **preprocess 例外**：`_en_results/chunk_<k>.srt`（第一次遍历英文预整理，裸 SRT 片段）**不经 text_merge**——text_merge 的 srt 模式面向断句合并（`段号|cue范围|文本` 前缀、丢时间码）；01 需保留逐 cue 时间码，由 `srt_join_parts.py` 按块序拼接 + 全局段号重排 + cue 数强制校验
+- **reflow 例外**：r01 / r02 / r03 块文件**不经 text_merge**。
+  - 原因：r01/r02 = 整段文字、r03 = `## S<n>` 整句分组，均无 `# CHUNK` 块头元数据，`parse_chunk_head` 无法解析
+  - 回填**直读 `r03_results/` 目录**（`parse_r03_dir`）；`r03_plan.md` 由 `join-r03` 按需生成（审核 / 审计用）
+  - term 结果（`_term_results`）由主会话按 `term_en` 合并去重，亦不经 text_merge
+- **preprocess 例外**：`_en_results/chunk_<k>.srt`（第一次遍历英文预整理，裸 SRT 片段）**不经 text_merge**。
+  - 原因：text_merge 的 srt 模式面向断句合并（`段号|cue范围|文本` 前缀、丢时间码）
+  - 01 需保留逐 cue 时间码，由 `srt_join_parts.py` 按块序拼接 + 全局段号重排 + cue 数强制校验
 - 写后只报 `已写入 <文件名>（N 行）`，不返回全文（见 subagent-dispatch 纪律）
 
 ### 合并产物（`text_merge.py` 输出）
@@ -151,8 +197,12 @@
 
 - **算法解释**：
   - **双阈值**：字幕翻译**不接受上下文压缩**（压缩丢细节 → 失真），单块材料既不能贴近窗口上限（读约束 = 输入阈值），也不能让放大后输出超模型单次生成上限（写约束 = 输出阈值）——取 `min` 协调、宁低勿高
-  - **放大倍数**：最重环节（分句）读中英两倍材料（r01 EN + r02 ZH 对照）+ 输出 r03 ≈ 对照 2×，单请求 ≈ **4×单语言材料**（实测 4.2×），故需要放大倍数预测最重环节 token 消耗——放大已并入「单块容量上限」：输入预算靠 `split_ratio` 隐含分句余量（示例 0.05 → 分句放大 4× 后 ≈ 窗口×20%）、输出预算靠 `÷amplification` 显式，二者经 min 统一后 **`--owned ≈ 单块容量上限 × 1.5 ÷ 每 cue 平均字符数`，不再额外除以放大常数**
-  - **`split_ratio` 默认取 0.05**：执行在 subagent（全新上下文）；示例 0.05 → 1M 窗口 ≈ 50k token，分句放大 4× 后 ≈ 窗口×20% 仍可一次处理；0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句放大后吃力），取中间值；拿不准用默认
+  - **放大倍数**：最重环节（分句）读中英两倍材料（r01 EN + r02 ZH 对照）+ 输出 r03 ≈ 对照 2×，单请求 ≈ **4×单语言材料**（实测 4.2×），故需要放大倍数预测最重环节 token 消耗。
+    - 放大已并入「单块容量上限」：输入预算靠 `split_ratio` 隐含分句余量（示例 0.05 → 分句放大 4× 后 ≈ 窗口×20%）、输出预算靠 `÷amplification` 显式
+    - 二者经 min 统一后 **`--owned ≈ 单块容量上限 × 1.5 ÷ 每 cue 平均字符数`，不再额外除以放大常数**
+  - **`split_ratio` 默认取 0.05**：执行在 subagent（全新上下文）。
+    - 示例：0.05 → 1M 窗口 ≈ 50k token，分句放大 4× 后 ≈ 窗口×20%，仍可一次处理
+    - 0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句放大后吃力），取中间值；拿不准用默认
   - **为何 `--window` 填实际有效窗口**：**不是当前剩余窗口**（剩余受会话历史/压缩影响，agent 无法精确感知）；**标称 ≠ 实际有效**——填实际有效窗口（非标称上限），拿不准按保守 128k 配置
 - 约束：
   - **只放这五项**，不写模型名等冗余
@@ -194,7 +244,11 @@
 | 00:00:16 | Terry Andrew Davis | 特里·安德鲁·戴维斯 | 维基 | Terra/Tara 等多处 |
 ```
 
-- 约束：`原文` = 01 修正后文本；`ASR 修正` 列记录误识别映射（供组装期替换与 `asr_fixes.md` 沉淀）；表头固定不得改；来源列可标 `[ASR 推测]`/`[推断]`/`[待审核]`/`[通用词]`——`[通用词]` = 通用标准译名（公认译名、无需项目约定），确认后**不入库**（见 `term-registration`「通用标准译名判定」）
+- 约束：
+  - `原文` = 01 修正后文本
+  - `ASR 修正` 列记录误识别映射（供组装期替换与 `asr_fixes.md` 沉淀）
+  - 表头固定不得改
+  - 来源列可标 `[ASR 推测]` / `[推断]` / `[待审核]` / `[通用词]`——`[通用词]` = 通用标准译名（公认译名、无需项目约定），确认后**不入库**（见 `term-registration`「通用标准译名判定」）
 
 ### `term_pending.md` / `term_resolve_<i>.md`（§1.2 查证产物）
 
@@ -236,8 +290,14 @@
 
 - 命名：`<工作目录>/_merge_results/chunk_<k>.txt`（每块一个；分块时产生，N=1 即单块）
 - 生成：断句 subagent（`task-merge`）——对 chunks 块 OWNED cue 做英文侧断句（游离单词归位 + 语义合并 + 对白拆分 + 分割超长句 + 共享 cue 归属）
-- 格式：**srt 类型**——**每行一段** `段号|cstart[-cend][~]|英文文本`；段号**块内从 1 连续编号**（`text_merge.py` 合并时全局段号重排）；`~` = 估算切分点（受控例外，见 segment-subtitles「中间断句与估算时间」）；`CARRY: c<idx>` 结转标记行**独立成行**（跨块未完成句，见 redstone-conventions §5）
-- 约束：**断句只合并/分割、不改措辞**（英文词序列须与 01 对应 cue 区间一致，`srt_check_plan_words.py` 校验；02_terms 确认的 ASR 修正除外）；时间边界 ⊆ 原边界集、不新造时间点（`~` 除外）；空 cue（[Music] 等）不单独产出、时间并入相邻段
+- 格式：**srt 类型**，**每行一段** `段号|cstart[-cend][~]|英文文本`。
+  - 段号**块内从 1 连续编号**（`text_merge.py` 合并时全局段号重排）
+  - `~` = 估算切分点（受控例外，见 segment-subtitles「中间断句与估算时间」）
+  - `CARRY: c<idx>` 结转标记行**独立成行**（跨块未完成句，见 redstone-conventions §5）
+- 约束：
+  - **断句只合并 / 分割、不改措辞**（英文词序列须与 01 对应 cue 区间一致，`srt_check_plan_words.py` 校验；02_terms 确认的 ASR 修正除外）
+  - 时间边界 ⊆ 原边界集、不新造时间点（`~` 除外）
+  - 空 cue（[Music] 等）不单独产出、时间并入相邻段
 - 合并：`python scripts/text_merge.py <chunks_dir> <_merge_results/> --out s03_plan.md`（srt 类型：全局段号重排）
 - 校验（合并后）：`python scripts/srt_check_plan_words.py 01_subtitle_asr_fixed.srt s03_plan.md [--asr-fixes 02_terms.md]`
 
@@ -316,15 +376,31 @@
 
 - 命名：`<工作目录>/reflow/r01_results/chunk_<k>.txt`
 - 生成：Agent（步骤 3 逐块补标点 subagent；各块独立文件，块数 = 空隙组数 × 组内片数）
-- 格式：**整段文字**——每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**；块内加标点但**不按 cue 分行、不按句分行**（逐句/cue 分行会孤立 ASR 残片导致误译）；**不带 `c<idx>\t时间码\t` 前缀**；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（英文在空格处折、不拆词），属**显示性换行、非语义分行**（read_file 可读、check_words 按整段解析）；CONTEXT 仅作语境，**片边界跨块句允许补全**（见约束）
-- 约束：仅加标点、不改措辞；空隙断句标记处按复核方式断句；词序列与对应 01 cue 段一致（`check_words` 块级模式按整段解析校验）；**跨块句补全（仅片边界）**——OWNED 首句承接前块 → 行首 `【承接句】<完整句>`；末句延伸后块 → 行首 `【延伸句】<完整句>`；相邻块对同一跨块句都补全（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`），主会话「衔接归位」后**只在一侧留无标记完整句、另一侧不留该句文本**；空隙边界不承接
+- 格式：**整段文字**，每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**。
+  - 块内加标点但**不按 cue 分行、不按句分行**（逐句 / cue 分行会孤立 ASR 残片导致误译）
+  - **不带 `c<idx>\t时间码\t` 前缀**
+  - **折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（英文在空格处折、不拆词），属**显示性换行、非语义分行**（check_words 按整段解析）
+  - CONTEXT 仅作语境，**片边界跨块句允许补全**（见约束）
+- 约束：
+  - 仅加标点、不改措辞
+  - 空隙断句标记处按复核方式断句
+  - 词序列与对应 01 cue 段一致（`check_words` 块级模式按整段解析校验）
+  - **跨块句补全（仅片边界）**：
+    - OWNED 首句承接前块 → 行首 `【承接句】<完整句>`
+    - 末句延伸后块 → 行首 `【延伸句】<完整句>`
+    - 相邻块对同一跨块句都补全（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`）；主会话「衔接归位」后**只在一侧留无标记完整句、另一侧不留该句文本**
+  - 空隙边界不承接
 - 消费：步骤 4 整段翻译（`r02_results/` 对应块）、预分句标号（`r03_normalized_1/`，见该节）、`check_breaks`/`check_words` 块级模式（`【承接句】`/`【延伸句】` 标记由校验脚本识别、不计入词序列）
 
 ### `r02_results/chunk_<k>.txt`（翻译块）
 
 - 命名：`<工作目录>/reflow/r02_results/chunk_<k>.txt`
 - 生成：Agent（步骤 4 逐块整段翻译 subagent，**先验知识注入 humanizer 注入版规则（humanizer-inject）**；各块独立文件，块数 = 空隙组数 × 组内片数）
-- 格式：**整段中文译文**——每块 = 对应 `r01_results/chunk_<k>.txt` 的整段翻译；块内**不按 cue 分行、不按句分行、不编号、不输出原文**；**不带 `c<idx>\t时间码\t` 前缀**；**折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（中文按字符折），属**显示性换行、非语义分行**（read_file 可读、check-r03 按整段作 ZH 忠实基准）；CONTEXT 只读不产出
+- 格式：**整段中文译文**，每块 = 对应 `r01_results/chunk_<k>.txt` 的整段翻译。
+  - 块内**不按 cue 分行、不按句分行、不编号、不输出原文**
+  - **不带 `c<idx>\t时间码\t` 前缀**
+  - **折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（中文按字符折），属**显示性换行、非语义分行**（check-r03 按整段作 ZH 忠实基准）
+  - CONTEXT 只读不产出
 - 约束：r02 定稿即自然译文（去翻译腔内联）；`check-r03` 块级模式以本文件整段为 ZH 忠实基准（r03 逐字复用）
 - 消费：ZH 归一化模板骨架（`r03_normalized_2/`，见该节）、分句（`r03_results/` 对应块）、`check-r03` 块级模式
 
@@ -339,19 +415,43 @@
 ### `r03_normalized_2/chunk_<k>.txt`（分句输入·ZH r03 模板骨架）
 
 - 命名：`<工作目录>/reflow/r03_normalized_2/chunk_<k>.txt`
-- 生成：脚本 `srt_reflow_presplit.py`（`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/`，一次性全目录）——ZH 按句末标点 `。！？…` 预分句（括号配平保护）标号 `Z1..Zm` + **句内按标点切候选段 + 贪心拼合 [15,22]（硬 ≤26）**；**直读 `r02_results/` 原稿**（脚本读取不受行宽限制，不再需要 r02 折行副本）
-- 格式：**r03 模板骨架**（r03 整句分组格式的 ZH 预填版）——每 Z 句一组 `## S?_Z<n>（默认 E<n>）`：`- ZH:` 整句原文预填 + `- 关系:` 预填 1:1/1:n + `### S?_Z<n><a>` 子句段预填（带 `> 段宽` 注释）；`- EN:` 为 `<待填>` 占位；S 号 `S?_Z<n>` 为占位（待分句 agent 替换为块内连续 `S<号>`）
-- 定位：分句 subagent 输入的**断句基线 + 填空模板**——脚本承担长短判断/宽度/忠实（子句段只在标点处切、不增删改，段拼接 == Z 原文 == r02）；agent 只做**填空与核对**（S 号/EN/关系/子单元 EN/对应/游离词）；`默认 E<n>` 为按序启发式提示须核对；不形成中英对照
+- 生成：脚本 `srt_reflow_presplit.py`（一次性全目录）。命令：
+  ```
+  python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/
+  ```
+  - ZH 按句末标点 `。！？…` 预分句（括号配平保护）标号 `Z1..Zm`
+  - 句内按标点切候选段 + 贪心拼合 [15,22]（硬 ≤26）
+  - **直读 `r02_results/` 原稿**（脚本读取不受行宽限制，不再需要 r02 折行副本）
+- 格式：**r03 模板骨架**（r03 整句分组格式的 ZH 预填版），每 Z 句一组 `## S?_Z<n>（默认 E<n>）`：
+  - `- ZH:` 整句原文预填
+  - `- 关系:` 预填 1:1 / 1:n
+  - `### S?_Z<n><a>` 子句段预填（带 `> 段宽` 注释）
+  - `- EN:` 为 `<待填>` 占位
+  - S 号 `S?_Z<n>` 为占位（待分句 agent 替换为块内连续 `S<号>`）
+- 定位：分句 subagent 输入的**断句基线 + 填空模板**。
+  - 脚本承担长短判断 / 宽度 / 忠实（子句段只在标点处切、不增删改，段拼接 == Z 原文 == r02）
+  - agent 只做**填空与核对**（S 号 / EN / 关系 / 子单元 EN / 对应 / 游离词）
+  - `默认 E<n>` 为按序启发式提示须核对
+  - 不形成中英对照
 - 参数：`--soft-min/--soft-max/--hard-max/--min-unit/--punct-levels`（多语言通用，默认 CJK；`--punct-levels` 有序层级 = 优先级：逗号族>破折号>顿号，超宽段才降级用低层）
 - 消费：分句 subagent（`r03_results/` 对应块）
 
 ### `r03_zslim/chunk_<k>.txt`（分句输入·ZH 整句级精简列表，5-2 task-match 专用）
 
 - 命名：`<工作目录>/reflow/r03_zslim/chunk_<k>.txt`
-- 生成：脚本 `srt_reflow_presplit.py` 的 **`--zh-list-out <目录>`**（与 r03_normalized_2 同源 `split_zh`、同命令一次性生成；`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/ --zh-list-out reflow/r03_zslim`）——**独立产物路径**，不复用/替代 r03_normalized_2 模板骨架
-- 格式：**整句级 Z 精简列表**——每行 `Z<n> <整句文本>`（Z 号与 r03_normalized_2 的 `Z1..Zm` **一一对应**）；无 `## S?_Z<n>` 标题、`- EN: <待填>` 占位、`- 关系:`、`### S?_Z<n><a>` 子句段、`> 段宽/⚠️` 注释等脚手架
-- 定位：**仅 5-2 句子匹配 subagent（`task-match`）的 ZH 输入**——task-match 只做整句级 Z↔E 语义对应，只需整句文本，不需子句段/占位/注释（那些是 5-1 task-split 填空或 build-r03 机械填回才需要的）；整句级信息仅占模板骨架 ~20%，本产物省 ~80% 输入 token
-- 约束：不用于 5-1（task-split 仍读 r03_normalized_2 模板骨架填空）；不用于 build-r03 填回（其子句段机械切分仍读 r03_normalized_2）——r03_normalized_2 与 r03_zslim 并存、各司其职
+- 生成：脚本 `srt_reflow_presplit.py` 的 **`--zh-list-out <目录>`**（与 r03_normalized_2 同源 `split_zh`、同命令一次性生成），**独立产物路径**，不复用 / 替代 r03_normalized_2 模板骨架。命令：
+  ```
+  python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/ --zh-list-out reflow/r03_zslim
+  ```
+- 格式：**整句级 Z 精简列表**——每行 `Z<n> <整句文本>`（Z 号与 r03_normalized_2 的 `Z1..Zm` **一一对应**）。
+  - 无 `## S?_Z<n>` 标题、`- EN: <待填>` 占位、`- 关系:`、`### S?_Z<n><a>` 子句段、`> 段宽/⚠️` 注释等脚手架
+- 定位：**仅 5-2 句子匹配 subagent（`task-match`）的 ZH 输入**。
+  - task-match 只做整句级 Z↔E 语义对应，只需整句文本，不需子句段 / 占位 / 注释（那些是 5-1 task-split 填空或 build-r03 机械填回才需要的）
+  - 整句级信息仅占模板骨架 ~20%，本产物省 ~80% 输入 token
+- 约束：
+  - 不用于 5-1（task-split 仍读 r03_normalized_2 模板骨架填空）
+  - 不用于 build-r03 填回（其子句段机械切分仍读 r03_normalized_2）
+  - r03_normalized_2 与 r03_zslim 并存、各司其职
 - 消费：句子匹配 subagent（`r03_matches/` 对应块）
 
 ### `r03_matches/chunk_<k>.txt`（分句输入·匹配文件，脚本断句路径）
@@ -426,13 +526,18 @@
 
 ## reflow2 产物（阶段二，时间轴源头固化）
 
-> reflow2 与 reflow 共享阶段〇/一产物（`01`/`02`）与 `reflow2/chunks/` 分块、`r01_normalized/`/`r01_results/`/`r02_results/`（格式同 reflow，仅目录为 `reflow2/`，见上各节）。本区只列 reflow2 **专有产物**（源头固化链：en_timeline → zh_sentences → align → 继承回填 r04）。产物统一块级，目录 `<工作目录>/reflow2/`。
+> reflow2 与 reflow 共享阶段〇/一产物（`01` / `02`）与 `reflow2/chunks/` 分块、`r01_normalized/` / `r01_results/` / `r02_results/`（格式同 reflow，仅目录为 `reflow2/`，见上各节）。
+>
+> 本区只列 reflow2 **专有产物**（源头固化链：`en_timeline` → `zh_sentences` → `align` → 继承回填 r04）。产物统一块级，目录 `<工作目录>/reflow2/`。
 
 ### `reflow2/en_timeline/chunk_<k>.txt`（E 句 + 固化时间，只读真值锚）
 
 - 命名：`<工作目录>/reflow2/en_timeline/chunk_<k>.txt`
 - 生成：`python scripts/srt_reflow2_etimeline.py reflow2/chunks/ reflow2/r01_results/ --srt <01> -o reflow2/en_timeline/`——每块 r01（衔接归位后）按 `.?!` 切 E 句（复用 presplit `split_en`），每 E 句在块内 OWNED cue 区间锚定（与消费端 `io.build_full` 同构：norm 去空格、无缝拼接；相邻 E 句共享 cue 按字符占比切分）
-- 格式：**每行一个 E 句**，`E<n>\t<start> --> <end>\t<c<cues>>\t<文本>`；`E<n>\tMISS\t-\t<文本>` = 锚定失败（回填继承缺该句）；`E<n>\t-\t-\t<文本>\t剥离标记后为空` = 内嵌标记剥离后无文本跳过；`(global)` 尾注 = 块内未命中走全局兜底（跨块补全句）
+- 格式：**每行一个 E 句**，`E<n>\t<start> --> <end>\t<c<cues>>\t<文本>`。
+  - `E<n>\tMISS\t-\t<文本>` = 锚定失败（回填继承缺该句）
+  - `E<n>\t-\t-\t<文本>\t剥离标记后为空` = 内嵌标记剥离后无文本跳过
+  - `(global)` 尾注 = 块内未命中走全局兜底（跨块补全句）
 - 定位：**纯脚本内部产物**（机器消费）——E 句 = 只读真值锚，下游通过对齐继承时间，**永不重编号**；不面向人工复核格式（人读需结合 align 理解对应）
 - 消费：task-match LLM（句子匹配输入，E 文本在 tab 末段）、`srt_reflow2_backfill.py`（继承时间）
 

@@ -27,9 +27,15 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(PROJECT_ROOT, ".github", "skills")
 DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md")
 
-# 模板正文中「渲染步骤说明」注释的起点（渲染时剥离——该注释是给 agent/维护者看的元信息，
-# 不是 subagent 执行内容，不应出现在最终 prompt）
-FILL_MARKER = "> **渲染步骤"
+# 模板尾部「渲染步骤」说明区的起点（渲染时剥离——该区块给主会话/维护者看：
+# 声明本任务按什么顺序、用哪些内容拼接，不是 subagent 执行内容）。含前置分隔线，一并剥离避免残留孤立 `---`；
+# 后续各项为历史格式兼容标记。
+FILL_MARKERS = (
+    "\n---\n\n> **渲染步骤",
+    "\n---\n\n## 组装内容",
+    "\n---\n\n> **以下内容由主 agent",
+    "\n> **渲染步骤",
+)
 
 # 任务名 → 渲染配置
 TASKS = {
@@ -107,7 +113,7 @@ TASKS = {
         "format_section": "r03_plan.md（## S<n> 整句分组格式；r03_results/chunk_<k>.txt 同此格式）",
         "inputs": ["reflow/r03_normalized_1/chunk_<k>.txt", "reflow/r03_normalized_2/chunk_<k>.txt"],
         "output": "reflow/r03_results/chunk_<k>.txt",
-        "prior": ["terms"],
+        "prior": ["breaks"],
     },
     "task-match": [
         {
@@ -204,7 +210,7 @@ def collect_priors(cfg, video_dir, chunk, prior_files):
         breaks_path = os.path.join(video_dir, sub, "r01_breaks.md")
         if os.path.exists(breaks_path):
             parts.append(
-                "### 空隙断句标记（r01_breaks 复核结果，补标点强制断句依据）\n\n"
+                "### 空隙断句标记（r01_breaks 复核结果）\n\n"
                 + extract_breaks(breaks_path)
             )
         else:
@@ -274,11 +280,13 @@ def render(task, video_dir, chunk, prior_files, chunks_dir, skill=None):
     cfg = resolve_cfg(task, skill)
     video_name = os.path.basename(os.path.normpath(video_dir))
 
-    # 1. 模板正文（剥离「主 agent 填充说明」注释）
+    # 1. 模板正文（剥离尾部「组装与派发」说明区）
     template_path = os.path.join(SKILLS_DIR, cfg["skill"], cfg["template"])
     text = read(template_path)
-    if FILL_MARKER in text:
-        text = text.split(FILL_MARKER)[0].rstrip()
+    for marker in FILL_MARKERS:
+        if marker in text:
+            text = text.split(marker)[0].rstrip()
+            break
     # 2. 占位替换（模板正文零改动，仅正则替换）
     text = text.replace("<视频名>", video_name)
     text = text.replace("chunk_<k>", f"chunk_{chunk:03d}")

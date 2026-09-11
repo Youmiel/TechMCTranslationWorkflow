@@ -18,7 +18,7 @@ description: Minecraft Wiki 页面获取与缓存写入的规范（MCP 工具降
 
 1. **构造中文命中键**：对待查术语先用术语表（`.cache/glossary/`、`knowledge/`）得到中文译名/候选——缓存文件名 = 中文规范标题，直接以 `缓存文件名` 判定
 2. **命中判定**：`.cache/wiki/<中文规范标题>.md` 存在即命中 → 直接读缓存内容，**不再发网络请求**
-   - 中文译名缺失（L3 新词）时：用 grep_search 在 `.cache/wiki/` 按**英文关键词**搜正文兜底（如 `红石比较器.md` 正文含 "Comparator"）
+   - 中文译名缺失（L3 新词）时：用**全文搜索工具**在 `.cache/wiki/` 按**英文关键词**搜正文兜底（如 `红石比较器.md` 正文含 "Comparator"）
    - 反向命中：`knowledge/01_terminology/*.csv` 的「来源」列已引用 `.cache/wiki/<页面>.md`，据此可反查已缓存页面
 3. **fidelity 回源判定**：命中后按内容保真度决定是否回源——
    - 查 **ID / 色值 / 历史 / 隐藏注释** → 需 `lossless`；`plain`/`degraded` 时回源 wikitext（`mc-wiki-fetch-mcp` `get_page`）

@@ -3,7 +3,7 @@
 > 本文件 = `reflow2` 阶段二（时间轴源头固化）的**完整执行指令**（步骤 1-7，各步按「归一化 → 处理 → 校验」三段组织）。**仅进入阶段二时读取**——阶段〇/一由 [SKILL.md](SKILL.md) 指挥；阶段产物链 / 中断恢复路由 / 输出门禁见 [SKILL.md](SKILL.md#中间产物与断点恢复)。
 
 > **派发边界**：补标点 / 翻译 / 句子匹配**一律派 subagent**（任务 = `task-punctuate` / `task-translate` / `task-match` 的 **reflow2 版**，渲染时 `--skill reflow2`），无需报告策略——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
-> **执行型纪律与模型**：纪律母版 #0 内联执行型纪律；派发入口 / 运行模型名不在 skill 硬编码——见 [EDITOR_COMPAT#各编辑器派发 subagent 命令表](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml`）。
+> **执行型纪律与模型**：纪律母版「一、执行型定位」内联执行型纪律；派发入口 / 运行模型名不在 skill 硬编码——见 [EDITOR_COMPAT#各编辑器派发 subagent 命令表](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml`）。
 
 > **行文结构**：各步骤按「1. 归一化 → 2. 处理 → 3. 校验」三段标题组织（无归一化环节标注「无」）；步骤 1/2 为前置步骤。
 
@@ -57,7 +57,11 @@
 
 1. **补标点（逐块派 subagent）**：渲染命令 `python scripts/render_subagent_prompt.py task-punctuate --skill reflow2 --video <工作目录> [--chunk <k> | --all]`
    - 派发引用 prompt（见 [subagent-dispatch#派发引用-prompt](../subagent-dispatch/SKILL.md#派发引用-prompt)）
-   - 产物：`reflow2/r01_results/chunk_<k>.txt`（整段英文；仅加标点不改措辞；空隙强制断句；跨块句补全标记 `【承接句】`/`【延伸句】`）
+   - 产物：`reflow2/r01_results/chunk_<k>.txt`：
+     - 整段英文
+     - 仅加标点不改措辞
+     - 空隙强制断句
+     - 跨块句补全标记 `【承接句】` / `【延伸句】`
 
 ##### 校验
 
@@ -136,7 +140,7 @@
 
 1. **继承 + 回填（脚本，唯一动作）**：`python scripts/srt_reflow2_backfill.py reflow2/zh_sentences/ reflow2/align/ reflow2/en_timeline/ -o reflow2/r04_draft.srt --alert reflow2/r04_alerts.md`
    - 处理方式（**脚本内一次性完成，主代理零读取、不参与时间分配**）：
-     - **继承**：每 Z 组 → 对应 E 组 → 时间 = E 组覆盖范围 [首 E.start, 末 E.end]（E 固化时间已含共享 cue 切分，继承天然零重叠）
+     - **继承**：每 Z 组对应 E 组，时间 = E 组覆盖范围 [首 E.start, 末 E.end]（E 固化时间已含共享 cue 切分，继承天然零重叠）
      - **拆子段**：Z 句超宽（>硬 26，视觉宽度）→ 按中文标点拆候选段 + 按阅读速度比例在 E 组区间内细分（复用 `allocate._allocate_by_weight`：吸附真实 cue 边界 ≤300ms，无则 100ms 取整预测点）——阅读舒适优先
      - **双语**：同步生成 `r04_bilingual.srt`（en-zh：英文行 = E 句/片段，子段 EN 按宽度比例机械切、互斥拼接 == 整句 EN）
    - 产物：`r04_draft.srt`（预览，止步 `_work/`）+ `r04_bilingual.srt` + `r04_alerts.md`
@@ -144,7 +148,11 @@
 
 ##### 校验
 
-1. **告警处置**：`r04_alerts.md`——碎片 cue 合并容纳完整单元；行宽 >26 必切；[Music] 等非语音 cue 跳过；断句暴露译文问题 → 回 r02 改（重切 Z/重对齐/重继承）
+1. **告警处置**：`r04_alerts.md`
+   - 碎片 cue → 合并容纳完整单元
+   - 行宽 >26 → 必切
+   - [Music] 等非语音 cue → 跳过
+   - 断句暴露译文问题 → 回 r02 改（重切 Z / 重对齐 / 重继承）
 2. **时间轴校验**：`python scripts/srt_check_segments.py reflow2/r04_draft.srt --orig <01>`（时间不重叠、区间不逆；时间边界贴原 cue + 允许必要预测点）
 3. **行宽校验**：`python scripts/srt_check_width.py reflow2/r04_bilingual.srt --order en-zh`（残留超限仅预警）
 4. **预览止步 `_work/`**，未经确认禁止写入 `_output/`；**回填严格脚本化**：只做继承 + 时间运算 + 拆段，禁止任何二次翻译/改写

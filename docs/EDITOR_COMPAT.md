@@ -32,7 +32,11 @@
 
 ### 模型配置（execution_model，单一事实源）
 
-`configs/subagent_model.yaml` 的 `execution_model` 字段 = 执行型 subagent（reflow-worker 类）运行的 **no-think 模型名**。**因人而异**，按你当前编辑器里可用的模型名填写（VS Code：模型选择器中的名称；Claude Code：模型标识；等）。**所有 skill / 文档不硬编码模型名**——**agent 派发 reflow-worker 时必须读取本文件，把 `execution_model` 的值「照原样」填入 subagent 派发参数**（不得改动 / 推断 / 凭记忆臆造；文件缺失或未配置 → 停下请使用者填写），见「各编辑器派发 subagent 命令表」。
+`configs/subagent_model.yaml` 的 `execution_model` 字段 = 执行型 subagent（reflow-worker 类）运行的 **no-think 模型名**。
+
+- **因人而异**：按你当前编辑器里可用的模型名填写（VS Code：模型选择器中的名称；Claude Code：模型标识；等）
+- **所有 skill / 文档不硬编码模型名**
+- **agent 派发 reflow-worker 时必须读取本文件**，把 `execution_model` 的值「照原样」填入 subagent 派发参数（不得改动 / 推断 / 凭记忆臆造；文件缺失或未配置 → 停下请使用者填写）——见「各编辑器派发 subagent 命令表」
 
 ```yaml
 # 执行型 subagent 运行的 no-think 模型名——因人而异，按你当前编辑器可用的模型名填写
@@ -40,7 +44,13 @@
 execution_model: "<你的 no-think 模型名>"
 ```
 
-> **Copilot 特例标注（仅本机适用）**：LLM API 配置（VS Code `chatLanguageModels.json`，BYOK 注册）**不随仓库分发**，故下述仅适用于本机 VS Code Copilot + BYOK 场景——Copilot 不透传 `thinking: disabled`（chat-completions 只认 `temperature`/`top_p`），且 DeepSeek 无非思考模型，`execution_model` 实际运行的是 **`reasoning_effort: low`（最小思考量）**，是 Copilot 不支持传递 disabled 情况下的**权宜办法**，并非真正关闭思考；"无思考模型"是执行型纪律的称呼（配合 `thinking: false` 隐藏思考 UI），不代表模型零思考。其它编辑器 / 其它模型配置无此限制，按各自方式填真正 no-think 模型即可。
+> **Copilot 特例标注（仅本机适用）**：LLM API 配置（VS Code `chatLanguageModels.json`，BYOK 注册）**不随仓库分发**，故下述仅适用于本机 VS Code Copilot + BYOK 场景。
+> - Copilot 不透传 `thinking: disabled`（chat-completions 只认 `temperature` / `top_p`）
+> - 且 DeepSeek 无非思考模型
+> - 故 `execution_model` 实际运行的是 **`reasoning_effort: low`（最小思考量）**——Copilot 不支持传递 disabled 情况下的**权宜办法**，并非真正关闭思考
+> - 「无思考模型」是执行型纪律的**称呼**（配合 `thinking: false` 隐藏思考 UI），不代表模型零思考
+>
+> 其它编辑器 / 其它模型配置无此限制，按各自方式填真正 no-think 模型即可。
 
 ## 各编辑器派发 subagent 命令表
 
@@ -54,15 +64,20 @@ execution_model: "<你的 no-think 模型名>"
 | **Gemini CLI** | subagent 工具 | `.gemini/agents/*.md` | agent 定义内模型字段 |
 | **其它** | 以官方文档为准 | 以官方文档为准 | 以官方文档为准 |
 
-> **派发 reflow-worker 时（权威）**：agent **必须读取 `configs/subagent_model.yaml`**，把 `execution_model` 的值**「照原样」填入 subagent 派发参数**——「照原样」= **逐字复用配置文件中的值，不得改动 / 推断 / 凭记忆或上下文臆造模型名**；若编辑器支持**调用时指定模型**（如 `runSubagent` 的 `model` 参数）即传入该值，否则填入 agent frontmatter `model`（见「agent 定义适配」模型行）；文件缺失或未配置 → **停下请使用者填写 `execution_model`，不自行决定**。
+> **派发 reflow-worker 时（权威）**：agent **必须读取 `configs/subagent_model.yaml`**，把 `execution_model` 的值**「照原样」填入 subagent 派发参数**。
+> - **「照原样」= 逐字复用配置文件中的值**，不得改动 / 推断 / 凭记忆或上下文臆造模型名
+> - 若编辑器支持**调用时指定模型**（如 `runSubagent` 的 `model` 参数）即传入该值，否则填入 agent frontmatter `model`（见「agent 定义适配」模型行）
+> - 文件缺失或未配置 → **停下请使用者填写 `execution_model`，不自行决定**
 
 ## 约定文件机制（通用性说明）
 
-项目约定层：**通用格式承载全部知识/流程**（`AGENTS.md` + `.github/skills/`），**执行型 agent 定义 = GitHub Copilot 格式单一权威**（`.github/agents/`），**系统提示词覆盖由 agent 承载**；迁移其它编辑器时从该格式 **adapt**。**所有编辑器相关操作细节（agent 定义文件 / 格式 / 派发入口 / 模型名 / adapt 步骤）集中在本文档，主逻辑 skill（`subagent-dispatch` 等）不承载编辑器适配，只表述「派发 `reflow-worker`，使用无思考模型」。**
+项目约定层：**通用格式承载全部知识 / 流程**（`AGENTS.md` + `.github/skills/`），**执行型 agent 定义 = GitHub Copilot 格式单一权威**（`.github/agents/`），**系统提示词覆盖由 agent 承载**；迁移其它编辑器时从该格式 **adapt**。
+
+**所有编辑器相关操作细节（agent 定义文件 / 格式 / 派发入口 / 模型名 / adapt 步骤）集中在本文档**，主逻辑 skill（`subagent-dispatch` 等）不承载编辑器适配，只表述「派发 `reflow-worker`，使用无思考模型」。
 
 - **通用格式（所有编辑器）**：`AGENTS.md`（多工具标准）+ `.github/skills/`（Agent Skills 开放格式）
 - **执行型 agent（系统提示词覆盖，单一权威）**：`.github/agents/reflow-worker.agent.md`——正文即**系统提示词**，从根源替代宿主通用提示词（内联覆盖声明对抗系统层不可靠）；VS Code / Copilot 原生直接使用
-- **内联兜底**：`subagent-dispatch` 纪律母版 #0 与 `.agent.md` **同源**，派发时随 prompt 整体追加——编辑器无 agent 机制 / 未 adapt 时的通用兜底（效果弱于系统提示词覆盖）
+- **内联兜底**：`subagent-dispatch` 纪律母版「一、执行型定位」与 `.agent.md` **同源**，派发时随 prompt 整体追加——编辑器无 agent 机制 / 未 adapt 时的通用兜底（效果弱于系统提示词覆盖）
 - **运行模型**：读 `configs/subagent_model.yaml` 的 `execution_model`（解除硬编码，见「模型配置」），派发时按「各编辑器派发 subagent 命令表」传入
 
 ### 执行型 agent 定义文件（reflow-worker）
@@ -72,7 +87,7 @@ execution_model: "<你的 no-think 模型名>"
 - **位置 / 格式**：`.github/agents/reflow-worker.agent.md`，GitHub Copilot `.agent.md` 格式（frontmatter `name` / `description` / `tools` / `user-invocable`；正文 = 系统提示词）
 - **能力**：系统提示词覆盖——从根源替代宿主通用提示词（「创造性思考 / 探索工作区」等），内联覆盖声明对抗系统层不可靠
 - **模型**：frontmatter **不写 `model`**（因人而异），统一读 `configs/subagent_model.yaml` 的 `execution_model` 并**照原样**填入派发参数（权威见「各编辑器派发 subagent 命令表」）；如需 agent 自带模型，个人自行在 frontmatter 填 `model`
-- **兜底**：纪律母版 #0 与其同源，派发时随 prompt 整体追加（编辑器无 agent 机制 / 未 adapt 时起效）
+- **兜底**：纪律母版「一、执行型定位」与其同源，派发时随 prompt 整体追加（编辑器无 agent 机制 / 未 adapt 时起效）
 - **迁移**：其它编辑器从该文件 adapt（见下方「agent 定义适配」）
 
 ### 研究型 agent 定义文件（term-researcher）
@@ -80,7 +95,9 @@ execution_model: "<你的 no-think 模型名>"
 > 与 reflow-worker 定位相反——**研究型（查证），非任务处理型**：允许推理/判断/多步查证，但输出受控（页面原文只进一次性上下文、绝不返回，只返回每词一行压缩总结 + 写盘 `term_resolve.md`）。
 
 - **位置 / 格式**：`.github/agents/term-researcher.agent.md`（同 Copilot `.agent.md` 格式）
-- **工具**：`tools: [read, search, edit, execute/runInTerminal, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]`——`execute/runInTerminal` 用于运行 `fetch_wiki.py` 抓取降级（仅此用途，见 agent 正文「终端工具边界」）；MCP 工具用 `<server>/*` 全量语法（VS Code custom agents：tools 可含 MCP 工具，见官方文档）；server 名 = `.vscode/mcp.json` 的 `servers` 键
+- **工具**：`tools: [read, search, edit, execute/runInTerminal, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]`
+  - `execute/runInTerminal` 用于运行 `fetch_wiki.py` 抓取降级（仅此用途，见 agent 正文「终端工具边界」）
+  - MCP 工具用 `<server>/*` 全量语法（VS Code custom agents：tools 可含 MCP 工具，见官方文档）；server 名 = `.vscode/mcp.json` 的 `servers` 键
 - **模型**：**用主模型（当前选择），不用 `execution_model`**——研究型需要思考，no-think 仅用于 reflow-worker 执行型；frontmatter 不写 `model` 即用当前选择，如需指定可自行填
 - **纪律**：**不追加执行型纪律母版**（`_discipline.md` 与 reflow-worker 同源、面向执行型）；研究型纪律（查证链/输出受控）由 agent 正文承载
 - **迁移**：其它编辑器从该文件 adapt（正文原样复用；工具映射需含对应编辑器的网络/检索工具 + 终端/命令执行工具——后者用于运行 `fetch_wiki.py`）
@@ -95,7 +112,7 @@ execution_model: "<你的 no-think 模型名>"
 | 用途说明 | `description` | 原样保留（发现面） |
 | 工具白名单 | `tools` | 映射为目标编辑器工具集（read/edit/search 概念一致） |
 | 运行模型 | `model`（本文件不写，见「执行型 agent 定义文件」） | 执行型（reflow-worker）：值读 `configs/subagent_model.yaml` 的 `execution_model`；研究型（term-researcher）：用主模型 |
-| 系统提示词 | 正文（frontmatter 后全部） | **原样复用**——即执行型纪律，与纪律母版 #0 同源 |
+| 系统提示词 | 正文（frontmatter 后全部） | **原样复用**——即执行型纪律，与纪律母版「一、执行型定位」同源 |
 | 可见性 | `user-invocable: false` | 映射为目标编辑器"仅 subagent 调用" |
 
 - **Claude Code**：`.claude/agents/reflow-worker.md`（frontmatter `name/description/tools/model` + 正文），字段与 Copilot 格式高度对应，正文可直接复用

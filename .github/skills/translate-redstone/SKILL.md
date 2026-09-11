@@ -53,10 +53,10 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
    - **阶段门禁**：`01`/`02` 交用户确认，**确认后才进阶段二**（阶段间确认是本工作流的流程控制，Agent 不得擅自跨阶段）
 3. **阶段二 正式翻译**（本工作流）
    - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`
-   - **执行一律 subagent**（块数由骨架决定，无需报告用/不用），块级产物 + 合并稿：
-     - 分块 → `<工作目录>/chunks/`（01 `text_chunk.py --type srt` 分块骨架）
-     - 合并断句 → `<工作目录>/_merge_results/chunk_<k>.txt` → `text_merge.py` 合并 → `<工作目录>/s03_plan.md`
-     - 逐段翻译 → `<工作目录>/_trans_results/chunk_<k>.txt` → `text_merge.py` 合并 → `<工作目录>/s04_draft.srt`（标准 SRT 双语）
+   - **执行一律 subagent**（块数由骨架决定，无需报告用 / 不用），块级产物 + 合并稿：
+     - 分块：`<工作目录>/chunks/`（01 `text_chunk.py --type srt` 分块骨架）
+     - 合并断句：`<工作目录>/_merge_results/chunk_<k>.txt`，`text_merge.py` 合并为 `<工作目录>/s03_plan.md`
+     - 逐段翻译：`<工作目录>/_trans_results/chunk_<k>.txt`，`text_merge.py` 合并为 `<工作目录>/s04_draft.srt`（标准 SRT 双语）
    - 校验（机械，硬闸门）：断句措辞一致性（`srt_check_plan_words.py`）/ 术语全量核对（`srt_check_terms.py`）/ 行宽（`srt_check_width.py` >26 打回）
 4. **阶段二+ 去翻译腔**（`humanizer-zh`，可选）
    - 输入：`s04_draft.srt` 全稿
@@ -71,12 +71,13 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 **中断恢复路由**：检查 `_work/<视频名>/` 最完整产物，**从产出该产物的阶段开头继续**（假设该阶段异常中断、产物可能不完整）：
 
 1. 无任何产物 → 从头开始（阶段〇）
-2. 仅 `01_subtitle_asr_fixed.srt` → 阶段一 §1.1 开头（重新第一次遍历，确保 01 完整；有 `_en_chunks/` + 部分 `_en_results/` → 步骤 2 补派缺失块后 `srt_join_parts.py` 合并）
+2. 仅 `01_subtitle_asr_fixed.srt` → 阶段一 §1.1 开头（重新第一次遍历，确保 01 完整）
+   - 有 `_en_chunks/` + 部分 `_en_results/` → 步骤 2 补派缺失块后 `srt_join_parts.py` 合并
 3. 有 `02_terms.md` → 阶段一 §1.3 开头（重新术语确认；§1.4 入库照做）
 4. 有 `chunks/`（01 分块骨架，无 `_merge_results/`）→ 阶段二 合并断句派发开头（逐块派发 `task-merge`）
-5. 有 `_merge_results/` 部分 → 补派缺失断句块后 `text_merge.py` 合并 → `s03_plan.md`（断句措辞/时间校验通过后进翻译）
+5. 有 `_merge_results/` 部分 → 补派缺失断句块，`text_merge.py` 合并为 `s03_plan.md`（断句措辞 / 时间校验通过后进翻译）
 6. 有 `s03_plan.md`（无 `_trans_results/`）→ 阶段二 翻译派发开头（逐块派发 `task-translate`）
-7. 有 `_trans_results/` 部分 → 断点续译（补派缺失翻译块后 `text_merge.py` 合并 → `s04_draft.srt`）
+7. 有 `_trans_results/` 部分 → 断点续译（补派缺失翻译块，`text_merge.py` 合并为 `s04_draft.srt`）
 8. 有 `s04_draft.srt` → 阶段二½ 人工审核（或阶段二+ 去翻译腔）
 
 > 各阶段结束**立即落盘**（conventions「断点恢复」）；中间产物是工作底稿，**禁止自动删除**（AGENTS.md #6），清理提示用户手动执行。
@@ -140,14 +141,16 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 阶段二：正式翻译
 
-> **执行一律 subagent（无需报告）**：合并断句 / 翻译**逐块派 subagent**（块数由分块骨架决定，无需报告“用/不用”）——统一路径，见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。主会话只做：分块 → 渲染 → 派发 → 合并 → 校验 → 定点修复派发。
+> **执行一律 subagent（无需报告）**：合并断句 / 翻译**逐块派 subagent**（块数由分块骨架决定，无需报告「用 / 不用」）——统一路径，见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
+>
+> 主会话只做：分块 → 渲染 → 派发 → 合并 → 校验 → 定点修复派发。
 
 **产物契约（本阶段输入 / 输出）**：
 - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`（preprocess 产物）
 - 输出（块级 subagent 产物 + 合并稿）：
   - `chunks/`（01 分块骨架，从 01 `text_chunk.py --type srt` 分块）
-  - `_merge_results/chunk_<k>.txt`（断句块）→ `text_merge.py` 合并 → `s03_plan.md`（断句定稿，交用户审核前落盘）
-  - `_trans_results/chunk_<k>.txt`（翻译块）→ `text_merge.py` 合并 → `s04_draft.srt`（标准 SRT 双语 en-zh，逐段翻译落盘）
+   - `_merge_results/chunk_<k>.txt`（断句块），`text_merge.py` 合并为 `s03_plan.md`（断句定稿，交用户审核前落盘）
+   - `_trans_results/chunk_<k>.txt`（翻译块），`text_merge.py` 合并为 `s04_draft.srt`（标准 SRT 双语 en-zh，逐段翻译落盘）
 - 各产物结构/分隔符/标记约定（单一权威）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)，处理前先查对应节
 
 **翻译风格**：翻译前读 `ref_translations/` 参考译例（如有），模仿其**语气 / 句长偏好 / 术语偏好 / 注释风格**。
@@ -158,7 +161,9 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 1. **分块**：`python scripts/text_chunk.py 01_subtitle_asr_fixed.srt --type srt --owned <N> --ctx <M> --out chunks/`（N 按 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) 用 `context_estimate.py` 定；N=1 单块亦分，产物契约一致）
 2. **渲染**：`python scripts/render_subagent_prompt.py task-merge --video <工作目录> --all --chunks-dir <工作目录>/chunks`
-3. **逐块派发** `task-merge`（断句 subagent；规则见 [segment-subtitles](../segment-subtitles/SKILL.md) 权威 + 任务文件 [task-merge.md](task-merge.md)）→ `_merge_results/chunk_<k>.txt`；每收一个 `已写入` 立即验证真实性（[subagent-dispatch#收信号即验](../subagent-dispatch/SKILL.md#收信号即验已写入-真实性门禁拦截假完成)）
+3. **逐块派发** `task-merge`（断句 subagent）→ `_merge_results/chunk_<k>.txt`。
+   - 规则见 [segment-subtitles](../segment-subtitles/SKILL.md) 权威 + 任务文件 [task-merge.md](task-merge.md)
+   - 每收一个 `已写入` 立即验证真实性（[subagent-dispatch#收信号即验](../subagent-dispatch/SKILL.md#收信号即验已写入-真实性门禁拦截假完成)）
 4. **合并**：`python scripts/text_merge.py chunks/ _merge_results/ --out s03_plan.md [--report <报告>]`（异常只读报告，见 [subagent-dispatch#合并](../subagent-dispatch/SKILL.md#合并text_mergepy-全自动--异常清单替代主-agent-手工读头尾)）
 5. **校验（硬闸门，全量）**：
    - 断句措辞一致性（断句只合并/分割、不改措辞）：`python scripts/srt_check_plan_words.py 01_subtitle_asr_fixed.srt s03_plan.md --asr-fixes 02_terms.md`
@@ -176,7 +181,10 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
    - 术语全量核对：`python scripts/srt_check_terms.py 01_subtitle_asr_fixed.srt 02_terms.md <_trans_results/> --chunks <chunks/>`（分块时）或 `... s04_draft.srt --plan s03_plan.md`（合并后）
    - 行宽：`python scripts/srt_check_width.py s04_draft.srt --order en-zh`（>26 硬打回退出码 1、>22 软告警）
    - 时间边界：`python scripts/srt_check_segments.py s04_draft.srt --orig 01_subtitle_asr_fixed.srt`
-5. **校验打回 → 定点修复（B 档）**：收集**全部错误清单**一次派发 `task-fix`（[task-fix.md](task-fix.md)，见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正surgical-fix校验打回先小规模修不整块重派)）——断句措辞按 01 改回、译文改措辞/术语漂移/行宽（**translate 修复就是改译文本身**，无 reflow「r03 只许切不许译」约束）；修正后复验（重跑触发它的校验），仍有残留 → 第二轮只派增量清单；多轮仍失败 → C 档整块重派（mv 清理 + 重派）
+5. **校验打回 → 定点修复（B 档）**：收集**全部错误清单**一次派发 `task-fix`（[task-fix.md](task-fix.md)，见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正surgical-fix校验打回先小规模修不整块重派)）。
+   - 修复范围：断句措辞按 01 改回；译文改措辞 / 术语漂移 / 行宽（**translate 修复就是改译文本身**，无 reflow「r03 只许切不许译」约束）
+   - 修正后复验（重跑触发它的校验）
+   - 仍有残留 → 第二轮只派增量清单；多轮仍失败 → C 档整块重派（mv 清理 + 重派）
 
 #### 输出约束（审核口径，与 [task-translate.md](task-translate.md) 任务规则同源，不重复定义）
 
@@ -192,7 +200,10 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 > **独立上下文执行**（原隐含在主会话顺带做，现按 `docs/PIPELINE_ISOLATION.md` 隔离）：本步骤作为**独立一遍**运行——只读 `s04_draft.srt` 全稿，独立窗口产出修订稿，不在翻译会话里顺带改。全稿超长时可先分块、各块独立跑（块间用同一规则模板约束，保持风格一致）。
 
 - **整稿（不分块）**：主会话独立一遍，按 `humanizer-zh` 规则扫描修订，回写 `s04_draft.srt`
-- **长稿分块**：先把 `s04_draft.srt` 按段分块到 `_work/<视频名>/_humanize_chunks/`（每块含该块译文段），再逐块派 subagent——`python scripts/render_subagent_prompt.py task-humanize --video <工作目录> --all --chunks-dir <工作目录>/_humanize_chunks`，任务文件 [task-humanize.md](task-humanize.md)（字幕场景去翻译腔规则 / 改写原则的 subagent 版，**主 skill 不重复**）；结果写 `_work/<视频名>/_humanize_results/chunk_<k>.txt`：每行 `段号|修订后译文`（可附改动点说明）
+- **长稿分块**：先把 `s04_draft.srt` 按段分块到 `_work/<视频名>/_humanize_chunks/`（每块含该块译文段），再逐块派 subagent。
+  - 渲染：`python scripts/render_subagent_prompt.py task-humanize --video <工作目录> --all --chunks-dir <工作目录>/_humanize_chunks`
+  - 任务文件 [task-humanize.md](task-humanize.md)（字幕场景去翻译腔规则 / 改写原则的 subagent 版，**主 skill 不重复**）
+  - 结果写 `_work/<视频名>/_humanize_results/chunk_<k>.txt`：每行 `段号|修订后译文`（可附改动点说明）
 
 ---
 

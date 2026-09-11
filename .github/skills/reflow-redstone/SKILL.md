@@ -50,19 +50,30 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
      - 步骤 3 归一化 → `r01_normalized/chunk_<k>.txt`
      - 步骤 3 处理（补标点）→ `r01_results/chunk_<k>.txt`
      - 步骤 4 处理（翻译 + 术语核对）→ `r02_results/chunk_<k>.txt`
-     - 步骤 5 归一化（预分句 + ZH 机械化断句）→ `r03_normalized_1/chunk_<k>.txt`（EN 预分句 E 号）+ `r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架：Z 句 + 子句段预填）+ `r03_zslim/chunk_<k>.txt`（**独立产物**：ZH 整句级精简列表，`--zh-list-out` 生成，仅 5-2 task-match 输入，见 PRODUCT_FORMATS）
-     - 步骤 5 处理（分句，5-1/5-2 二选一）→ **5-1 LLM 语义分句**（老，现状）：`task-split` 直接写；**5-2 脚本断句**（新，省 token）：`r03_matches/chunk_<k>.txt`（匹配文件，LLM 只做句子匹配）→ `build-r03` 机械填回——两路径产物 `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号；**回填输入 = 目录直读**，`parse_r03_dir` 按块序解析 + 全局重编号，零拼接）——`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
+   - 步骤 5 归一化（预分句 + ZH 机械化断句）→ 三个产物：
+     - `r03_normalized_1/chunk_<k>.txt`（EN 预分句 E 号）
+     - `r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架：Z 句 + 子句段预填）
+     - `r03_zslim/chunk_<k>.txt`（**独立产物**：ZH 整句级精简列表，`--zh-list-out` 生成，仅 5-2 task-match 输入，见 PRODUCT_FORMATS）
+   - 步骤 5 处理（分句，5-1 / 5-2 二选一）：
+     - **5-1 LLM 语义分句**（老，现状）：`task-split` 直接写
+     - **5-2 脚本断句**（新，省 token）：`r03_matches/chunk_<k>.txt`（匹配文件，LLM 只做句子匹配），`build-r03` 机械填回
+     - 两路径产物均为 `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号；**回填输入 = 目录直读**，`parse_r03_dir` 按块序解析 + 全局重编号，零拼接）
+     - `r03_plan.md` 仅审核 / 审计时 `join-r03` 按需生成
      - 步骤 6 处理（回填）→ `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
      - 步骤 7 处理（组装）→ `r04_bilingual.srt`（双语预览 en-zh）
 
-> **产物格式/分隔符/标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式；块间分隔一律空行、手写标记仅限跨块句补全的 `【承接句】`/`【延伸句】`（`【强制断句】` 为空隙标记、非产物文本，经复核注入补标点先验知识）。
+> **产物格式 / 分隔符 / 标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式。
+> - 块间分隔一律空行
+> - 手写标记仅限跨块句补全的 `【承接句】` / `【延伸句】`
+> - `【强制断句】` 为空隙标记、非产物文本，经复核注入补标点先验知识
 3. **阶段二½ 人工审核**（`redstone-review`）——输入 `r03` + `r04` → 用户确认（无新落盘）
 4. **阶段三 数据源总结**（`redstone-finalize`）——`.github/experience/` 追加
 
 **中断恢复路由**：检查 `_work/<视频名>/` 最完整产物，**从产出该产物的阶段/步骤开头继续**（假设该阶段异常中断、产物可能不完整）：
 
 1. 无任何产物 → 从头开始（阶段〇）
-2. 仅 `01_subtitle_asr_fixed.srt` → preprocess §1.1 开头（有 `_en_chunks/` + 部分 `_en_results/` → §1.1 步骤 2 补派缺失块后 `srt_join_parts.py` 合并）
+2. 仅 `01_subtitle_asr_fixed.srt` → preprocess §1.1 开头
+   - 有 `_en_chunks/` + 部分 `_en_results/` → §1.1 步骤 2 补派缺失块，`srt_join_parts.py` 合并
 3. 有 `02_terms.md` → preprocess §1.3 开头（§1.4 入库照做）
 4. 有 `r00_gaps.md`/`r01_breaks.md`（断句骨架）→ 步骤 2 开头（从确定块大小 + 分块续）
 5. 有 `reflow/chunks/`（01 分块骨架）→ 步骤 3 归一化（跑 `srt_reflow_normalize.py` → `r01_normalized/`）
@@ -116,16 +127,40 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ### 阶段二：语义回填
 
-> 语义工作（合并补标点 / 翻译 / 分句对应 / 回填判断）由 Agent 承担；确定性时间运算由 `scripts/srt_reflow*.py` 承担。**进入本阶段时加载 [semantic-reflow.md](semantic-reflow.md) 执行**——步骤 1-7 完整指令（空隙探测 → 分块 → 补标点 → 翻译 → 分句 → 回填 → 组装，各步按「归一化 → 处理 → 校验」三段组织，含派发边界 / 执行型纪律 / 行文结构）。
+> 语义工作（合并补标点 / 翻译 / 分句对应 / 回填判断）由 Agent 承担；确定性时间运算由 `scripts/srt_reflow*.py` 承担。
+>
+> **进入本阶段时加载 [semantic-reflow.md](semantic-reflow.md) 执行**——步骤 1-7 完整指令（各步按「归一化 → 处理 → 校验」三段组织，含派发边界 / 执行型纪律 / 行文结构）：
+> 1. 空隙探测
+> 2. 分块
+> 3. 补标点
+> 4. 翻译
+> 5. 分句
+> 6. 回填
+> 7. 组装
 
-- 本阶段产物链（`r00_gaps.md` → `chunks/` → `r01_normalized/` → `r01_results/` → `r02_results/` → `r03_normalized_1/2` → `r03_results/` → `r04_draft.srt` → `r04_bilingual.srt`）与中断恢复路由见上方「中间产物与断点恢复」+ [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)
+- 本阶段产物链与中断恢复路由见上方「中间产物与断点恢复」+ [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)。产物顺序：
+  1. `r00_gaps.md`
+  2. `chunks/`
+  3. `r01_normalized/`
+  4. `r01_results/`
+  5. `r02_results/`
+  6. `r03_normalized_1/2`
+  7. `r03_results/`
+  8. `r04_draft.srt`
+  9. `r04_bilingual.srt`
 - **步骤 5 路径选择（必须询问用户，不得默认）**：5-1 LLM 语义分句 / 5-2 脚本断句——差异与执行见 semantic-reflow.md
 
 ---
 
 ### 阶段二½：人工审核循环
 
-按 [redstone-review](../redstone-review/SKILL.md) 执行（循环机制 + 输出门禁）。**审核对象：回填方案 + 最终 SRT**（r03 = `r03_results/` 目录直读，或 `join-r03` 生成的 `r03_plan.md` 完整稿 + `r04_draft.srt`），重点核对语义对应是否判对（拆/合关系、切分位置）。**审核中发现 AI 味 / 翻译腔 → 回 r02 改整句、r03 同步**（受忠实铁律约束，不得在 r04 单侧改写），红石术语译名不受影响。
+按 [redstone-review](../redstone-review/SKILL.md) 执行（循环机制 + 输出门禁）。
+
+- **审核对象：回填方案 + 最终 SRT**
+  - r03 = `r03_results/` 目录直读，或 `join-r03` 生成的 `r03_plan.md` 完整稿
+  - `r04_draft.srt`
+- **重点核对语义对应是否判对**（拆 / 合关系、切分位置）
+- **审核中发现 AI 味 / 翻译腔 → 回 r02 改整句、r03 同步**（受忠实铁律约束，不得在 r04 单侧改写）；红石术语译名不受影响
 
 ### 阶段三：数据源效果总结
 

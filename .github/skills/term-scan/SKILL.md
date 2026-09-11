@@ -24,9 +24,12 @@ description: 阶段一术语扫描（redstone-preprocess §1.1/§1.2）的机制
 
 ## ASR 语义解码（第一次遍历）
 
-> subagent 侧任务规则/时间戳纪律/输出契约见 `task-en-preprocess.md`（注入素材：asr_fixes 全局+局部 + 领域术语集，由渲染脚本按任务注入）；主会话编排见 redstone-preprocess §1.1 步骤 2（分块 → 渲染 → 派发 → `srt_join_parts.py` 合并 → `srt_check_segments --cue-exact` → 汇总）。
-
-- **ASR 分层登记**（subagent 只产出 `.asr.tsv` 清单，登记由主会话/确认后）：跨视频通用→全局表；视频专属→`_work/<视频名>/asr_fixes.md`（必要时入术语库）——规则见 [term-registration#ASR 映射登记](../term-registration/SKILL.md#asr-映射登记翻译工作流专用)
+> subagent 侧任务规则 / 时间戳纪律 / 输出契约见 `task-en-preprocess.md`（注入素材：asr_fixes 全局 + 局部 + 领域术语集，由渲染脚本按任务注入）。
+> - 主会话编排见 redstone-preprocess §1.1 步骤 2：分块 → 渲染 → 派发 → `srt_join_parts.py` 合并 → `srt_check_segments --cue-exact` → 汇总
+- **ASR 分层登记**（subagent 只产出 `.asr.tsv` 清单，登记由主会话 / 确认后做）：
+  - 跨视频通用 → 全局表
+  - 视频专属 → `_work/<视频名>/asr_fixes.md`（必要时入术语库）
+  - 规则见 [term-registration#ASR 映射登记](../term-registration/SKILL.md#asr-映射登记翻译工作流专用)
 
 ## 机械查找（补充机制，主会话跑）
 
@@ -39,8 +42,15 @@ description: 阶段一术语扫描（redstone-preprocess §1.1/§1.2）的机制
 
 ## 术语识别
 
-> 任务规则见 `task-term-recognition.md`（命中项强制查词 / trap_words / ASR 推测 / 补变体 / 排误报 / L3 标记）；prompt 由 `render_preprocess_prompt.py task-term-recognition` 渲染（自动注入 scan 命中项按 OWNED cue 过滤 + 领域术语集 + ASR 修正映射），派发见 redstone-preprocess §1.1 步骤 4（先验知识注入顺序见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）。
+> 任务规则见 `task-term-recognition.md`（命中项强制查词 / trap_words / ASR 推测 / 补变体 / 排误报 / L3 标记）。
+> - prompt 由 `render_preprocess_prompt.py task-term-recognition` 渲染（自动注入 scan 命中项按 OWNED cue 过滤 + 领域术语集 + ASR 修正映射）
+> - 派发见 redstone-preprocess §1.1 步骤 4；先验知识注入顺序见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)
 
 ## 集中补齐（§1.2 查证）
 
-> 待查 L3 术语译名查证**由 `term-researcher`（研究型 agent）分批派发**——待查列表按 **30 条/块** 拆 `term_pending_<i>.md` 后逐块派发，**任务文件即完整 prompt**（`task-term-resolve.md`），派发时「任务文件 + 该块待查列表 `term_pending_<i>.md`」双引用（见 redstone-preprocess §1.2）——主会话只写待查列表 + 分块 + 逐块派发 + 读各块结果 + 合并，**不读 wiki 页面全文**。查证链/抓取纪律见 [wiki-tools](../wiki-tools/SKILL.md)（权威）+ `task-term-resolve.md`；产物契约（`term_pending.md` / `term_pending_<i>.md` / `term_resolve_<i>.md`）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)。
+> 待查 L3 术语译名查证**由 `term-researcher`（研究型 agent）分批派发**。
+> - 待查列表按 **30 条/块** 拆 `term_pending_<i>.md`，逐块派发
+> - **任务文件即完整 prompt**（`task-term-resolve.md`）；派发时「任务文件 + 该块待查列表 `term_pending_<i>.md`」双引用（见 redstone-preprocess §1.2）
+> - 主会话只做：写待查列表 + 分块 + 逐块派发 + 读各块结果 + 合并，**不读 wiki 页面全文**
+> - 查证链 / 抓取纪律见 [wiki-tools](../wiki-tools/SKILL.md)（权威）+ `task-term-resolve.md`
+> - 产物契约（`term_pending.md` / `term_pending_<i>.md` / `term_resolve_<i>.md`）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)
