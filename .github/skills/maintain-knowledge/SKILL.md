@@ -39,7 +39,7 @@ description: 维护项目第一类知识（knowledge/）与索引（indexes/）�
 - Agent **只写入** `knowledge/01_terminology/_uncategorized.csv`，不触碰 `.cache/glossary/`（脚本生成）与 `_repos/`（只读）
 - 具体的术语文件清单见 `indexes/knowledge/`
 
-## knowledge/01_terminology/ 结构
+## knowledge/ 目录结构
 
 此目录不仅包含游戏术语，还包含翻译所需的各类参考信息：
 
@@ -47,13 +47,12 @@ description: 维护项目第一类知识（knowledge/）与索引（indexes/）�
 knowledge/
 ├── _template_knowledge.md      # 通用知识卡模板（唯一权威，位于 knowledge/ 根）
 ├── 01_terminology/             # 术语表 CSV
-└── 02_mechanic/                # 机制知识卡
+└── 02_mechanic/                # 知识卡（唯一落点）
 
 knowledge/01_terminology/
 ├── _example.csv            # 表头模板（所有 CSV 共享同一表头）
 ├── _uncategorized.csv      # Agent 自动登记的新术语（待人工分拣）
 ├── *.csv                   # 人工分拣后的各类术语表（redstone.csv、people.csv 等）
-├── *.md                    # 术语知识卡（<英文术语>.md）
 └── ...                     # 按需扩展
 ```
 
@@ -67,7 +66,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 
 ### 文件格式与规范（指针）
 
-- 长篇机制说明：`knowledge/<分类>/<词条>.md`（含 YAML frontmatter）
+- 长篇机制说明：`knowledge/02_mechanic/<词条>.md`（含 YAML frontmatter）
 - 术语/人物/组织：CSV，共享 `_example.csv` 表头；Agent 新建术语只能写入 `_uncategorized.csv`
 - **CSV 表头列含义**：`csv-rules` Skill（唯一权威）
 - **CSV 读写规范**：`csv-rules` Skill（编码/解析/写入）
@@ -80,8 +79,8 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 ### 模板
 
 - 唯一权威模板：`knowledge/_template_knowledge.md`
-- 每词/每概念一卡，文件命名 `<英文术语>.md`；术语类卡片放 `knowledge/01_terminology/`，机制类卡片放 `knowledge/02_mechanic/`
-- 卡片结构：YAML frontmatter（`term`/`aliases`/`category`/`source`/`version`/`status`）+ 3 分区（`要点`/`翻译注意事项`/`备注`）
+- 每词/每概念一卡，文件命名 `<英文术语>.md`，**统一放 `knowledge/02_mechanic/`**——该目录承载各类主题的知识卡，不按「术语 / 机制」分家
+- 卡片结构：YAML frontmatter（`term`/`aliases`/`category`/`source`/`version`/`status`/`license`）+ 3 分区（`要点`/`翻译注意事项`/`备注`）
 
 ### 创建时机
 

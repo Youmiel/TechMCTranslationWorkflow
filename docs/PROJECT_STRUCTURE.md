@@ -47,7 +47,7 @@ Project_Main/
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
 | `knowledge/01_terminology/` | 术语译名标准 | 分类 CSV：`common.csv`、`game_system.csv`、`proper_nouns.csv`、`redstone_concepts.csv`、`storage.csv`；**新译名暂存 `_uncategorized.csv`**（待人工分拣） |
-| `knowledge/02_mechanic/` | 机制知识 | 红石机制说明 md |
+| `knowledge/02_mechanic/` | 知识卡（知识卡唯一落点） | 词汇/概念/机制知识卡 md（<英文术语>.md，含 YAML frontmatter） |
 | `indexes/knowledge/` | 知识库检索索引 | 由维护流程生成，Git 追踪 |
 | `indexes/repos/` | 外部仓库检索索引 | 每仓库一 md，头部记录上游 commit |
 

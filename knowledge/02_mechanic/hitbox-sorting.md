@@ -5,6 +5,7 @@ category: mechanical
 source: Chronos SMP - Autocrafting Creeper Storage（QSDpdXT9SPs）+ 用户人工补充（2026-08-23）
 version: [通用]
 status: 已确认
+license: 社区通用
 ---
 
 # Hitbox Sorting（碰撞箱分选）

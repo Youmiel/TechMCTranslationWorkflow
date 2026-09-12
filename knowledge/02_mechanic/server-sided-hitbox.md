@@ -4,7 +4,8 @@ aliases: [服务端碰撞箱, server hitbox]
 category: mechanical
 source: The Minecraft World Border - Technical Analysis (FX) / TechMCDocs GameMechanics/WorldBorder
 version: [通用]
-status: 待审核
+status: 已确认
+license: 社区通用
 ---
 
 # Server-sided Hitbox（服务端碰撞箱）

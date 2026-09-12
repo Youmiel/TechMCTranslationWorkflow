@@ -38,7 +38,7 @@
 | falling sand | fine suns / following sand | 落沙 |
 | falling block setup | one dog setup | 落沙方案 |
 | falling portal frame | following form | 落沙传送门框架 |
-| shulker box | shocker box / shock boxes / shelter boxes / sugar box / add bottles / a shocker of half blocks | 潜影盒系列变体 |
+| shulker box | shocker box / shock boxes / shelter boxes / sugar box / add bottles / a shocker of half blocks / shalka boxes / Sher box | 潜影盒系列变体 |
 | beacon(s) | beaten / beating / beaten tower / four peaking blocks / the buildings / without any weakness in / without any beatings / five thousand beatens | 信标系列 |
 | nether portal | never portal / never puddle / never probably / never bothered / narrow products / reporting never parted | 下界传送门 |
 | end portal | end port / airport / end water | 末地传送门 |
@@ -46,7 +46,7 @@
 | world border | wharf border / word butter / corner to win generator / the word hearing into a box eight core option | 世界边界 |
 | word tear | word staring thing / word hearing into a box eight core option | 字撕裂（1.12.2 黑科技） |
 | Block 36 | box 36 | 移动方块 |
-| sorter | sorder / sortter / sortters | 分类器 |
+| sorter | sorder / sortter / sortters / soter | 分类器 |
 | multi-item sorter | multi-to solder / are multi-item | 多物品分类器 |
 | dustless | DOSless | 无粉 |
 | MSPT | MPT / MSP T / msbt / msvt | 毫秒每刻 |
@@ -82,7 +82,7 @@
 | shulker bullet | Bulls / bolts / Ebola | 潜影弹 |
 | peeking | peaking | 开壳（潜影贝） |
 | game tick | game decks / game takes / takes | 游戏刻 |
-| comparator | comparative | 比较器 |
+| comparator | comparative / compar | 比较器 |
 | schematic | scam | 投影/原理图 |
 | scaffolding-based | scaffolding by | 脚手架式（农场） |
 | tileability | title ability | 可堆叠性 |
@@ -158,3 +158,14 @@
 | design in snapshot | design snapshot | ASR 漏介词 in |
 | cut it | carry | 剪辑用语（"我要切掉这段"） |
 | though | through | 连词 though（"The biomes themselves, though"） |
+| dropper | droper / the dro / a dro | — |
+| hopper | hopp / hoer / Hop / oppers / hop | — |
+| hitbox | hit boox | — |
+| scheduled tick | shedule ticks | — |
+| quasi connectivity | quaza connectivity | — |
+| carved pumpkin | cve pumpkins / the car pumpkin | — |
+| shears | shars | — |
+| Storage Tech | no Tech | — |
+| chest boat / chest cart | chest boards chest cards / boards | — |
+| tileable | tied | — |
+| ghast fireball | gas Fireballs | — |

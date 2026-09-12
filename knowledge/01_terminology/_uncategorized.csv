@@ -29,3 +29,5 @@ pattern table,,模式表：由世界种子算出的重复表，决定各生物�
 Waxed Lightly Weathered Cut Copper Stairs,,涂蜡的斑驳切制铜楼梯（梗：视频以此超长物品名调侃方块种类数）。,来源：zh wiki 切制铜楼梯页 21w05a 历史（旧译「涂蜡的轻度锈蚀切制铜楼梯」）；2026-08-25 用户确认,涂蜡的斑驳切制铜楼梯,
 bareiron,,bareiron：本视频作者自写的 Minecraft 服务器项目名（保留原文）。,来源：视频自述项目名；p-k5MPhBSjk 视频 00:00:57；2026-08-25 用户确认,bareiron,
 alpha,,Alpha：Minecraft 早期版本阶段名（保留原文）。,来源：p-k5MPhBSjk 视频 00:18:13；2026-08-25 用户确认,Alpha,
+footprint,,装置占用的方块范围（习题常限定占地尺寸）,四级查找未命中；2026-09-13 用户确认,占地尺寸,
+bleed over,,比较器输出越过阈值后外溢到相邻单元、致其误动作（AB 堆叠需规避）,四级查找未命中；对照 knowledge/01_terminology/storage.csv Container Threshold 描述“单片间信号溢出”,信号溢出,

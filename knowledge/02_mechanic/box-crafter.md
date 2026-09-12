@@ -1,10 +1,11 @@
 ---
 term: box crafter
-aliases: [潜影盒合成机, box crafter, Ngt box crafter, N gametick box crafter]
+aliases: [Ngt box crafter, N gametick box crafter, 潜影盒合成机]
 category: storage
-source: Chronos SMP - Autocrafting Creeper Storage (QSDpdXT9SPs) 
+source: Chronos SMP - Autocrafting Creeper Storage (QSDpdXT9SPs)
 version: [1.21+]
 status: 已确认
+license: 社区通用
 ---
 
 # Box Crafter（潜影盒合成机）

@@ -37,6 +37,7 @@ python scripts/setup_editors.py
 
 - `translate-redstone`: 方案一 - 逐句翻译视频字幕 
 - `reflow-redstone`: 方案二 - 语义回填重排字幕
+- `reflow2`: 方案二的重构版本
 - `maintain-knowledge`: 维护知识库与术语 
 - [`humanizer-zh`](./skills/humanizer-zh): 去除翻译腔 / AI 味（可选） 
 

@@ -10,7 +10,9 @@ Z 句（中文）通过对齐（align，Z组=E组）**继承** E 固化时间—
    （E 固化时间已含共享 cue 字符占比切分，故继承天然零重叠）
 2. **拆子段**：Z 句文本超宽（>hard_max）或时长碎片（<min_ms）时按中文阅读速度/宽度比例在
    E 组区间内细分（复用 allocate._allocate_by_weight 逻辑：吸附真实 cue 边界 ≤snap_ms，
-   无则 100ms 取整预测点）——阅读舒适优先（≤22 字），不因「尊重原轴」保留超长句
+   无则 100ms 取整预测点）——阅读舒适优先（≤22 字），不因「尊重原轴」保留超长句。
+   拆段标点分级 = 句末标点（。！？…）优先 → 句内标点（，；：—、）；由标点切不动仍超宽的单句
+   保留原样并计入告警（此类需回 r02 改写句子，加句内标点）
 
 产物：
 - `r04_draft.srt`：标准 SRT 单语中文（显示单元 = Z 整句或子段）
@@ -206,7 +208,9 @@ def main():
                     real_bounds.add(et[e][0])
                     real_bounds.add(et[e][1])
                 # 候选段按阅读时长权重分配区间
-                cands = split_recursive(zh, ["，；：", "—", "、"], HARD_MAX)
+                # 标点分级：句末标点优先（句界是最自然的字幕段界，避免跨句粘连成超宽段），
+                # 再降至句内标点；单段切不动仍超宽时保留（由告警暴露）
+                cands = split_recursive(zh, ["。！？…", "，；：", "—", "、"], HARD_MAX)
                 units = pack_candidates(cands, HARD_MAX, 5)
                 weights = [max(1, cjk_reading_ms(u, args.cjk_speed)) for u, _w in units]
                 # 子段 EN = 整句 EN 按子段宽度比例机械切（互斥拼接==整句 EN；语义近似）

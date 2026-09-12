@@ -29,6 +29,7 @@
 - 当术语是「机制性」的、可整页覆盖多项时 → 一次抓取页面可多收，因为 Wiki 页面常包含相关子概念。（案例：下界页一次解决 nether ceiling + 8:1 坐标比）
 - 当术语属于「凋灵笼/凋灵类机制」时 → 查中文 Wiki 教程页。（案例：窒息伤害、蓝色凋灵之首、wither cage）
 - 当术语属于「合成/工作台 UI」时 → 查 zh wiki 合成页，因为官方用词是「合成方格」（非「合成网格」）与「合成配方」，「网格」属直觉直译的常见误译。（案例：p-k5MPhBSjk crafting grid / crafting recipe）
+- 当红石语境出现 `provide redstone power` / `powered` / `charged` 时 → 查 zh wiki「红石电路/充能与激活」，因为 wiki 严格区分**供能（Powering）/ 激活（Activating）/ 充能（Charging）**，且「充能」只适用于红石导体——非导体（漏斗等）只能被供能/被激活，不宜称"充能"；同一句同时含「直接供能」与「经导电方块」时应分别用「供能」与「充能」。（案例：ZXGpmaIcMMo c343 漏斗 provide Redstone power whether directly or just activating it through a conductive block；知识卡 `02_mechanic/power-vs-charge.md`）
 - 盲区：Wiki 教程页可能不存在（案例：Tutorials/Item sorter 页面 404）。
 
 ## _repos/TechMCDocs（Technical Minecraft Wiki）
@@ -58,6 +59,7 @@
 - 当装置名以「数字+gt（游戏刻）」修饰（如 16 gametick box crafter）时 → 先确认该数字指运行周期还是单次耗时，因为装置命名中的 gt 常指每 N 刻循环一次的周期（16gt = 每 0.8s 一个合成循环）而非处理耗时，误读会歪曲机制理解；译名建议「以 16gt 为周期的」而非字面直译「16 游戏刻」。（案例：QSDpdXT9SPs c106 16 gametick box crafter，用户确认 16gt 为周期，通用知识卡 `02_mechanic/box-crafter.md`）
 - 当红石语境出现 wire（单复数/组合词 wires、wireless、redstone wire 等）时 → 译「线路」（广义布线/走线）或「红石（粉）线」（狭义 redstone wire），**绝不译「电线」**，因为 Minecraft 红石领域没有电工意义上的电线，wire 只指逻辑线路或红石粉线，译「电线」会窜出游戏语境。（案例：QSDpdXT9SPs r02「不需要那么多电线绕着到处走」系错翻，对应 "don't need as many wires going around the place"（c249），正确应为「线路/布线」）
 - 当术语指「网络传输 packet」（客户端-服务端通信）时 → 译「网络包」，因为游戏内 `data pack` 已占用「数据包」这一译名，packet 同译「数据包」会造成两类概念混淆；单说「封包」虽可区分但非项目约定。（案例：p-k5MPhBSjk 用户裁定 packet→网络包，data pack→数据包）
+- 当机器名/分类器名可被拆出「普通英文词」但实为**玩家 ID 词源**时（impulse sorter / Impulse Style Item Filter / …）→ 不按字面词义直译，常见语境译其功能名、上下文提及作者时用原名，因为词源是人名（Impulse SV），字面直译会把机制语义带偏。（案例：ZXGpmaIcMMo c460 impulse sorter 用户裁定「经典物品分类器」，**禁用「脉冲式分类器」**；提及作者处作「Impulse 分类器」；`trap_words.md` storage）
 
 ## 时间戳对齐（方法论）
 
@@ -78,6 +80,8 @@
 - 当 task-fix 定点修 r03 拆句子单元（行宽重切）时 → 慎用——子单元拆分改动易破坏 EN/ZH 互斥拼接（task-fix 重写子单元时与整句对不齐），收敛慢；若同块错误密集（拆句互斥 + 行宽 + 锚定混合）→ 直接整块重派（C 档），因为定点修复在结构性问题前 token 反超、收敛不可控。（案例：uVOFckoMdIU chunk_002 前 2 轮 task-fix 修出 6 组新互斥破坏，拆半重派根治；chunk_004 跨块句/占位等结构问题 task-fix 两次修乱开头与末尾，改主会话脚本精确替换 6 处一次通过——结构修复脚本优于逐处定点）
 
 - 当 ASR 预整理（en-preprocess）subagent 产物跑 `srt_check_segments --cue-exact` 报时间错位时 → 从原始 SRT 按 cue 顺序一一恢复时间码（块文件 + 合并后 01 同步），因为 subagent 可能改了时间码而 01 必须保留原时间轴；勿按「前 N 个时间行」顺序替换（块内 cue 号偏移会误改其它 cue）。（案例：uVOFckoMdIU cue 361/362/939 被改成 00:12:19,480 等新造点，按 cue 一一恢复后 1327 cue 全绿）
+- 当 r04 回填出现「两个中文句粘成一段且宽度超硬限」时 → 先查 `srt_reflow2_backfill.py` 的拆段标点层级，因为 Z 组含多句（`Zn+Zn+1 = Em`）时若拆段标点不含句末标点（。！？…），打包会把句界抹平、段界落在句中造成跨句粘连；拆段已修为「句末标点优先 → 句内标点」，改后重切 Z + 重回填即自然断开（Z 句数不变则 align 无需改）。（案例：ZXGpmaIcMMo 00:07:27（50 字）、00:08:05（40 字）两段，加句末级后分别断为 2 段 / 3 段）
+- 当 Z 句**单句内无任何句内标点**且宽度 > 26 时 → 回 r02 给该句补一个逗号（保持语义、仅调语序），因为回填只能按标点切、切不动只能保留超宽；改后重切 Z（句数不变则 align 免改）+ 重回填即可。（案例：ZXGpmaIcMMo Z76「漏斗能拾取碰撞箱与…相交的物品实体。」30 字无逗号 → 改「漏斗能拾取物品实体，只要其碰撞箱与…相交。」）
 - 当 check-r03 报整句锚定失败（块内未找到）时 → 先验证该句 EN 在 01 全文是否命中：全文命中 = 衔接归位后的跨块句（句子 cue 跨块边界、块内锚定结构必然失败），受控例外放行直接回填，因为回填按全文锚定、非块内。（案例：uVOFckoMdIU S72/S63/S58+59/S54/S85+86 五处跨块句全文命中验证后放行，r04 无锚定错误）
 - 当 r01 跨块句补全是无句末标点的半句（如【承接句】「…to have」接本块「a single cell…create two cells.」）时 → 检查 `STITCH_RE` 是否按标记分型剥离（【延伸句】必到句号、【承接句】句号或行尾、DOTALL 跨显示折行），因为非贪婪 + MULTILINE `$` 会在换行处提前截断、半句补全无法剥离致 check_words 词序污染。（案例：uVOFckoMdIU chunk_004 半句【承接句】剥离失败 r01=1560 词，分型 DOTALL 修复后一致）
 - 当 reflow 走 5-2 脚本断句路径时 → check-r03 的互斥/忠实天然满足（build-r03 机械填回、模板子句段复用），主要违规集中在「行宽超限 + 引号不配对」两类（机械按宽度比例切 EN 会切进引号/引号归属漂移），task-fix 定点修复 1-2 轮可收敛、无需拆半重派；共享 cue 中间断句大量出现属 5-2 预期（受控例外）；行宽 22-26 软预警多为预设区间特征。（案例：p-k5MPhBSjk 首次 5-2——205 整句，行宽 5 处 + 引号 2 处，round1 修 5 处 + round2 修 1 处后 chunk_002 全绿；未匹配 Z/E 均 0）
