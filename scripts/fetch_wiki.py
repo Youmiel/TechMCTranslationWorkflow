@@ -48,7 +48,7 @@ def fetch_pages(titles: list[str]) -> tuple[dict[str, dict[str, str]], dict[str,
     req = urllib.request.Request(
         url,
         headers={
-            "User-Agent": "MinecraftRedstoneTranslator/0.1 (github.com/cly)"
+            "User-Agent": "MinecraftRedstoneTranslator/0.1 (github.com/Youmiel)"
         },
     )
 
