@@ -14,6 +14,8 @@
 
 > **派发边界**：本阶段补标点/翻译/分句**一律派 subagent**（每任务按骨架块数派发），无需报告策略——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
 > **执行型纪律与模型**：纪律母版「一、执行型定位」内联执行型纪律；**派发入口 / 运行模型名不在 skill 硬编码**——见 [EDITOR_COMPAT#各编辑器派发 subagent 命令表](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml`）。
+>
+> **需请求 Wiki 时**（翻译中遇未收录术语/机制不明/数值核对）：不得直接联网或静默用旧缓存——先跑 `python scripts/refresh_cache.py --check-page "<页面名>"` 判定，过期则 `python scripts/fetch_wiki.py --refresh "<页面名>"` 主动刷新后重读；需阅页面的查询派 `wiki-researcher`（任务文件 `wiki-tools/task-wiki-query.md`）。完整规则见 [wiki-tools](../wiki-tools/SKILL.md)（权威）。
 
 > **行文结构**：本阶段各步骤按「1. 归一化 → 2. 处理 → 3. 校验」三段标题组织（无归一化环节的步骤标注「无」预留位）。
 > - 步骤 1（空隙探测 + 硬性断句）与步骤 2（定 N + 分块）为**前置步骤**

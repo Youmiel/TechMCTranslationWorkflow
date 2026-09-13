@@ -152,8 +152,8 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 | 检查术语表 | `python scripts/glossary_split.py --check` |
 | 同步 submodule | `git submodule update`（**同步第三方仓库纪律**；拉上游最新并重新锁定 → `git submodule update --remote`） |
 | 检查索引是否过期 | `python scripts/check_index_stale.py` |
-| 检查缓存新鲜度 | `python scripts/refresh_cache.py --dry-run`（Mojang/TechMC/Wiki 三类） |
-| 刷新 Wiki 缓存（lossless 批量） | `python scripts/wiki_refresh.py`（`--dry-run` 只探测、`--only <页面...>` 只刷指定页；规范见 `docs/WIKI_CACHE_FORMAT.md`） |
+| 检查缓存新鲜度 | `python scripts/refresh_cache.py --dry-run`（Mojang/TechMC/Wiki 三类）；单页判定用 `--check-page <页面...>`（退出码 1 = 有需处理项） |
+| 刷新 Wiki 缓存（wikitext/lossless） | `python scripts/fetch_wiki.py --refresh`（不带页面名 = 全量，维护场景）；**按需单页**加页面名（如术语查证命中过期缓存时）见 [wiki-tools#缓存过期与主动刷新](../wiki-tools/SKILL.md#缓存过期与主动刷新按需)；`--dry-run` 只探测；规范见 `docs/WIKI_CACHE_FORMAT.md` |
 
 ## 安全规则
 

@@ -54,7 +54,7 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 ### 翻译/检索前
 
 ```
-1. 运行 python scripts/refresh_cache.py（统一检查三类缓存：Mojang/TechMC 自动刷新，Wiki 只告警不自动抓取；或按需单独 glossary_split.py --check）
+1. 运行 python scripts/refresh_cache.py（统一检查三类缓存：Mojang/TechMC 自动刷新，Wiki 只告警不自动抓取——Wiki 过期页由查证/查询时主动刷新，见 [wiki-tools#缓存过期与主动刷新](../wiki-tools/SKILL.md#缓存过期与主动刷新按需)；或按需单独 glossary_split.py --check）
 2. 按下方"类别预判"规则确定领域 → 加载 .cache/glossary/<相关类别>.csv
 ```
 

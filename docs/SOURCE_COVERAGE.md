@@ -24,6 +24,12 @@
 > **反爬注意**：本系统通过 MCP 代理访问 Wiki（非直连），单次翻译仅 5-15 次查询，
 > 请求间间隔 ≥2 秒，行为接近人类查阅资料。不进行大规模爬取。
 > 若遇 429/403，指数退避重试（2s→4s→8s，最多 3 次）。
+>
+> **缓存时效**：命中的 `.cache/wiki/` 缓存同样可能过期——查得页面先跑
+> `python scripts/refresh_cache.py --check-page "<页面名>"` 判定（退出码 1 = 有需处理项），
+> 过期则用 `python scripts/fetch_wiki.py --refresh "<页面名>"` 按 wikitext/lossless 源主动刷新后重读，
+> **不得静默复用过期内容**（详见 `docs/WIKI_CACHE_FORMAT.md`「刷新策略」）。
+> 请求身份（UA 联系方式）属环境配置，见 [`docs/SETUP.md`](SETUP.md#请求身份)。
 
 Wiki 擅长（优先查询）：
 - 方块/物品基础属性（合成、爆炸抗性、可堆叠等）

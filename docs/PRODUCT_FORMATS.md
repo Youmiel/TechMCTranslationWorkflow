@@ -35,6 +35,10 @@
 | `01_subtitle_asr_fixed.srt` | 共享（阶段〇/一） | Agent（英文预整理 subagent 分块派发 + `srt_join_parts.py` 合并） | `srt_check_segments.py --cue-exact`；reflow gap/breaks/words |
 | `_en_results/chunk_<k>.srt` | 共享（阶段〇/一） | Agent（英文预整理 subagent） | `srt_join_parts.py`、`srt_check_segments.py --cue-exact` |
 | `02_terms.md` | 共享（阶段〇/一） | Agent（用户确认） | 翻译固定译名、ASR 修正组装 |
+| `term_pending.md` / `term_pending_<i>.md` | 共享（阶段〇/一） | Agent（主会话汇总后写；按 30 条/块拆分） | `term-researcher`（分批派发输入） |
+| `term_resolve_<i>.md` | 共享（阶段〇/一） | Agent（`term-researcher` 研究型 agent） | 阶段一 §1.3 确认、阶段三 coverage_log |
+| `wiki_pending_<i>.md` | 共享（翻译过程任意阶段） | Agent（主会话；仅批量 Wiki 请求才建） | `wiki-researcher`（派发输入） |
+| `wiki_resolve_<i>.md` | 共享（翻译过程任意阶段） | Agent（`wiki-researcher` 研究型 agent） | 主会话取结论、阶段三 coverage_log |
 | `s03_plan.md` | translate | Agent（断句定稿） | `srt_check_segments.py`（md 模式） |
 | `s04_draft.srt` | translate | Agent（逐段翻译） | `srt_check_segments.py`、`srt_check_width.py` |
 | `r00_gaps.md` | reflow | `srt_reflow_gap_scan.py` | Agent 参考 |
@@ -166,10 +170,12 @@
 
 ### `configs/context_window.json`
 
-模型窗口 + 分块/输出阈值的**单一事实源**；`context_estimate.py` 配置来源。上下文长度估算与分块建议的确定性输出。默认配置：
+模型窗口 + 分块/输出阈值的**单一事实源**；`context_estimate.py` 配置来源。上下文长度估算与分块建议的确定性输出。
+
+**值按使用者的模型填写**（不同模型容量差异大，无通用默认值）；格式（五项）：
 
 ```json
-{"context_length": 1000000, "max_output": 384000, "split_ratio": 0.05, "output_ratio": 0.8,  "amplification": 10}
+{"context_length": <模型有效窗口>, "max_output": <单次生成上限>, "split_ratio": 0.05, "output_ratio": <0.0-1.0>, "amplification": <倍数>}
 ```
 
 - **`context_estimate.py` CLI 参数**（默认读 config、CLI 可覆盖）：
@@ -200,13 +206,13 @@
   - **放大倍数**：最重环节（分句）读中英两倍材料（r01 EN + r02 ZH 对照）+ 输出 r03 ≈ 对照 2×，单请求 ≈ **4×单语言材料**（实测 4.2×），故需要放大倍数预测最重环节 token 消耗。
     - 放大已并入「单块容量上限」：输入预算靠 `split_ratio` 隐含分句余量（示例 0.05 → 分句放大 4× 后 ≈ 窗口×20%）、输出预算靠 `÷amplification` 显式
     - 二者经 min 统一后 **`--owned ≈ 单块容量上限 × 1.5 ÷ 每 cue 平均字符数`，不再额外除以放大常数**
-  - **`split_ratio` 默认取 0.05**：执行在 subagent（全新上下文）。
-    - 示例：0.05 → 1M 窗口 ≈ 50k token，分句放大 4× 后 ≈ 窗口×20%，仍可一次处理
-    - 0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句放大后吃力），取中间值；拿不准用默认
+  - **`split_ratio` 推荐取 0.05**（比例类参数，不随模型容量变）：执行在 subagent（全新上下文）。
+    - 示例：0.05 → 512k 窗口 ≈ 25k token，分句放大 4× 后 ≈ 窗口×20%，仍可一次处理
+    - 0.015 试点过激（处处分片）、旧 0.3×512k 偏松（分句放大后吃力），取中间值；拿不准用 0.05
   - **为何 `--window` 填实际有效窗口**：**不是当前剩余窗口**（剩余受会话历史/压缩影响，agent 无法精确感知）；**标称 ≠ 实际有效**——填实际有效窗口（非标称上限），拿不准按保守 128k 配置
 - 约束：
   - **只放这五项**，不写模型名等冗余
-  - config 缺失/无效 → `context_estimate.py` 降级代码默认并提示 agent 询问用户期望后写入（部署时一次）
+  - config 缺失/无效 → `context_estimate.py` 降级代码内置兜底值并提示 agent 询问用户期望后写入（部署时一次；**兜底值仅为应急，可能与你模型不符**）
   - 变更需同步：本文件 + `context_estimate.py`（默认值/提示文案）+ `redstone-conventions`（分块章节引用）+ `reflow-redstone`（步骤 1b 定容量）
 
 ---
@@ -258,7 +264,18 @@
   - `term_pending.md` / `term_pending_<i>.md`：每行 `term_en | 首次时间戳 | 已给候选/依据`（L3 未命中 + 决策行）
   - `term_resolve_<i>.md`：每行 `term_en\t候选译名\t数据源\t依据\t[标记]`（标记 = `[推断]`/`[待审核]`；数据源 = 缓存路径 / MCP 名 / indexes/repos 路径）
 - 消费：§1.3 用户确认表（候选译名/依据）、阶段三 coverage_log（数据源命中统计）、断点恢复（粒度 = 块）
-- 约束：查证 agent **不返回页面原文**（页面只进一次性上下文，返回每词一行压缩总结）；`[待审核]` 必须带候选，不得只留原文
+- 约束：查证 agent **不返回页面原文**（页面只进一次性上下文，返回每词一行压缩总结）；`[待审核]` 必须带候选，不得只留原文；命中缓存时数据源列**须附刷新状态**（`已刷新` / `未过期` / `未过期判定：仅核查存在性` / `刷新失败：<原因>`，见 `docs/WIKI_CACHE_FORMAT.md`「刷新策略」）
+
+### `wiki_pending_<i>.md` / `wiki_resolve_<i>.md`（翻译过程 Wiki 查询产物）
+
+- 命名：`<工作目录>/wiki_pending_<i>.md`（待查清单，批量才建；无编号 `wiki_pending.md`）、`<工作目录>/wiki_resolve_<i>.md`（查证结果，与清单**同名前缀**）
+- 生成：翻译过程任意阶段需请求 Wiki 时——主会话写待查清单，派 `wiki-researcher`（研究型 agent，任务文件 `wiki-tools/task-wiki-query.md`）逐项执行（缓存 → 过期判定 → 主动刷新 → 降级链），写盘结果；单个问题不建清单文件，直接以问题文本作引用
+- 格式：
+  - `wiki_pending_<i>.md`：每行 `查询项 | 待解答的具体问题 | 已知线索`
+  - `wiki_resolve_<i>.md`：每行 `查询项\t结论\t数据源\t刷新状态\t[标记]`（刷新状态 = `未过期`/`已刷新`/`新抓取`/`刷新失败：<原因>`/`未过期判定：仅核查存在性`；数据源 = 缓存路径 / MCP 名 / indexes/repos 路径 / `fetch_wiki` / `browser`）
+- 消费：主会话取结论（不读页面原文）；阶段三 coverage_log（数据源命中统计）
+- 约束：查证 agent **不返回页面原文**（只进一次性上下文，返回每问一行压缩总结）；**过期缓存不得静默复用**（刷新失败须在刷新状态列显式标注）；`[待审核]` 必须带候选；`[需浏览器]` 由主会话执行兜底抓取
+- 与 `term_*` 的分工：**术语译名**走 `term_pending`/`term_resolve`（`task-term-resolve.md`）；**其余 Wiki 请求**走 `wiki_pending`/`wiki_resolve`（`task-wiki-query.md`）
 
 ---
 

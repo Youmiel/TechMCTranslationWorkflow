@@ -96,7 +96,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 | 术语扫描机制（ASR 解码/scan 覆盖网） | `term-scan` |
 | 术语登记 | `term-registration` |
 | CSV 读写/表头 | `csv-rules` |
-| Wiki 抓取/兜底 | `wiki-tools` |
+| Wiki 抓取/兜底/按需刷新 | `wiki-tools` |
 | 去翻译腔 | `humanizer-zh` |
 | 知识/索引维护 | `maintain-knowledge` |
 
@@ -144,6 +144,8 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 > **执行一律 subagent（无需报告）**：合并断句 / 翻译**逐块派 subagent**（块数由分块骨架决定，无需报告「用 / 不用」）——统一路径，见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
 >
 > 主会话只做：分块 → 渲染 → 派发 → 合并 → 校验 → 定点修复派发。
+>
+> **需请求 Wiki 时**（翻译中遇未收录术语/机制不明/数值核对）：先 `refresh_cache.py --check-page "<页面名>"` 判定、过期则 `fetch_wiki.py --refresh "<页面名>"` 主动刷新后重读；需阅页面派 `wiki-researcher`（任务文件 `wiki-tools/task-wiki-query.md`）——见 [wiki-tools](../wiki-tools/SKILL.md)（权威）。
 
 **产物契约（本阶段输入 / 输出）**：
 - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`（preprocess 产物）

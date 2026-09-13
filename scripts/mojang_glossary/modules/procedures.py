@@ -14,7 +14,9 @@ def process_manifest() -> VersionInfo:
     import requests
 
     _log.debug(f"Checking manifest...")
-    response = requests.get(config.URL_MANIFEST_V2, timeout=10)
+    response = requests.get(
+        config.URL_MANIFEST_V2, timeout=10, headers=config.REQUEST_HEADERS
+    )
     response.raise_for_status()
     return _resolver.resolve_version_manifest_v2(response.json())
 

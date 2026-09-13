@@ -20,6 +20,12 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 - **任务文件即完整 prompt**（`term-scan/task-term-resolve.md`，规则静态内联）——派发时「任务文件 + 该块 `term_pending_<i>.md`」双引用
 - **不走渲染脚本**、**不追加执行型纪律母版**（研究型纪律由 agent 系统提示词承载）
 
+**Wiki 查询（翻译过程中任何需请求 Wiki 的场合）→ 研究型 agent 派发**：机制细节 / 数值核对 / 版本行为对比 / 页面存在性核查 / 翻译中临时追问等**非术语清单**的 Wiki 请求，派 `wiki-researcher`（研究型 agent）。
+- **任务文件即完整 prompt**（`wiki-tools/task-wiki-query.md`）——派发时「任务文件 + 待查清单 `wiki_pending_<i>.md`」双引用，产物 `wiki_resolve_<i>.md`
+- **分工**：纯术语译名批量查证走 `term-researcher` + `task-term-resolve.md`（产物 `term_resolve_<i>.md`）；其余 Wiki 请求走 `wiki-researcher`（两者查询链一致——缓存 → 过期判定 → 主动刷新 → 降级链）
+- 主会话**不读页面全文**；需浏览器抓取的兜底档由主会话执行（agent 报 `[需浏览器]`）
+- 单个问题（一两句能问清）不需建清单文件，可直接以问题文本代替待查清单引用；**批量查询才拆块**（条数多必分，防推理截断）
+
 **不派 subagent（主会话）**：需用户交互（术语确认 §1.3、审核循环 阶段二½）——能力约束；需全貌的跨切面决策（如 r03 分句对应、回填判断）。
 
 **translate（2026-08-24 已重构）**：阶段二合并断句 / 翻译**一律派 subagent**（与 reflow 对齐，对齐 translate-redstone 阶段二）——块数由分块骨架决定，无需报告"用/不用"，直接按派发配方派发。
@@ -30,10 +36,10 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > 背景：主会话历史只增不减、每轮都付——**无论多小的读/写/验证动作都进入对话历史**（流程越长越明显）。凡能由脚本/subagent 完成的读、写、验证一律下沉，主会话只保留「路由 + 决策必需」动作。
 
 - **读**：数据文件读取一律下沉（渲染脚本 / 校验脚本 / subagent），主会话不读块数据、不读 wiki 页面全文。
-  - 大内容（Wiki 页面 / 长产物）→ 研究型 agent 读取、只返回压缩总结
+  - 大内容（Wiki 页面 / 长产物）→ 研究型 agent（`term-researcher` / `wiki-researcher`）读取、只返回压缩总结
   - 校验告警已带「文件:行号 + 上下文」→ **直接打包进 `task-fix` 清单派发（B 档）**，主会话不读文件定位、不自行定点修（A 档已废弃，见「定点修正」）
 - **写**：产物全部由 subagent（新建文件动作直接写盘）或脚本（`--out`）产出，主会话只发命令触发、不自行新建中间产物文件。
-  - 主会话唯一写 = 需用户确认的交付物（`02_terms`、`_output/`）+ 小量路由产物（如 `term_pending.md` 全量待查列表 + 分块 `term_pending_<i>.md`）
+  - 主会话唯一写 = 需用户确认的交付物（`02_terms`、`_output/`）+ 小量路由产物（如 `term_pending.md` 全量待查列表 + 分块 `term_pending_<i>.md`、批量 Wiki 请求的 `wiki_pending_<i>.md`）
 - **验证**：存在性验证（收信号即验）用**目录列举**一次校验，不读文件内容。
   - 行数 / 非空由脚本统计（`text_merge` 报告 / `(Get-Content).Count`），主会话不数
 - **例外（决策必需，允许）**：用户交互展示（§1.3 确认表、审核对象）。
@@ -75,7 +81,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > - translate 阶段二：同一脚本接入 `task-merge` / `task-humanize` / `task-translate`
 >   - **同名任务多 skill**：派发时 `--skill translate-redstone` 取 translate 版，默认 reflow 版
 > - preprocess 阶段一：**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）
-> - **§1.2 查证（`task-term-resolve`）不走渲染脚本**：分批研究型任务（30 条/块）、规则静态内联于任务文件，派发时「任务文件 + 该块 `term_pending_<i>.md`」双引用（见「派发边界」）
+> - **§1.2 查证（`task-term-resolve`）/ Wiki 查询（`task-wiki-query`）不走渲染脚本**：研究型任务、规则静态内联于任务文件，派发时「任务文件 + 该批待查清单」双引用（见「派发边界」）
 > - `task-fix`（reflow / translate 版）/ `task-summary` 未接入：错误清单 / 摘要为动态内容不走块级渲染，仍按旧方式——主 agent 读模板 + 手工组装 + 落盘存档（内容不大时也可直接内联派发）
 >
 > **每任务的实际取材在各任务文件底部**（`> **渲染步骤**` 区块，渲染时剥离）：声明该任务按什么顺序、用哪些内容拼接（见该区块的有序列表）。**本节（派发配方）只描述通用流程与规则**，具体取材以任务文件为准。
@@ -83,7 +89,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > **执行型纪律与模型**：reflow 类执行任务**派发 `reflow-worker`（执行型 agent），使用无思考模型**。
 > - 具体做法（派发入口 / agent 定义 / 模型名 / adapt）按你自己的编辑器执行，见 [EDITOR_COMPAT](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml` 的 `execution_model`）
 > - 纪律母版「一、执行型定位」与 agent 系统提示词同源，由渲染脚本随 prompt 整体注入（内联兜底 + 任务特定纪律 + 兜底）
-> - **研究型任务（§1.2 查证 `term-researcher`）不同**：用主模型（非 `execution_model`）、不追加执行型纪律母版——见「派发边界」
+> - **研究型任务不同**（`term-researcher` §1.2 查证 / `wiki-researcher` Wiki 查询）：用主模型（非 `execution_model`）、不追加执行型纪律母版——见「派发边界」
 
 > **组装原则（内联 vs 引用，单一权威）**：**默认全部内联，仅数据文件例外**——任务规则、纪律母版、`## 先验知识`（术语表/陷阱词/ASR 修正/humanizer 注入等）等一切规则与知识内容由渲染脚本**直接内联进 prompt 文件**；**唯一例外 = 块数据**（`## 本块数据` 单独注明数据文件路径，subagent 按引用读取）；subagent 侧只读边界见纪律母版「五、工作区与工具纪律」。
 
@@ -203,6 +209,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 | 术语识别（preprocess §1.1） | `term-scan/task-term-recognition` | `_term_results/chunk_<k>.txt` |
 | 英文预整理·第一次遍历（preprocess §1.1） | `term-scan/task-en-preprocess` | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
 | L3 术语查证（preprocess §1.2，研究型 agent 分批派发 30 条/块，任务文件即 prompt） | `term-scan/task-term-resolve` | `term_resolve_<i>.md`（输入 `term_pending_<i>.md`；派发双引用） |
+| Wiki 查询（翻译过程任何需请求 Wiki 的场合，研究型 agent，任务文件即 prompt） | `wiki-tools/task-wiki-query` | `wiki_resolve_<i>.md`（输入 `wiki_pending_<i>.md`；派发双引用） |
 | 补标点（reflow 步骤 3） | `reflow-redstone/task-punctuate` | `reflow/r01_results/chunk_<k>.txt` |
 | 整段翻译（reflow 步骤 4） | `reflow-redstone/task-translate` | `reflow/r02_results/chunk_<k>.txt` |
 | 分句·5-1 LLM 语义分句（reflow 步骤 5-1） | `reflow-redstone/task-split` | `reflow/r03_results/chunk_<k>.txt` |

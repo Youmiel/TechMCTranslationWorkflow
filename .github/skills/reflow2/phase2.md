@@ -4,6 +4,8 @@
 
 > **派发边界**：补标点 / 翻译 / 句子匹配**一律派 subagent**（任务 = `task-punctuate` / `task-translate` / `task-match` 的 **reflow2 版**，渲染时 `--skill reflow2`），无需报告策略——见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
 > **执行型纪律与模型**：纪律母版「一、执行型定位」内联执行型纪律；派发入口 / 运行模型名不在 skill 硬编码——见 [EDITOR_COMPAT#各编辑器派发 subagent 命令表](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml`）。
+>
+> **需请求 Wiki 时**（翻译中遇未收录术语/机制不明/数值核对）：先 `refresh_cache.py --check-page "<页面名>"` 判定、过期则 `fetch_wiki.py --refresh "<页面名>"` 主动刷新后重读；需阅页面派 `wiki-researcher`（任务文件 `wiki-tools/task-wiki-query.md`）——见 [wiki-tools](../wiki-tools/SKILL.md)（权威）。
 
 > **行文结构**：各步骤按「1. 归一化 → 2. 处理 → 3. 校验」三段标题组织（无归一化环节标注「无」）；步骤 1/2 为前置步骤。
 

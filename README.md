@@ -25,11 +25,9 @@ git -C _repos/storage-archive sparse-checkout set /dictionary/
 python scripts/setup_editors.py
 ```
 
-- 编辑器兼容性见 [`docs/EDITOR_COMPAT.md`](docs/EDITOR_COMPAT.md)
+配置项与部署步骤（请求身份 / subagent 模型 / 上下文窗口 / MCP Wiki 工具）见 [`docs/SETUP.md`](docs/SETUP.md)；编辑器差异见 [`docs/EDITOR_COMPAT.md`](docs/EDITOR_COMPAT.md)。
 
-### （可选）配置 MCP Wiki 工具
-
-联网查证术语依赖 MCP Wiki 工具，部署步骤见 [`docs/MCP_DEPLOYMENT.md`](docs/MCP_DEPLOYMENT.md)。未配置时，Agent 将自动降级至脚本或浏览器方案，查证可靠度相对较低。
+> `configs/` 下为**本地个性化配置**（不入库，因人而异），模板见 [`docs/examples/configs/`](docs/examples/configs/)。多数开箱即用；**派发 subagent 前需填 `configs/subagent_model.yaml`**。
 
 ## Skills 一览
 
@@ -88,8 +86,9 @@ python scripts/setup_editors.py
 
 ## 相关文档
 
+- [`docs/SETUP.md`](docs/SETUP.md) — 环境配置与部署（初始化 / 请求身份 / 模型 / 窗口 / MCP）
 - [`docs/EDITOR_COMPAT.md`](docs/EDITOR_COMPAT.md) — 编辑器兼容性
-- [`docs/MCP_DEPLOYMENT.md`](docs/MCP_DEPLOYMENT.md) — MCP Wiki 工具部署
+- [`docs/SETUP.md`](docs/SETUP.md) — 环境配置与部署
 - [`docs/SOURCE_COVERAGE.md`](docs/SOURCE_COVERAGE.md) — 数据源覆盖范围
 - [`docs/WIKI_CACHE_FORMAT.md`](docs/WIKI_CACHE_FORMAT.md) — Wiki 缓存格式
 - [`AGENTS.md`](AGENTS.md) — 项目级 Agent 指令

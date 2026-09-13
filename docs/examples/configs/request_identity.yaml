@@ -1,0 +1,13 @@
+# 请求身份配置（HTTP User-Agent 联系方式）
+#
+# Wikimedia 政策要求脚本的 User-Agent 必须含联系方式（邮箱 / 站点 / 仓库 URL），
+# 否则可能被拒绝或封禁。本项目**不内置作者联系方式**——请填写你自己的，
+# 以免 clone / fork 后以原作者名义发请求。
+#
+# 取值优先级：环境变量 TCTW_CONTACT → 本文件 contact → git remote 探测 → 占位符
+# 只 clone / fork 而未改动时，可留空：脚本会自动用你自己的 git remote 地址。
+
+# 格式：邮箱、站点或仓库 URL 均可
+#   contact: "you@example.com"
+#   contact: "https://github.com/<your-name>/<your-repo>"
+contact: "<PROJECT_URL>"

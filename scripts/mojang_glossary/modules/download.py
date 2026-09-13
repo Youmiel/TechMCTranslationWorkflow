@@ -35,7 +35,7 @@ def download_file(
         try:
             _os.makedirs(_os.path.dirname(save_path), exist_ok=True)
             sha1 = hashlib.sha1()
-            with requests.get(url, stream=True, timeout=10) as r:
+            with requests.get(url, stream=True, timeout=10, headers=config.REQUEST_HEADERS) as r:
                 r.raise_for_status()
                 with open(save_path, "wb") as f:
                     for chunk in r.iter_content(_io.DEFAULT_BUFFER_SIZE):

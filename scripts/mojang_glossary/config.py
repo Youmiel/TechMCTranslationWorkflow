@@ -2,7 +2,19 @@
 Mojang 官方翻译词汇表 — 配置
 """
 
+import sys as _sys
 from pathlib import Path
+
+# === 路径（基于本文件位置推导项目根） ===
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # config.py → mojang_glossary/ → scripts/ → project root
+
+# === 请求身份 ===
+# 统一 UA（含联系方式，由 scripts/request_identity.py 解析）——
+# 联系方式由使用者自行配置，不内置作者信息
+_sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+from request_identity import user_agent  # noqa: E402
+
+REQUEST_HEADERS = {"User-Agent": user_agent()}
 
 # === Mojang API 端点 ===
 URL_MANIFEST_V2 = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
@@ -10,7 +22,6 @@ URL_RESOURCE_FORMAT = "https://resources.download.minecraft.net/{0}/{1}"
 LANG_FORMAT = "minecraft/lang/{0}.json"
 
 # === 路径（基于本文件位置推导项目根） ===
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # config.py → mojang_glossary/ → scripts/ → project root
 GLOSSARY_OUTPUT_DIR = PROJECT_ROOT / ".cache" / "mojang"
 GLOSSARY_VERSION_PATH = GLOSSARY_OUTPUT_DIR / "MC_version.txt"
 

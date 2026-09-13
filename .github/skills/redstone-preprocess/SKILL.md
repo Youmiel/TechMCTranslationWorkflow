@@ -30,7 +30,7 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 
 ## 阶段〇：领域预判与准备（翻译前，轻量扫描）
 
-1. **刷新本地知识**：`python scripts/refresh_cache.py`（统一入口：Mojang/TechMC 自动刷新，**Wiki 只告警不自动抓取**——Wiki 刷新按需走 [wiki-tools](../wiki-tools/SKILL.md) 降级链；或按需 `glossary_split.py --check`、`glossary_fetch_mojang.py`）
+1. **刷新本地知识**：`python scripts/refresh_cache.py`（统一入口：Mojang/TechMC 自动刷新，**Wiki 只告警不自动抓取**——Wiki 过期页由查证/查询时主动刷新（`--check-page` 判定 → `fetch_wiki.py --refresh`），见 [wiki-tools](../wiki-tools/SKILL.md)；或按需 `glossary_split.py --check`、`glossary_fetch_mojang.py`）
 2. **类别预判**：按 [use-glossary#类别预判](../use-glossary/SKILL.md#类别预判翻译前确定领域)——读 `.github/experience/glossary_categories.yaml`，扫描标题 / 简介 + 前 ~20 句关键词，命中 ≥2 次加载对应分类。
    - **产出领域判断并向用户报告确认**
    - **无法确定 / 拿不准时必须列出候选请用户选择，不得静默跳过**（见 [use-glossary#无法判断时的处理](../use-glossary/SKILL.md#无法判断时的处理必须交互配置文件自维护入口)）
@@ -86,10 +86,11 @@ description: 红石字幕翻译前置——阶段〇（领域预判与准备）+
 > subagent 任务规则见 `term-scan/task-en-preprocess`（第一次遍历）与 `term-scan/task-term-recognition`（术语识别）（现成任务文件；prompt 由 `scripts/render_preprocess_prompt.py` 渲染，派发配方见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）。
 
 ### 1.2 集中补齐（翻译前一次性完成所有网络请求，查证 agent 分批派发）
-> 机制（缓存判定 / fidelity / 降级链 / 请求纪律 / 缓存写入）见 [wiki-tools](../wiki-tools/SKILL.md)（权威）；数据源选择参考 `docs/SOURCE_COVERAGE.md`。
-> - **查证由 `term-researcher`（研究型 agent）分批派发**
+> 机制（缓存判定 / fidelity / 降级链 / **过期判定与主动刷新** / 请求纪律 / 缓存写入）见 [wiki-tools](../wiki-tools/SKILL.md)（权威）；数据源选择参考 `docs/SOURCE_COVERAGE.md`。
+> - **查证由 `term-researcher`（研究型 agent）分批派发**——命中缓存后**必先判定过期，过期则主动刷新再读**（`refresh_cache.py --check-page` → `fetch_wiki.py --refresh`）
 > - 主会话只做：汇总待查列表、分块、逐块派发（任务文件即 prompt，双引用）、读各块结果、合并、更新映射
 > - **主会话不读 wiki 页面全文**（页面只进查证 agent 一次性上下文，返回每词一行压缩总结——token 纪律，见 [subagent-dispatch#主会话读写最小化](../subagent-dispatch/SKILL.md#主会话读写最小化token-纪律)）
+> - **事后（阶段二及以上）临时需请求 Wiki**（机制细节/数值核对/版本行为）：同样先查缓存 → 过期判定 → 主动刷新；需阅页面的查询派 `wiki-researcher`（任务文件 `wiki-tools/task-wiki-query.md`，产物 `wiki_pending_<i>.md` → `wiki_resolve_<i>.md`）
 
 1. **主会话写待查列表**（§1.1 第 5 步合并去重后）：`_work/<视频名>/term_pending.md`，每行 `term_en | 首次时间戳 | 已给候选/依据`（L3 未命中 + 决策行）
 2. **分块（条数多必分，防研究 agent 推理截断）**：待查列表按 **30 条/块** 拆成 `term_pending_<i>.md`（块内保持原行格式；`term_pending.md` 保留全量作审计）。块数 = ⌈条数÷30⌉

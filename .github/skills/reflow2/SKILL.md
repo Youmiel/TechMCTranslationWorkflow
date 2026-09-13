@@ -73,6 +73,7 @@ description: Minecraft 红石技术视频字幕的「时间轴源头固化」工
 | 翻译前置（阶段〇/一） | `redstone-preprocess` |
 | 人工审核（阶段二½）+ 输出门禁 | `redstone-review` |
 | 数据源总结（阶段三） | `redstone-finalize` |
+| Wiki 抓取/兜底/按需刷新 | `wiki-tools` |
 | 去翻译腔 | `humanizer-zh` |
 | subagent 派发 | `subagent-dispatch` |
 

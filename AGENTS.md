@@ -23,7 +23,7 @@
 - 语义回填工作流 → `reflow-redstone` Skill（共享阶段〇/一/二½/三，见其「依赖（扩展 Skill 地图）」）
 - 时间轴源头固化工作流（新） → `reflow2` Skill（共享阶段〇/一/二½/三；阶段二 = 源头固化 E 句时间 + 中文继承，见其「依赖」）
 - 知识/索引维护 → `maintain-knowledge` Skill（决策路由见其「维护任务决策」）
-- Wiki 抓取/兜底 → `wiki-tools` Skill
+- Wiki 抓取/兜底 → `wiki-tools` Skill（含缓存过期判定与主动刷新，翻译过程中需请求 Wiki 时遵循）
 - 对外视频摘要（发布简介用） → `video-abstract` Skill（主会话直接执行，不派 subagent）
 - **主会话调度纪律（仅约束 translate/reflow/reflow2 派发-校验阶段）**：零定点编辑、验证性读禁止等 token 纪律权威在 `subagent-dispatch`「主会话读写最小化 / 定点修正」，随工作流 Skill 引用加载；**maintain-knowledge / wiki-tools 等日常维护不适用、不受影响**
 
@@ -41,7 +41,7 @@
 
 ## MCP Wiki 工具
 
-本项目配置了两个 MCP Wiki 工具，配置见 `.vscode/mcp.json`，部署指南见 `docs/MCP_DEPLOYMENT.md`。
+本项目配置了两个 MCP Wiki 工具，配置见 `.vscode/mcp.json`，部署指南见 `docs/SETUP.md`。
 
 - **minecraft-wiki-mcp**（可用）：通过 `L3-N0X/Minecraft-Wiki-MCP` 直连 MediaWiki API（工具 `minecraft_wiki_search` / `minecraft_wiki_get_page` 等）
 - **mc-wiki-fetch-mcp**（可用）：`rice-awa/mc-wiki-mcp-pypi` 自定义 API 代理（工具 `search_wiki` / `get_page` 等）
@@ -49,6 +49,16 @@
 ### 兜底策略
 
 当 MCP 工具不可用时，完整降级链与缓存保真阶梯见 `wiki-tools` Skill（权威）。要点：`python scripts/fetch_wiki.py "页面名"` → 浏览器访问 `https://zh.minecraft.wiki/`（终极兜底）。
+
+### 缓存过期与主动刷新
+
+`.cache/wiki/` 缓存**过期即不得静默复用**——命中缓存后先判定、过期先刷新再读：
+
+1. 判定：`python scripts/refresh_cache.py --check-page "<页面名>"`（退出码 1 = 有需处理项）
+2. 刷新：`python scripts/fetch_wiki.py --refresh "<页面名>"`（wikitext/lossless 直连，保真度不降）
+3. 未缓存 → 走降级链抓取
+
+需阅页面的 Wiki 请求一律派 `wiki-researcher`（任务文件 `wiki-tools/task-wiki-query.md`），主会话不读页面全文；详见 `wiki-tools` Skill（权威）。
 
 ### 抓取注意事项
 

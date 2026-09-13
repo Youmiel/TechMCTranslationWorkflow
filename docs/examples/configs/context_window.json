@@ -1,0 +1,7 @@
+{
+  "context_length": 512000,
+  "max_output": 384000,
+  "split_ratio": 0.05,
+  "output_ratio": 0.5,
+  "amplification": 10
+}

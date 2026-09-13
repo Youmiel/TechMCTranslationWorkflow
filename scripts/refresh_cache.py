@@ -12,9 +12,15 @@ Wiki 页面缓存（.cache/wiki/）只检查过期并告警，**不自动抓取*
     python scripts/refresh_cache.py --force      # 强制检查全部（含 Wiki 全页）
     python scripts/refresh_cache.py --dry-run    # 仅检查，不实际刷新
     python scripts/refresh_cache.py --ttl 14     # 过期天数（默认7天）
+    python scripts/refresh_cache.py --check-page "红石比较器" "活塞"   # 单页过期判定（读缓存前用）
+
+单页判定（--check-page）是「按需刷新」的入口：查缓存前先判定该页是否过期，
+过期即用 `fetch_wiki.py --refresh <页面>` 主动刷新后重读（见 wiki-tools Skill）。
+过期判定 = front matter `fetched`（缺失回退文件 mtime）距今 > TTL。
 """
 
 import argparse
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -25,6 +31,58 @@ CACHE_DIR = PROJECT_ROOT / ".cache"
 WIKI_DIR = CACHE_DIR / "wiki"
 MOJANG_DIR = CACHE_DIR / "mojang"
 GLOSSARY_DIR = CACHE_DIR / "glossary"
+FETCHED_RE = re.compile(r"^fetched:\s*(.+?)\s*$", re.M)
+TITLE_RE = re.compile(r"^title:\s*(.+?)\s*$", re.M)
+
+
+def read_rel_time(path: Path) -> datetime:
+    """缓存页面的时间基准：front matter `fetched`（缺失/不可解析则回退文件 mtime）。
+
+    规范见 docs/WIKI_CACHE_FORMAT.md——`fetched` 是声明的事实源，mtime 仅作兼容回退。
+    """
+    try:
+        head = path.read_text(encoding="utf-8", errors="ignore")[:800]
+    except OSError:
+        head = ""
+    m = FETCHED_RE.search(head)
+    if m:
+        raw = m.group(1).strip().strip('"').strip("'")
+        for fmt in ("%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%d %H:%M:%S"):
+            try:
+                dt = datetime.strptime(raw, fmt)
+                return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            except ValueError:
+                continue
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+
+
+def read_title(path: Path) -> str:
+    """front matter `title`（缺失则文件名 stem）。"""
+    try:
+        head = path.read_text(encoding="utf-8", errors="ignore")[:800]
+    except OSError:
+        return path.stem
+    m = TITLE_RE.search(head)
+    return m.group(1).strip() if m else path.stem
+
+
+def resolve_page(name: str) -> Path | None:
+    """按文件名 stem 或 front matter title 定位缓存页面。"""
+    stem = name[:-3] if name.endswith(".md") else name
+    direct = WIKI_DIR / f"{stem}.md"
+    if direct.exists():
+        return direct
+    if not WIKI_DIR.exists():
+        return None
+    for f in WIKI_DIR.glob("*.md"):
+        if read_title(f) == stem:
+            return f
+    return None
+
+
+def age_desc(dt: datetime, now: datetime) -> str:
+    days = (now - dt).total_seconds() / 86400
+    return f"fetched={dt.strftime('%Y-%m-%dT%H:%M:%SZ')}（{days:.1f} 天前）"
 
 
 def check_mojang() -> tuple[str, bool]:
@@ -50,7 +108,7 @@ def check_glossary() -> tuple[str, bool]:
 def check_wiki(ttl_days: int) -> list[str]:
     """扫描 .cache/wiki/ 目录，返回过期的页面文件名列表。
 
-    过期判断基于文件修改时间，不需要 metadata.json。
+    过期判断基于 front matter `fetched`（缺失回退 mtime），不需要 metadata.json。
     """
     if not WIKI_DIR.exists():
         return []
@@ -60,14 +118,32 @@ def check_wiki(ttl_days: int) -> list[str]:
     now = datetime.now(timezone.utc)
 
     for md_file in WIKI_DIR.glob("*.md"):
-        mtime = datetime.fromtimestamp(md_file.stat().st_mtime, tz=timezone.utc)
-        age = (now - mtime).total_seconds()
+        age = (now - read_rel_time(md_file)).total_seconds()
         if age > ttl_seconds:
             # 文件名即规范 Wiki 页面名（中文规范名，见 docs/WIKI_CACHE_FORMAT.md）
             page_name = md_file.stem
             expired.append(page_name)
 
     return expired
+
+
+def check_pages(names: list[str], ttl_days: int) -> list[tuple[str, str, str]]:
+    """逐页判定过期状态。返回 [(查询名, 状态, 说明)]，状态 = ok / stale / missing。"""
+    now = datetime.now(timezone.utc)
+    ttl_seconds = ttl_days * 86400
+    out: list[tuple[str, str, str]] = []
+    for name in names:
+        path = resolve_page(name)
+        if path is None:
+            out.append((name, "missing", "未缓存"))
+            continue
+        stamp = read_rel_time(path)
+        detail = f"{path.name} {age_desc(stamp, now)}"
+        if (now - stamp).total_seconds() > ttl_seconds:
+            out.append((name, "stale", detail))
+        else:
+            out.append((name, "ok", detail))
+    return out
 
 
 def refresh_mojang() -> str:
@@ -93,7 +169,34 @@ def main():
     parser.add_argument("--force", action="store_true", help="强制刷新全部缓存")
     parser.add_argument("--dry-run", action="store_true", help="仅显示过期条目，不实际刷新")
     parser.add_argument("--ttl", type=int, default=7, help="过期天数，仅对 Wiki 缓存生效（默认7天）")
+    parser.add_argument(
+        "--check-page",
+        nargs="+",
+        metavar="页面名",
+        help="单页过期判定（读缓存前用）：输出每页 fetched 时间与是否过期；退出码 1 = 有需处理项（过期/未缓存）",
+    )
     args = parser.parse_args()
+
+    if args.check_page:
+        print(f"[refresh_cache] 单页过期判定（TTL={args.ttl} 天）\n")
+        need_action = False
+        for name, status, detail in check_pages(args.check_page, args.ttl):
+            if status == "ok":
+                print(f"  未过期  {name}\n          {detail}")
+                continue
+            need_action = True
+            if status == "stale":
+                print(f"  过期    {name}\n          {detail}")
+                print(f"          → 主动刷新：python scripts/fetch_wiki.py --refresh \"{name}\"")
+            else:
+                print(f"  未缓存  {name}\n          {detail}")
+                print("          → 走抓取降级链（wiki-tools「Wiki 页面获取」）")
+        print()
+        if need_action:
+            print("[refresh_cache] 需处理：过期页先刷新再读取（不得静默使用旧内容）；未缓存页按降级链抓取。")
+            sys.exit(1)
+        print("[refresh_cache] 全部新鲜，可直接读缓存（无需网络请求）。")
+        return
 
     print("[refresh_cache] 正在检查三类缓存...\n")
 

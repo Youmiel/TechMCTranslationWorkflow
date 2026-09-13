@@ -2,6 +2,8 @@
 
 本项目核心资产（Skill、指令、agent 定义）存放在 `.github/` 下，通过**自动适配（脚本）+ 手动配置（使用者自己 / 配合自己的 agent）**两部分在不同编辑器中工作。
 
+> 环境初始化与 `configs/` 配置项（UA 请求身份 / 模型名 / 窗口 / MCP 部署）见 [SETUP](SETUP.md)。
+
 ## 支持的编辑器
 
 | 编辑器 | Skill 支持 | 指令文件 | 适配方式 |
@@ -24,33 +26,11 @@
 
 | 配置项 | 脚本能否处理 | 说明 |
 |--------|-------------|------|
-| **agent 定义适配**（reflow-worker / term-researcher） | ❌ | 脚本不生成各编辑器 agent 文件；迁移时按下方「agent 定义适配」手动 adapt |
+| **agent 定义适配**（reflow-worker / term-researcher / wiki-researcher） | ❌ | 脚本不生成各编辑器 agent 文件；迁移时按下方「agent 定义适配」手动 adapt |
 | **派发 subagent 入口** | ❌ | 各编辑器派发命令/工具名不同（见「各编辑器派发 subagent 命令表」），由**使用者自己的 agent** 按表执行 |
-| **no-think 模型名**（execution_model） | ❌ | 因人而异、脚本无法探测；统一填 `configs/subagent_model.yaml`（见下「模型配置」） |
-| **MCP 配置** | ❌ | `.vscode/mcp.json` 仅 VS Code；其它编辑器 mcp 配置格式不同，需自行对照其文档 |
+| **no-think 模型名**（execution_model） | ❌ | 因人而异、脚本无法探测；统一填 `configs/subagent_model.yaml`（见 [SETUP#执行型-subagent-模型](SETUP.md#执行型-subagent-模型)） |
+| **MCP 配置** | ❌ | `.vscode/mcp.json` 仅 VS Code；其它编辑器 mcp 配置格式不同（见 [SETUP#mcp-wiki-工具可选](SETUP.md#mcp-wiki-工具可选)） |
 | **agent 内模型字段** | ❌ | `reflow-worker.agent.md` 已**移除** `model` 硬编码，模型统一由「模型配置」+ 派发参数决定 |
-
-### 模型配置（execution_model，单一事实源）
-
-`configs/subagent_model.yaml` 的 `execution_model` 字段 = 执行型 subagent（reflow-worker 类）运行的 **no-think 模型名**。
-
-- **因人而异**：按你当前编辑器里可用的模型名填写（VS Code：模型选择器中的名称；Claude Code：模型标识；等）
-- **所有 skill / 文档不硬编码模型名**
-- **agent 派发 reflow-worker 时必须读取本文件**，把 `execution_model` 的值「照原样」填入 subagent 派发参数（不得改动 / 推断 / 凭记忆臆造；文件缺失或未配置 → 停下请使用者填写）——见「各编辑器派发 subagent 命令表」
-
-```yaml
-# 执行型 subagent 运行的 no-think 模型名——因人而异，按你当前编辑器可用的模型名填写
-# 脚本无法自动探测，见本文件 description / 本文档「手动配置」
-execution_model: "<你的 no-think 模型名>"
-```
-
-> **Copilot 特例标注（仅本机适用）**：LLM API 配置（VS Code `chatLanguageModels.json`，BYOK 注册）**不随仓库分发**，故下述仅适用于本机 VS Code Copilot + BYOK 场景。
-> - Copilot 不透传 `thinking: disabled`（chat-completions 只认 `temperature` / `top_p`）
-> - 且 DeepSeek 无非思考模型
-> - 故 `execution_model` 实际运行的是 **`reasoning_effort: low`（最小思考量）**——Copilot 不支持传递 disabled 情况下的**权宜办法**，并非真正关闭思考
-> - 「无思考模型」是执行型纪律的**称呼**（配合 `thinking: false` 隐藏思考 UI），不代表模型零思考
->
-> 其它编辑器 / 其它模型配置无此限制，按各自方式填真正 no-think 模型即可。
 
 ## 各编辑器派发 subagent 命令表
 
@@ -90,17 +70,20 @@ execution_model: "<你的 no-think 模型名>"
 - **兜底**：纪律母版「一、执行型定位」与其同源，派发时随 prompt 整体追加（编辑器无 agent 机制 / 未 adapt 时起效）
 - **迁移**：其它编辑器从该文件 adapt（见下方「agent 定义适配」）
 
-### 研究型 agent 定义文件（term-researcher）
+### 研究型 agent 定义文件（term-researcher / wiki-researcher）
 
-> 与 reflow-worker 定位相反——**研究型（查证），非任务处理型**：允许推理/判断/多步查证，但输出受控（页面原文只进一次性上下文、绝不返回，只返回每词一行压缩总结 + 写盘 `term_resolve.md`）。
+> 与 reflow-worker 定位相反——**研究型（查证/查询），非任务处理型**：允许推理/判断/多步查证，但输出受控（页面原文只进一次性上下文、绝不返回，只返回每词/每问一行压缩总结 + 写盘）。
+> 两者查询链同源（缓存 → 过期判定 → 主动刷新 → 降级链），仅产物契约与派发入口不同：
+> - `term-researcher` = 术语译名查证（任务文件 `term-scan/task-term-resolve.md`，产物 `term_resolve_<i>.md`）
+> - `wiki-researcher` = 其余 Wiki 请求（任务文件 `wiki-tools/task-wiki-query.md`，产物 `wiki_resolve_<i>.md`）——适配方式与下表完全一致
 
-- **位置 / 格式**：`.github/agents/term-researcher.agent.md`（同 Copilot `.agent.md` 格式）
+- **位置 / 格式**：`.github/agents/term-researcher.agent.md`、`.github/agents/wiki-researcher.agent.md`（同 Copilot `.agent.md` 格式）
 - **工具**：`tools: [read, search, edit, execute/runInTerminal, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]`
-  - `execute/runInTerminal` 用于运行 `fetch_wiki.py` 抓取降级（仅此用途，见 agent 正文「终端工具边界」）
+  - `execute/runInTerminal` 用于运行**白名单命令**（`refresh_cache.py --check-page` / `fetch_wiki.py`，见 agent 正文「终端工具边界」）
   - MCP 工具用 `<server>/*` 全量语法（VS Code custom agents：tools 可含 MCP 工具，见官方文档）；server 名 = `.vscode/mcp.json` 的 `servers` 键
 - **模型**：**用主模型（当前选择），不用 `execution_model`**——研究型需要思考，no-think 仅用于 reflow-worker 执行型；frontmatter 不写 `model` 即用当前选择，如需指定可自行填
-- **纪律**：**不追加执行型纪律母版**（`_discipline.md` 与 reflow-worker 同源、面向执行型）；研究型纪律（查证链/输出受控）由 agent 正文承载
-- **迁移**：其它编辑器从该文件 adapt（正文原样复用；工具映射需含对应编辑器的网络/检索工具 + 终端/命令执行工具——后者用于运行 `fetch_wiki.py`）
+- **纪律**：**不追加执行型纪律母版**（`_discipline.md` 与 reflow-worker 同源、面向执行型）；研究型纪律（查询链/输出受控）由 agent 正文承载
+- **迁移**：其它编辑器从这些文件 adapt（正文原样复用；工具映射需含对应编辑器的网络/检索工具 + 终端/命令执行工具——后者用于跑三条白名单命令）
 
 ### agent 定义适配（迁移其它编辑器）
 
@@ -127,6 +110,8 @@ python scripts/setup_editors.py
 # 更新 CLAUDE.md（AGENTS.md 有变更后）
 python scripts/setup_editors.py --force
 ```
+
+> 完整环境初始化（依赖 / submodule / 配置项）见 [SETUP](SETUP.md)。
 
 ## 架构说明
 

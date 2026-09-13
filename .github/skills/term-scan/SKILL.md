@@ -21,6 +21,7 @@ description: 阶段一术语扫描（redstone-preprocess §1.1/§1.2）的机制
 | 第一次遍历（ASR 修正 + 游离单词归位） | `task-en-preprocess.md` | `render_preprocess_prompt.py task-en-preprocess` → 块级派发 | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
 | 术语识别 | `task-term-recognition.md` | `render_preprocess_prompt.py task-term-recognition` → 块级派发 | `_term_results/chunk_<k>.txt` |
 | L3 术语查证（§1.2） | `task-term-resolve.md` | **任务文件即完整 prompt**，分批双引用派发 `term-researcher` | `term_resolve_<i>.md` |
+| Wiki 查询（非术语，翻译过程任意阶段） | `../wiki-tools/task-wiki-query.md` | **任务文件即完整 prompt**，双引用派发 `wiki-researcher` | `wiki_resolve_<i>.md` |
 
 ## ASR 语义解码（第一次遍历）
 
@@ -52,5 +53,14 @@ description: 阶段一术语扫描（redstone-preprocess §1.1/§1.2）的机制
 > - 待查列表按 **30 条/块** 拆 `term_pending_<i>.md`，逐块派发
 > - **任务文件即完整 prompt**（`task-term-resolve.md`）；派发时「任务文件 + 该块待查列表 `term_pending_<i>.md`」双引用（见 redstone-preprocess §1.2）
 > - 主会话只做：写待查列表 + 分块 + 逐块派发 + 读各块结果 + 合并，**不读 wiki 页面全文**
-> - 查证链 / 抓取纪律见 [wiki-tools](../wiki-tools/SKILL.md)（权威）+ `task-term-resolve.md`
+> - 查证链 / 抓取纪律 / **过期判定与主动刷新**见 [wiki-tools](../wiki-tools/SKILL.md)（权威）+ `task-term-resolve.md`
 > - 产物契约（`term_pending.md` / `term_pending_<i>.md` / `term_resolve_<i>.md`）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)
+
+## 非术语的 Wiki 请求（翻译过程中）
+
+翻译过程（含阶段二及以上）出现**非术语译名**的 Wiki 需求——机制细节、数值核对、版本行为对比、页面存在性核查、临时追问——同样遵守「缓存 → 过期判定 → 主动刷新 → 降级链」，且**一律派 `wiki-researcher`**（任务文件 `task-wiki-query.md`）：
+
+- 主会话不读页面全文（token 纪律）；浏览器兜底档由主会话执行
+- 批量请求 → 写 `wiki_pending_<i>.md` 分块串行派发（条数多必分）→ 各块 `wiki_resolve_<i>.md`
+- 单个问题（一两句能问清）→ 不建清单文件，直接以问题文本作待查清单引用
+- 与 §1.2 查证的分工：**术语译名**走 `term-researcher` + `task-term-resolve.md`；**其余 Wiki 请求**走 `wiki-researcher` + `task-wiki-query.md`（两者查询链一致）

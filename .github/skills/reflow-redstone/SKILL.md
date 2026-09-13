@@ -96,6 +96,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 | 翻译前置（阶段〇/一） | `redstone-preprocess` |
 | 人工审核（阶段二½）+ 输出门禁 | `redstone-review` |
 | 数据源总结（阶段三） | `redstone-finalize` |
+| Wiki 抓取/兜底/按需刷新 | `wiki-tools` |
 | 去翻译腔 | `humanizer-zh` |
 | 行宽/时间不重叠机制（同源出处声明，规则已内联语义回填文件，不加载） | `segment-subtitles` |
 | subagent 派发（派发配方/纪律母版/任务导航） | `subagent-dispatch` |

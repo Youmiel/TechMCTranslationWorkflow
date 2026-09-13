@@ -18,7 +18,7 @@ Project_Main/
 ├── knowledge/           # 人工维护核心知识（译名标准），Git 追踪
 ├── indexes/             # 检索索引（knowledge/ + repos/），Git 追踪
 
-├── .github/             # Skills 定义（skills/）+ Agent 经验（experience/）
+├── .github/             # Skills（skills/）+ agent 定义（agents/）+ Agent 经验（experience/）
 ├── .vscode/             # 编辑器配置（mcp.json 等）
 ├── scripts/             # 正式辅助脚本（glossary_*/srt_*/独立工具）
 ├── configs/             # 配置（当前空）
@@ -55,11 +55,12 @@ Project_Main/
 
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
-| `.github/skills/` | Skill 定义 | 工作流/机制说明 SKILL.md（如 translate-redstone、reflow-redstone、redstone-conventions、segment-subtitles、wiki-tools） |
+| `.github/skills/` | Skill 定义 | 工作流/机制说明 SKILL.md（如 translate-redstone、reflow-redstone、redstone-conventions、segment-subtitles、wiki-tools）+ 任务文件（`task-*.md`） |
+| `.github/agents/` | agent 定义（系统提示词覆盖，Copilot `.agent.md` 格式） | `reflow-worker`（执行型）、`term-researcher` / `wiki-researcher`（研究型）；适配其它编辑器见 `docs/EDITOR_COMPAT.md` |
 | `.github/experience/` | Agent 运行经验 | `asr_fixes.md`、`coverage_log.md`、`source_experience.md`、`glossary_categories.yaml`、`trap_words.md` |
 | `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`srt_*`、`srt_reflow_*`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py`、`srt_split.py` 等）；一次性脚本不在此列 |
 | `configs/` | 配置 | 当前为空 |
-| `docs/` | 项目文档 | 本文档及 PIPELINE_ISOLATION / EDITOR_COMPAT / MCP_DEPLOYMENT / SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
+| `docs/` | 项目文档 | 本文档及 SETUP / EDITOR_COMPAT / PIPELINE_ISOLATION / PRODUCT_FORMATS / SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
 
 ## 产物归属速查
 
@@ -78,4 +79,5 @@ Project_Main/
 | 检索索引 | `indexes/knowledge/`、`indexes/repos/` |
 | 参考译例 | `ref_translations/` |
 | Agent 运行经验 | `.github/experience/` |
-| Skill 文档 | `.github/skills/<skill>/SKILL.md` |
+| Skill 文档 | `.github/skills/<skill>/SKILL.md`（任务文件 `.github/skills/<skill>/task-*.md`） |
+| agent 定义 | `.github/agents/*.agent.md` |
