@@ -88,3 +88,6 @@ script load,,Carpet 模组加载 scarpet 脚本的命令,来源：uVOFckoMdIU �
 overlay,,scarpet 脚本 /overlay 命令,来源：uVOFckoMdIU 视频 00:38:05；2026-08-14 用户确认保留英文,/overlay（scarpet 脚本名）,
 schematic,,Minecraft 建筑辅助模组（WorldEdit等）使用的建筑蓝图文件格式,[通用],schematic（建筑蓝图文件格式）,
 Impulse SV,,"人物：Minecraft 技术社区玩家，其设计的经典物品分类器（Impulse Filter）被社区以其名指代，物品分类器 impulse sorter / SS2、SS3 分类器均源于此。","[专有名词] 来源：ZXGpmaIcMMo PRR 5 视频；2026-09-13 用户确认；关联 knowledge/01_terminology/storage.csv Impulse Style Item Filter",Impulse SV,
+bedrock edition,,Minecraft 基岩版，红石系统与 Java 版差异很大,来源：zh wiki；2026-09-16 用户确认,基岩版,
+practical redstone,,Emdy 主讲的红石教学系列（重制版为 Practical Redstone Reloaded）,[专有名词] 系列名；2026-09-16 用户给定中文名《实用红石》/《实用红石：重制版》,实用红石,
+alpha,,Alpha：Minecraft 早期版本阶段名（保留原文）。,来源：p-k5MPhBSjk 视频 00:18:13；2026-08-25 用户确认,Alpha,

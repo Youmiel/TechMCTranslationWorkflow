@@ -186,13 +186,14 @@ def main():
         for e in sorted(set(et) - seen_e):
             problems.append(f"chunk_{k:03d}: E{e} 未对齐（align 漏句？）")
 
-        # 拆子段决策：整句 ≤ 软 22 宽 → 单 cue；> 硬 26 宽 → 拆；[软,硬] 间按语义可拆可不拆
+        # 拆子段决策：**句末标点（。！？…）为显示段硬边界**——一行内不夹句号（用户裁定 2026-09-16）；
+        # 句内超宽才按句内标点拆候选段 + 宽度拼合；整句 ≤ 软 22 宽 → 单 cue
         for cu in block_cues:
             zh, start, end = cu["zh"], cu["start"], cu["end"]
             en_full = cu["en"]
-            w = text_width(zh)
             span = end - start
-            if w <= SOFT_MAX:
+            sents = split_zh(zh)
+            if len(sents) <= 1 and text_width(zh) <= SOFT_MAX:
                 # 单 cue；时长碎片（<1s 但语义自足）→ 告警提示（对齐 reflow 独立短句可接受）
                 if span < MIN_FRAG_MS:
                     alerts.append(f"⏱️ 独立短句 {fmt(start)}-{fmt(end)}（{span}ms <1s）: {zh[:30]}")
@@ -200,7 +201,7 @@ def main():
                 srt_blocks.append({"idx": total_cue, "start": start, "end": end,
                                    "zh": zh, "en": en_full, "z": cu["z"]})
             else:
-                # 超宽：按中文标点拆候选段 + 宽度拼合 → 子单元；时间 = 整句区间内按阅读比例分配
+                # 拆段：时间 = 组区间内按阅读比例分配
                 # （吸附真实 cue 边界 ≤ snap；无则 100ms 取整预测点——阅读舒适优先，允许必要预测点）
                 # 真实 cue 边界 = E 组内各 E 的 start/end 集合
                 real_bounds = set()
@@ -208,10 +209,17 @@ def main():
                     real_bounds.add(et[e][0])
                     real_bounds.add(et[e][1])
                 # 候选段按阅读时长权重分配区间
-                # 标点分级：句末标点优先（句界是最自然的字幕段界，避免跨句粘连成超宽段），
-                # 再降至句内标点；单段切不动仍超宽时保留（由告警暴露）
-                cands = split_recursive(zh, ["。！？…", "，；：", "—", "、"], HARD_MAX)
-                units = pack_candidates(cands, HARD_MAX, 5)
+                # 句界硬边界：逐句独立成段（禁止跨句拼合）；句内超宽按「，；：→—→、」降级切分，
+                # 单段切不动仍超宽时保留（由告警暴露）
+                units = []
+                for st in sents:
+                    if text_width(st) <= SOFT_MAX:
+                        units.append((st, text_width(st)))
+                    else:
+                        units.extend(pack_candidates(
+                            split_recursive(st, ["，；：", "—", "、"], HARD_MAX), HARD_MAX, 5))
+                if not units:
+                    units = [(zh, text_width(zh))]
                 weights = [max(1, cjk_reading_ms(u, args.cjk_speed)) for u, _w in units]
                 # 子段 EN = 整句 EN 按子段宽度比例机械切（互斥拼接==整句 EN；语义近似）
                 en_subs = split_en_by_weights(en_full, [text_width(u) for u, _w in units])

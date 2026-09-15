@@ -23,3 +23,6 @@ crafting recipe,,合成格中材料排布到产物的配方定义。,来源：zh
 crafting grid,,合成的输入格（本视频为 3×3）；官方用词，勿作「合成网格」。,来源：zh.minecraft.wiki 合成页（3×3 合成方格）；p-k5MPhBSjk 视频 00:13:41；2026-09-10 用户确认,合成方格,
 armor slot,,物品栏中装备盔甲的槽位；slot 官方译「槽位」。,来源：zh.minecraft.wiki 槽位页；p-k5MPhBSjk 视频 00:16:20；2026-09-10 用户确认,盔甲槽,
 hunger bar,,玩家界面上显示饥饿值的指标条。,来源：zh.minecraft.wiki 饥饿页；.cache/mojang/misc.csv（Hunger→饥饿）；p-k5MPhBSjk 视频 00:18:49；2026-09-10 用户确认,饥饿条,
+wooden button,,木质按钮，按下后供电 30 游戏刻（1.5 秒），可被弹射物触发,[推断] Mojang 官方仅有各材质按钮名（如 Oak Button 橡木按钮），无材质大类名；2026-09-16 用户确认,木质按钮,
+resource pack,,资源包，用于替换材质/模型/文本等客户端资源,来源：Mojang 官方用语（.cache/mojang/ 界面文本）；2026-09-16 用户确认,资源包,
+hitbox,,实体或方块的碰撞判定箱,来源：knowledge/02_mechanic/hitbox-sorting.md + zh wiki 正文；Mojang 界面作「判定箱」、zh wiki 页名为「判定箱」，项目统一用「碰撞箱」；2026-09-16 用户裁定,碰撞箱,

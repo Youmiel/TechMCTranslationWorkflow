@@ -78,6 +78,8 @@ def is_en_sentence_end(text, start, end):
     nxt = text[end : end + 1]
     if nxt and nxt.islower():
         return False  # 标点后无空格直接续小写（异常粘连）→ 非句末
+    if nxt.isdigit() and text[start - 1 : start].isdigit():
+        return False  # 小数点保护（版本号 1.21 / 1.20.4、小数 0.2）→ 非句末
     return True
 
 
