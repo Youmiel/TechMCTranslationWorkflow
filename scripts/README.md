@@ -53,6 +53,8 @@
 
 > `srt_reflow_core/` 是 `srt_reflow.py` 的实现包（io / plan / anchor / allocate / alerts / reflow / attach），**非独立工具，勿直接调用**；入口只有 `srt_reflow.py`。
 
+> **SRT 解析注意（空 cue 必须保留）**：SRT 中的空文本 cue（仅索引 + 时间行、无正文）**必须保留**——`parse_srt` 用 `len(lines) >= 2` 判定，cues 数组才能与 SRT 序号严格对齐；若退回 `len(lines) < 3` 跳过空 cue，数组即错位、按 `idx-1` 访问全错。`srt_reflow_check_breaks` / `srt_reflow_breaks` / `srt_reflow_gap_scan` / `text_chunk` / `srt_check_segments` 等已统一为 `>=2`，**勿回退**；个别脚本仍用 `<3`（`srt_reflow_check_words` / `srt_check_terms` / `srt_check_plan_words`）但以 `cue_map.get(i, "")` 兜底，跳过空 cue 不致错位。
+
 ## 独立工具
 
 | 脚本 | 用途 | 用法 |
