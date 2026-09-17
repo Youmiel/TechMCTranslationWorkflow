@@ -15,7 +15,7 @@
 categories:
   mechanical:
     label: "红石元件、信号、更新机制"
-    keywords: [piston extender, DPE, TPE, 0-tick, observer, comparator, quasi connectivity, scheduled tick]
+    keywords: [piston extender, DPE, TPE, 0-tick, observer, comparator, quasi connectivity, scheduled tick, repeater, diode, torch stub, fadeout clock]
   slimestone:
     label: "绿萌、飞行器、粘液块技术"
     keywords: [flying machine, piston, slime block, sticky piston]
@@ -27,10 +27,10 @@ categories:
     keywords: [wither, ghast, end crystal, wither skeleton, mob farm, spawner, spawning rate]
   storage:
     label: "存储技术、物品分类"
-    keywords: [sorter, sorting, storage, hopper, shulker, partition, unstackable, filter, main storage, bulk storage, shulker box, unloader, dropper, dispenser, blocker, hopper speed, box loader]
+    keywords: [sorter, sorting, storage, hopper, shulker, partition, unstackable, filter, main storage, bulk storage, shulker box, unloader, dropper, dispenser, blocker, hopper speed, box loader, container measurement, container fill level]
   computational:
     label: "红石计算"
-    keywords: [logic gate, counter, encoder, decoder]
+    keywords: [logic gate, counter, encoder, decoder, memory cell, power level, subtract mode]
   contraptions:
     label: "实用装置"
     keywords: [chunk loader, breeder, duper, farm, cobblestone farm]

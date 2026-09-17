@@ -26,7 +26,7 @@
 | footprint | footprint | 占地尺寸 | 红石装置语境；非"足迹/脚印" |
 | bleed over | bleed over | 信号溢出 | 比较器信号越阈值外溢到相邻单元；非"流血/渗出" |
 | impulse filter / impulse sorter | impulse sorter | 经典物品分类器（上下文提及作者时用原名 Impulse 分类器） | 指最经典的物品分类器（三格红石粉布局），最早由 Impulse SV 推广使用，词源于人名而非"脉冲"（2026-09-13 用户确认）；**禁用"脉冲式分类器"** |
-| pots / pot | decorated pot | 陶罐 | 与 droppers / composters 并列作"盖住漏斗"的方块语境；`flower pot` 才是「花盆」，勿见 pot 即译花盆（2026-09-13 用户指正） |
+| pots / pot | decorated pot | 陶罐（正式作「饰纹陶罐」） | 判据：**陶罐是容器**（存 1 格物品、漏斗/投掷器/比较器可交互），**花盆不是容器**（JE 非方块实体、无红石交互、3/8 格高）——与 droppers / composters 等容器并列、讲存储/漏斗/比较器 → 「陶罐」；与植物/装饰并列 → 「花盆」；`flower pot` 才译花盆，勿见 pot 即译花盆（2026-09-13 用户指正；2026-09-17 wiki 查证补判据，详见 knowledge/02_mechanic/pot.md） |
 
 ## mechanical（红石元件、信号、更新机制）
 

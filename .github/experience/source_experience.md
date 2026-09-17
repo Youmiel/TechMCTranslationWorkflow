@@ -3,6 +3,7 @@
 > 从 `coverage_log.md` 的「发现」提炼的可复用结论，**收敛型**资产（新增递减、越沉淀越精）。
 > 阶段〇优先读本文件，了解"哪个数据源擅长哪类知识"。
 > 永久指南见 `SOURCE_COVERAGE.md`；流水记录见 `coverage_log.md`。
+> 除数据源经验外，本文件兼收**译名/语境裁定**与**流程方法论**（reflow/reflow2 实操教训）；词级裁定的长期落点见 `knowledge/02_mechanic/` 知识卡与 `trap_words.md`。
 
 ## 经验提炼规则（写入门槛）
 
@@ -26,77 +27,92 @@
 ## MCP Wiki（中文 wiki）
 
 - 当术语涉及「快照新增生物/方块」时 → 查中文 Wiki，因为 Mojang 官方表不收录快照特性。（案例：Copper Golem→铜傀儡）
-- 当术语是「机制性」的、可整页覆盖多项时 → 一次抓取页面可多收，因为 Wiki 页面常包含相关子概念。（案例：下界页一次解决 nether ceiling + 8:1 坐标比）
-- 当术语属于「凋灵笼/凋灵类机制」时 → 查中文 Wiki 教程页。（案例：窒息伤害、蓝色凋灵之首、wither cage）
+- 当术语是「机制性」的、可整页覆盖多项时 → 一次抓取页面可多收（含教程页），因为 Wiki 页面常包含相关子概念与成体系教程。（案例：下界页一次解决 nether ceiling + 8:1 坐标比；凋灵笼类查教程页解决窒息伤害、蓝色凋灵之首、wither cage）
 - 当术语属于「合成/工作台 UI」时 → 查 zh wiki 合成页，因为官方用词是「合成方格」（非「合成网格」）与「合成配方」，「网格」属直觉直译的常见误译。（案例：p-k5MPhBSjk crafting grid / crafting recipe）
-- 当红石语境出现 `provide redstone power` / `powered` / `charged` 时 → 查 zh wiki「红石电路/充能与激活」，因为 wiki 严格区分**供能（Powering）/ 激活（Activating）/ 充能（Charging）**，且「充能」只适用于红石导体——非导体（漏斗等）只能被供能/被激活，不宜称"充能"；同一句同时含「直接供能」与「经导电方块」时应分别用「供能」与「充能」。（案例：ZXGpmaIcMMo c343 漏斗 provide Redstone power whether directly or just activating it through a conductive block；知识卡 `02_mechanic/power-vs-charge.md`）
+- 当红石语境出现 `provide redstone power` / `powered` / `charged` 时 → 查 zh wiki「红石电路/充能与激活」，因为 wiki 严格区分**供能（Powering）/ 激活（Activating）/ 充能（Charging）**，且「充能」只适用于红石导体——非导体（漏斗等）只能被供能/被激活；同一句同含「直接供能」与「经导电方块」时应分别用「供能」「充能」。（案例：ZXGpmaIcMMo c343 漏斗 provide power whether directly or through a conductive block；知识卡 `02_mechanic/power-vs-charge.md`）
 - 盲区：Wiki 教程页可能不存在（案例：Tutorials/Item sorter 页面 404）。
+- 当正文用 `{{only|<版别>|for=…}}` 修饰某个条件时 → 按版别展开后再读，因为 `only` 只限定括号内那点补充说明、**不否定该条件在其它版别同样成立**；把 `A{{only|be|for=X}}或B{{only|je|for=Y}}` 读成「A 仅 BE、B 仅 JE」会漏掉 JE 的 A 条件。（案例：漏斗「开启的漏斗」节——正确读法 JE=容器或碰撞箱完整方块、BE=容器（饰纹陶罐除外）；知识卡 `02_mechanic/pot.md`）
 
 ## _repos/TechMCDocs（Technical Minecraft Wiki）
 
 - 当需要「高端机制细节 / 具体 bug 号 / B36 类边界行为」时 → 查 TechMCDocs 页面，因为它按机制主题成文且含 MC- bug 号。（案例：WorldBorder.md 覆盖 4 个 bug 号；MovingBlock36.md 补 B36 行为）
 - 当术语是「社区专有技术」时 → 查 TechMCDocs 而非 Wiki，因为社区技术常只在社区文档成文。（案例：sliced nether portal 源自 UpdateSuppression.md）
-- 技术站点名为专有名词不译：Technical Minecraft Wiki 保留英文，不译"技术 Wiki"。
 - 盲区：部分社区黑科技（1.12 字撕裂等）TechMCDocs 也无直接页面。
 
 ## Mojang 官方表
 
 - 当需要「物品/方块标准中文名」时 → 必用 Mojang 官方表，不可自创/覆盖。
-- 当需要「官方中文术语」而 zh wiki 与 Mojang 词表均无该词条时 → 查游戏内置字幕键（`.cache/mojang/_download_tmp/lang/zh_cn.json`，key 形如 `subtitles.*`），因为官方字幕文本同样是 Mojang 官方译名来源。（案例：edkkLsir9M8 burnout→「烧毁」，字幕键「红石火把烧毁」与 zh wiki 红石火把小节一致，社区另作「燃尽」）
+- 当需要「官方中文术语」而 zh wiki 与 Mojang 词表均无该词条时 → 查游戏内置字幕键（`.cache/mojang/_download_tmp/lang/zh_cn.json`，key 形如 `subtitles.*`），因为官方字幕文本同样是 Mojang 官方译名来源，且与 zh wiki 相应小节一致。（案例：edkkLsir9M8 burnout→「烧毁」，社区另作「燃尽」）
 - 盲区：快照新增特性、社区术语与俗称、1.12 黑科技概念（falling block 非法形态、字撕裂、safe state 等）不在 Mojang 表收录范围。
 
-## 知识三级路由 / 上下文推断
+## 数据源路由（三级路由 / 领域预判）
 
 - 当出现「人名/服务器名」时 → 先查 `knowledge/01_terminology/proper_nouns.csv`，直接覆盖则复用。（案例：cubicmetre、Wavetech）
 - 当术语属「数字电路/逻辑门」时 → 直接用[数电常识]标准译名，因为数电译名固定、无需网络源。（案例：xyw455piBUE 视频 22 条逻辑门/锁存器/半加器/进位/LSB/MSB/时钟电路全数电常识命中）
-- 当术语属「世界生成/噪声算法」（Perlin noise、octave、生物群系参数等）时 → 查 zh wiki 生物群系页/噪声页，因为 1.18+ 世界生成参数与噪声术语有官方中文译名（温度/湿度/大陆性/侵蚀度/奇异性/深度、倍频程、柏林噪声），一次整页覆盖多项。（案例：p-k5MPhBSjk 69 词 L3 查证中 6 参数 + octave 全由 zh wiki 两页覆盖）
-- 当术语属「算法/编程」类（噪声算法、数据结构等）时 → 除 Wiki 外并查 `.cache/glossary/coding.csv`，因为该分类收录算法术语且部分与 worldgen 主题交叉（Perlin Noise→柏林噪声、Noise Map→噪声图），可省一次网络请求。（案例：p-k5MPhBSjk 由 coding.csv 直接命中 2 词）
+- 当术语属「世界生成/噪声/算法/编程」类（Perlin noise、octave、生物群系参数、数据结构等）时 → 查 zh wiki 生物群系页/噪声页，并查 `.cache/glossary/coding.csv`，因为 1.18+ 世界生成参数与噪声术语有官方中文译名（温度/湿度/大陆性/侵蚀度/奇异性/深度、倍频程、柏林噪声），算法词部分已收在该分类、可省一次网络请求。（案例：p-k5MPhBSjk 69 词 L3 查证中 6 参数 + octave 由 zh wiki 两页覆盖、Perlin Noise/Noise Map 由 coding.csv 命中 2 词）
 - 当字幕是「手动转录」（非 YouTube ASR 自动生成）时 → 跳过 ASR 误识别解码，直接按原文语义翻译，因为词汇正确率高、过度“修正”反而破坏原意。（案例：22UL5d4G3mY 用户明确要求保留 Mxi、free pistons 原文拼写）
-- 当技术语境出现「裸数字版本号修饰词」时 → 先确认指代（1.5 flying machine = “MC 1.5 版本的飞行器”，非数量），译文显式加 “MC” 前缀防止误读成物理/渲染引擎。（案例：22UL5d4G3mY 段 21/50/57）
-- 当视频属非 Minecraft 领域（人物传记/科普/纪实）时 → 跳过项目术语表与知识库加载（不适用），技术事实与专名拼写以维基百科等权威网络源为准，因为项目资产只覆盖 Minecraft 技术域。（案例：Terry Davis/TempleOS 传记，TempleOS 行数 119,667、ASU 电气工程硕士等从维基 Terry A. Davis 词条确认）
+- 当视频属非 Minecraft 领域（人物传记/科普/纪实）时 → 跳过项目术语表与知识库加载（不适用），技术事实与专名拼写以维基百科等权威网络源为准，且**专名密集时先按权威源建立正确拼写清单再翻译**，因为项目资产只覆盖 Minecraft 技术域、ASR 对专名误识别密集且大小写不可信。（案例：Terry Davis/TempleOS 传记，行数 119,667、ASU 电气工程硕士等从维基词条确认，J Operating System/LoseThos/HolyC 均由词条校正）
 - 当术语在三级路由（knowledge → .cache → Wiki）均无权威源、属社区/视频机制专属时 → 以视频内原文定义 + 上下文推断 + 用户确认作锚，因为此类术语常由机制命名、无官方译名，用户确认是最可靠锚点（与数电常识/官方表固定译名形成对照）。（案例：uVOFckoMdIU 潜影贝农场主题 supercharger/social aggro/trash mob/aggro engine 等 16 条社区术语全用户确认；duplication mechanic 用 Wiki 机制确认）
-- 当人物传记/科普类视频专名密集（人名/作品/OS/语言名）时 → 先按权威源建立正确拼写清单再翻译，因为 ASR 对专名误识别密集且大小写不可信。（案例：cue 31 "J Operating System"、cue 32 "LoseThos"、cue 34/50/69 "TempleOS"、cue 68 "HolyC"，均从维基词条校正）
-- 当术语是「OS/编程语言/作品等专有名词」时 → 保留原名不译，因为无通行中文译名、保留原名最准确（与技术 Wiki 站点名保留同类）。（案例：TempleOS/HolyC/LoseThos/J Operating System/printf/Commodore 64/Apple II/VAX/Ring 0 环 0 亦仅取通用译法）
-- 当装置名以「数字+gt（游戏刻）」修饰（如 16 gametick box crafter）时 → 先确认该数字指运行周期还是单次耗时，因为装置命名中的 gt 常指每 N 刻循环一次的周期（16gt = 每 0.8s 一个合成循环）而非处理耗时，误读会歪曲机制理解；译名建议「以 16gt 为周期的」而非字面直译「16 游戏刻」。（案例：QSDpdXT9SPs c106 16 gametick box crafter，用户确认 16gt 为周期，通用知识卡 `02_mechanic/box-crafter.md`）
-- 当红石语境出现 wire（单复数/组合词 wires、wireless、redstone wire 等）时 → 译「线路」（广义布线/走线）或「红石（粉）线」（狭义 redstone wire），**绝不译「电线」**，因为 Minecraft 红石领域没有电工意义上的电线，wire 只指逻辑线路或红石粉线，译「电线」会窜出游戏语境。（案例：QSDpdXT9SPs r02「不需要那么多电线绕着到处走」系错翻，对应 "don't need as many wires going around the place"（c249），正确应为「线路/布线」）
-- 当术语指「网络传输 packet」（客户端-服务端通信）时 → 译「网络包」，因为游戏内 `data pack` 已占用「数据包」这一译名，packet 同译「数据包」会造成两类概念混淆；单说「封包」虽可区分但非项目约定。（案例：p-k5MPhBSjk 用户裁定 packet→网络包，data pack→数据包）
-- 当机器名/分类器名可被拆出「普通英文词」但实为**玩家 ID 词源**时（impulse sorter / Impulse Style Item Filter / …）→ 不按字面词义直译，常见语境译其功能名、上下文提及作者时用原名，因为词源是人名（Impulse SV），字面直译会把机制语义带偏。（案例：ZXGpmaIcMMo c460 impulse sorter 用户裁定「经典物品分类器」，**禁用「脉冲式分类器」**；提及作者处作「Impulse 分类器」；`trap_words.md` storage）
+
+## 译名与语境裁定（防误译）
+
+- 当术语是「OS/编程语言/作品/技术站点名等专有名词」时 → 保留原名不译，因为无通行中文译名、保留原名最准确。（案例：TempleOS/HolyC/LoseThos/printf/Commodore 64/Apple II/VAX/Ring 0；Technical Minecraft Wiki 不译“技术 Wiki”）
+- 当技术语境出现「裸数字版本号修饰词」时 → 先确认指代（1.5 flying machine = “MC 1.5 版本的飞行器”，非数量），译文显式加 “MC” 前缀防止误读成物理/渲染引擎。（案例：22UL5d4G3mY 段 21/50/57）
+- 当装置名以「数字+gt（游戏刻）」修饰（如 16 gametick box crafter）时 → 先确认该数字指运行周期还是单次耗时，因为装置命名中的 gt 常指每 N 刻循环一次的周期（16gt = 每 0.8s 一个合成循环）而非处理耗时；译「以 16gt 为周期的」而非字面直译「16 游戏刻」。（案例：QSDpdXT9SPs c106 用户确认 16gt 为周期；知识卡 `02_mechanic/box-crafter.md`）
+- 当红石语境出现 wire（单复数/组合词 wires、wireless、redstone wire 等）时 → 译「线路」（广义布线/走线）或「红石（粉）线」（狭义），**绝不译「电线」**，因为红石领域没有电工意义上的电线、wire 只指逻辑线路或红石粉线。（案例：QSDpdXT9SPs c249 “don't need as many wires going around the place”，曾错译为「电线绕着到处走」）
+- 当术语指「网络传输 packet」（客户端-服务端通信）时 → 译「网络包」，因为游戏内 `data pack` 已占用「数据包」这一译名，同译会造成两类概念混淆（单说「封包」虽可区分但非项目约定）。（案例：p-k5MPhBSjk 用户裁定 packet→网络包，data pack→数据包）
+- 当机器名/分类器名可被拆出「普通英文词」但实为**玩家 ID 词源**时（impulse sorter / Impulse Style Item Filter）→ 不按字面词义直译，常见语境译其功能名、提及作者时用原名，因为词源是人名（Impulse SV），字面直译会把机制语义带偏。（案例：ZXGpmaIcMMo c460 用户裁定「经典物品分类器」，**禁用「脉冲式分类器」**，提及作者处作「Impulse 分类器」；`trap_words.md` storage）
+- 已纠正的误判：`world border` 取 Mojang zh_cn.json `commands.worldborder.*` 官方译名「世界边界」。
+- 当译文出现半角引号，或某词需按语境**保留原文**（Discord 频道标签、`/tick rate` 等命令语法）时 → 中文引号统一「」；保留原文的条目写进 `02_terms.md`「语境例外」，因为 `srt_check_terms.py` 按译名机械匹配会持续报 ⚠️，标注后属预期告警、复核放行。（案例：edkkLsir9M8 3 处半角引号 →「」；`practical redstone tag`、`/tick rate` 两条语境例外）
 
 ## 时间戳对齐（方法论）
 
 - 当合并/断句后的段文本与原字幕时间错位（表现为字幕比语音快/慢）时 → 用「段英文文本在原字幕文本流中顺序匹配 + cue 内线性插值」重算每段时间戳，因为流匹配定位到文本真实位置、比按 cue 粗分准确；单词级 fallback 可容忍单复数等小差异。（案例：22UL5d4G3mY 114 段全量对齐，段 51 core components/component 用 fallback）
 
-## 语义回填（reflow 方法论）
+## reflow / reflow2 方法论
 
-- 当 reflow 整句锚定在原文中非唯一命中时 → 把该整句并入相邻整句作带字母后缀的独立子单元，依靠「整句锚定区间内顺序搜索」定位，因为非唯一整句独立成句会误吸附首个匹配处。（案例：S61 "So." 75 处命中→并入 S60 作 S60e；S70 "um, no." 2 处→并入 S69b）若非唯一但第一处即自身位置（如整句是后文整句的前缀子串）→ 无需并入，直接接受取第一处即可，因为第一处就是本句正确位置。（案例：QSDpdXT9SPs S47 "It's actually a really nice system." 为 S73 前缀，取第一处即 S47 自身；uVOFckoMdIU amazing./perfect./so we're going to do. 三处并入相邻整句后 r04 时间重叠消除）
+> 条目按环节分组；已固化的脚本坑见本节末注记。
 
-- 当长句碎片对应 EN cue 物理极短（<500ms，如 "time."/"fails." 本身仅 ~300ms）时 → 只能选「接受」，因为 EN cue 时长是物理约束、行宽 26 硬限又禁止并入相邻单元，非切分不当。（案例：uVOFckoMdIU S75c "住。" 300ms、S169e "线。" 311ms——对应英文 "time."/"fails."）
+### 锚定与切分
 
-- 当 `check_words` 报 01 与 r01 词序列不一致且差异含撇号时 → 检查 01 中的弯引号（U+2019）并统一替换为 ASCII `'`，因为 check_words 按 `[a-z0-9']+` 分词、弯引号与 ASCII 撇号是不同的 token。（案例：22UL5d4G3mY cue 73 "Mxi's and Myren's" 弯引号致 word 229 失配，替换后 1458/1458 通过）
-- 当 r04 回填后校验段边界时 → `srt_check_segments.py` 必须加 `--allow-estimated`，因为 reflow 的中间断句估算切分点（共享 cue 按字符比例切）与 100ms 预测点合法地不在原边界集，属受控例外降级为告警。（案例：22UL5d4G3mY 254 处新造时间点全部为估算切分点、降级告警后通过）
-- 当用户对 r03 断句提出调整意见（如把 1:4 改为 1:2 两段式）时 → 直接按意见改 r03 并重跑 check-r03 + reflow 全链，因为用户断句偏好优先于默认切分；改后若仍过互斥/行宽/忠实三查即可（S58 改 1:2 后 151 cue 全绿）。
-- 当用户否决 ASR 修正（如"those like free pistons 保持原文"）时 → 还原 01 原文、译文按字面直译（「那些像自由活塞」）、02 术语表标注「已还原」，因为用户对原文有明确意图、ASR 推测修正不作数。（案例：22UL5d4G3mY c44 修正「five pistons」被否）
-- 当补标点 subagent 在 ASR 噪声词上打 `[待审核: X]` 标记泛滥（同一块十几处）时 → 写脚本批量清理「标记文本与前文重复」的标记（subagent 复制粘贴前文词所致），因为这类标记把无效文本注入 r01 致 check_words 连环失配；清理后词序列即恢复与 01 一致。（案例：uVOFckoMdIU chunk_002 21 个 [待审核] 标记删 17 个重复后 check_words 通过）
-- 当 reflow 分句任务输出超限（no-think 模型整块 90+ 整句中断）时 → 按 Z 组数拆半重派（各半 S 号从 1 连续），主会话脚本合并 + 后半 S 号 +n1 重编号，因为单块输出 token 超 max_output 是派发级硬中断、内容错误无法通过重试修复；拆半后各半输出量减半即可成功。（案例：uVOFckoMdIU chunk_002 94 整句拆 Z1-Z49/Z50-Z98 两半后成功）
-- 当 task-fix 定点修 r03 拆句子单元（行宽重切）时 → 慎用——子单元拆分改动易破坏 EN/ZH 互斥拼接（task-fix 重写子单元时与整句对不齐），收敛慢；若同块错误密集（拆句互斥 + 行宽 + 锚定混合）→ 直接整块重派（C 档），因为定点修复在结构性问题前 token 反超、收敛不可控。（案例：uVOFckoMdIU chunk_002 前 2 轮 task-fix 修出 6 组新互斥破坏，拆半重派根治；chunk_004 跨块句/占位等结构问题 task-fix 两次修乱开头与末尾，改主会话脚本精确替换 6 处一次通过——结构修复脚本优于逐处定点）
-- 当 EN 字幕含版本号或小数（`1.21`、`1.20.4`、`0.05 seconds`）时 → EN 切句必须保护小数点（`srt_reflow_presplit.is_en_sentence_end` 已加「标点前后均为数字则不切」），因为 `.` 会被当作句末标点把版本号切半，E 句、cue 锚定与中文继承时间会连锁错乱。（案例：edkkLsir9M8 首跑把 `starting on 1.21` 切成 E7「…on 1.」+ E8「21, as…」、`In 1.20.4` 同病，修复后 E 句 119→113）
-- 当回填拆段时 → 句末标点（。！？…）必须作**显示段硬边界**（逐句独立成段，禁止为凑宽度跨句拼合），否则 `pack_candidates` 会把「A。B，」拼进同一行（一行内夹句号，用户明确否决）。（案例：edkkLsir9M8 用户裁定；`srt_reflow2_backfill` 已改为逐句独立分段、句内超宽才按「，；：→—→、」降级拆）
-- 当原字幕在某段时间内缺字（引用片段/meme 对白、视频内嵌字幕被 ASR 跳过）时 → 请用户提供原文补齐并全链重跑（改动只影响所在块，其余块可复用），补入的对白行**必须带句末标点**，否则会与下一句粘成同一 E 句、中文随之凝成一段。（案例：edkkLsir9M8 c2 覆盖 00:10–00:19 但无文字，用户给出 jazziRed/CraftyMasterman 三行对白，152→155 cue；`(thinking)` 无句末标点致 E 句合并、中文出现两次说话人，补句号后各自继承真实 cue 时间）
-- 当译文出现半角引号，或某词需按语境**保留原文**（Discord 频道标签、`/tick rate` 等命令语法）时 → 中文引号统一「」；保留原文的条目写进 `02_terms.md`「语境例外」一节，因为 `srt_check_terms.py` 按译名机械匹配会持续报 ⚠️，标注后属预期告警、复核放行。（案例：edkkLsir9M8 3 处半角引号 →「」；`practical redstone tag`、`/tick rate` 两条语境例外）
+- 当整句在原文中非唯一命中时 → 并入相邻整句作带字母后缀的独立子单元（靠「整句锚定区间内顺序搜索」定位），因为独立成句会误吸附首个匹配处；若非唯一但第一处即自身位置（整句是后文整句的前缀子串）→ 无需并入，直接取第一处。（案例：S61 "So." 75 处→S60e、S70 "um, no."→S69b；QSDpdXT9SPs S47 为 S73 前缀；uVOFckoMdIU 三处并入后 r04 时间重叠消除）
+- 当长句碎片对应 EN cue 物理极短（<500ms，如 "time."/"fails." 仅 ~300ms）时 → 只能选「接受」，因为 cue 时长是物理约束、行宽 26 硬限又禁止并入相邻单元，非切分不当。（案例：uVOFckoMdIU S75c「住。」300ms、S169e「线。」311ms）
+- 当出现片边界跨块句（块 k【延伸句】≡ 块 k+1【承接句】）时 → **先跑完三连校验、再做衔接归位**；两侧都补全时删一侧内容、**保留裸标记**（check_words 靠「有标记 + 子集」放行，删标记会报措辞不一致）；归位后两侧各报 1 处词序分歧属预期、不重跑不打回。该句块内锚定必失败 → 全文命中验证后放行，`en_timeline` 标 `(global)` 并与前一 E 交叠，`backfill` 的「时间重叠顺延」兜底。（案例：LyU6a4PuDjo 两片各 1 处分歧；uVOFckoMdIU 五处、p-k5MPhBSjk S142 全文命中放行）
+- 当 en_timeline 出现时间为 `-` 的空 E 句（行注「剥离标记后为空」）时 → align 不得引用该 E，改为只引用有文本的 E，否则回填报「Z 组引用的 E 组在 en_timeline 缺失」；根因是句末省略号 `. . .` 被句末标点切分出空句。（案例：LyU6a4PuDjo E28/E29，`Z27 = E27+E28+E29` → `Z27 = E27`）
 
-- 当 ASR 预整理（en-preprocess）subagent 产物跑 `srt_check_segments --cue-exact` 报时间错位时 → 从原始 SRT 按 cue 顺序一一恢复时间码（块文件 + 合并后 01 同步），因为 subagent 可能改了时间码而 01 必须保留原时间轴；勿按「前 N 个时间行」顺序替换（块内 cue 号偏移会误改其它 cue）。（案例：uVOFckoMdIU cue 361/362/939 被改成 00:12:19,480 等新造点，按 cue 一一恢复后 1327 cue 全绿）
-- 当 r04 回填出现「两个中文句粘成一段且宽度超硬限」时 → 先查 `srt_reflow2_backfill.py` 的拆段标点层级，因为 Z 组含多句（`Zn+Zn+1 = Em`）时若拆段标点不含句末标点（。！？…），打包会把句界抹平、段界落在句中造成跨句粘连；拆段已修为「句末标点优先 → 句内标点」，改后重切 Z + 重回填即自然断开（Z 句数不变则 align 无需改）。（案例：ZXGpmaIcMMo 00:07:27（50 字）、00:08:05（40 字）两段，加句末级后分别断为 2 段 / 3 段）
-- 当 Z 句**单句内无任何句内标点**（或候选子句无可切标点）且宽度 > 26 时 → 回 r02 给该句补句内标点 / 删词（候选宽度先用宽度函数核验，勿心算），因为回填只能按标点切、切不动只能保留超宽；改 r02 只要**保持 Z 句数不变**（不动 `。！？…`），既有 `align/` 仍有效，重跑 zsent → backfill 即可。（案例：ZXGpmaIcMMo Z76「漏斗能拾取碰撞箱与…相交的物品实体。」30 字无逗号 → 改「漏斗能拾取物品实体，只要其碰撞箱与…相交。」）
-- 当 check-r03 报整句锚定失败（块内未找到）时 → 先验证该句 EN 在 01 全文是否命中：全文命中 = 衔接归位后的跨块句（句子 cue 跨块边界、块内锚定结构必然失败），受控例外放行直接回填，因为回填按全文锚定、非块内。（案例：uVOFckoMdIU S72/S63/S58+59/S54/S85+86 五处跨块句全文命中验证后放行，r04 无锚定错误）
-- 当 r01 跨块句补全是无句末标点的半句（如【承接句】「…to have」接本块「a single cell…create two cells.」）时 → 检查 `STITCH_RE` 是否按标记分型剥离（【延伸句】必到句号、【承接句】句号或行尾、DOTALL 跨显示折行），因为非贪婪 + MULTILINE `$` 会在换行处提前截断、半句补全无法剥离致 check_words 词序污染。（案例：uVOFckoMdIU chunk_004 半句【承接句】剥离失败 r01=1560 词，分型 DOTALL 修复后一致）
-- 当 reflow 走 5-2 脚本断句路径时 → check-r03 的互斥/忠实天然满足（build-r03 机械填回、模板子句段复用），主要违规集中在「行宽超限 + 引号不配对」两类（机械按宽度比例切 EN 会切进引号/引号归属漂移），task-fix 定点修复 1-2 轮可收敛、无需拆半重派；共享 cue 中间断句大量出现属 5-2 预期（受控例外）；行宽 22-26 软预警多为预设区间特征。（案例：p-k5MPhBSjk 首次 5-2——205 整句，行宽 5 处 + 引号 2 处，round1 修 5 处 + round2 修 1 处后 chunk_002 全绿；未匹配 Z/E 均 0）
-- 当 reflow 判定空隙点与相邻语音的关系时 → 先剔除纯标记 cue 再在剩余语音 cue 上做相邻判定，因为标记 cue 会切断相邻关系、按原序列取相邻对会漏掉跨标记的空隙。
+### 拆段与行宽
+
+- 当回填打包时 → 句末标点（。！？…）是**显示段硬边界**（逐句独立成段，禁为凑宽度跨句拼合），否则 `pack_candidates` 会把「A。B，」拼进同一行（一行内夹句号，用户明确否决）；句内超宽才按「，；：→—→、」降级拆。（案例：edkkLsir9M8 用户裁定；ZXGpmaIcMMo 两段跨句粘连，加句末级后分别断为 2 段 / 3 段）
+- 当某 Z 句单句内无任何句内标点（或候选子句无可切标点）且宽度 > 26 时 → 回 r02 补句内标点 / 删词（宽度先用宽度函数核验，勿心算），因为回填只能按标点切、切不动只能保留超宽；改动**保持 Z 句数不变**（不动 `。！？…`）即可复用既有 `align/`，重跑 zsent → backfill。（案例：ZXGpmaIcMMo Z76 30 字无逗号）
+
+### 校验与受控例外
+
+- 当 `check_words` 报 01 与 r01 词序列不一致时 → 写临时脚本按上下文窗口精确定位替换、恢复 01 原词，迭代重跑到一致（分歧常连环出现、修一处才暴露下一处）；差异含撇号时先查 01 的弯引号（U+2019）并统一为 ASCII `'`，因为 check_words 按 `[a-z0-9']+` 分词、两者是不同 token。（案例：22UL5d4G3mY cue 73 弯引号致 word 229 失配，替换后 1458/1458 通过）
+- 当 r04 回填后校验段边界时 → `srt_check_segments.py` 必须加 `--allow-estimated`，因为中间断句估算切分点（共享 cue 按字符比例切）与 100ms 预测点合法地不在原边界集，属受控例外降级为告警。（案例：22UL5d4G3mY 254 处新造时间点全为估算切分点）
+- 当判定空隙点与相邻语音的关系时 → 先剔除纯标记 cue 再在剩余语音 cue 上取相邻对，因为标记 cue 会切断相邻关系、漏掉跨标记的空隙。
 - 当 `check_breaks` 报空隙点缺句末标点、而该空隙经复核属语义停顿（引导语归前句句尾）时 → 作受控例外放行（须 r03 不跨空隙成单元，并在 `r01_breaks.md` 复核字段注明依据），因为语义本就连贯、不属剪辑跳转。
-- 当某块整块仅含 ASR 噪音残片时 → 补标点保留原词、翻译**输出空文件**，因为无实义可译；空内容在 r01/r02 校验脚本中正常通过，不视为缺产物。
-- 当 `check_words` 报 01 与 r01 词序列不一致时 → 写临时脚本按上下文窗口精确定位替换、恢复 01 原词，再迭代重跑 `check_words`，因为分歧常连环出现（修一处才暴露下一处），逐轮收敛比一次改全可靠。
-- 当 reflow2 片边界跨块句在相邻两片都被补全时 → 归位时删去一侧的补全内容、**保留裸标记**，因为 `check_words` 靠「有标记 + 子集」放行、删标记会报措辞不一致；该句无法块内锚定 → `en_timeline` 标 `(global)` 并与前一 E 交叠，`backfill` 的「时间重叠顺延」自动兜底，属预期。
 
-## 已纠正的误判（防止重犯）
+### 产物与输入处理
 
-- `world border` 取 Mojang zh_cn.json `commands.worldborder.*` 官方译名「世界边界」。
-- ASR 高发主题：人名密集视频（SciCraft 成员、嘉宾）与"落沙/命令方块"主题误识别会爆发（单视频 114 条），此类视频需重点准备人名库与主题词集；实体机制讲解视频中机制词会被误听为常见词（末影龙主题：note/notes/endnote/i know/red nose/screen notes→node/nodes/green nodes、pat find/path finds→pathfind、gender dragon→ender dragon、iceland→island、play blocks→place blocks、by level→y level、pallet→valid path、third→dirt、logs→blocks、carry→cut it 剪辑用语；潜影贝农场主题：sugar/shoulder/shocker/choker→shulker、agreeing/agree on/I grow→aggro、trash Muppets→trash mob、social I grow→social aggro、replacement shoes→placement chute、title ability→tileability、red coder→redstone coder、an ilmango um→omega long pulse extender）；误识别映射已按正确词聚合到 `asr_fixes.md`，翻译前先查
+- 当补标点 subagent 打 `[待审核: X]` 标记泛滥（同一块十几处，系复制粘贴前文词）时 → 脚本批量清理「标记文本与前文重复」的标记，因为无效文本注入 r01 会致 check_words 连环失配。（案例：uVOFckoMdIU chunk_002 21 处删 17）
+- 当 reflow 分句任务输出超限（no-think 模型整块 90+ 整句中断）时 → 按 Z 组数拆半重派（各半 S 号从 1 连续），主会话脚本合并 + 后半 S 号 +n 重编号，因为超 max_output 是派发级硬中断、重试无法修复。（案例：uVOFckoMdIU chunk_002 94 整句拆两半成功）
+- 当原字幕某段时间缺字（引用片段/meme 对白、内嵌字幕被 ASR 跳过）时 → 请用户提供原文补齐并全链重跑（改动只影响所在块、其余块可复用），补入行**必须带句末标点**，否则会与下一句粘成同一 E 句。（案例：edkkLsir9M8 c2 152→155 cue）
+- 当 ASR 预整理 subagent 产物跑 `srt_check_segments --cue-exact` 报时间错位时 → 从原始 SRT 按 cue 顺序一一恢复时间码（块文件 + 合并后 01 同步），因为 01 必须保留原时间轴；勿按「前 N 个时间行」替换（块内 cue 号偏移会误改其它 cue）。（案例：uVOFckoMdIU cue 361/362/939）
+- 当某块整块仅含 ASR 噪音残片时 → 补标点保留原词、翻译**输出空文件**，因为无实义可译；空内容在校验脚本中正常通过、不视为缺产物。
+
+### 用户协作
+
+- 当用户提出断句/译文意见时 → 直接照改并重跑受影响链路（用户偏好优先于默认切分）；用户否决 ASR 修正时还原 01 原文、按字面直译、02 标「已还原」；审核意见为**纯词级替换**（不改句末标点、不增删句）时在 r02 定点改 → 重切 Z（编号不变）→ **复用既有 align** 重跑 backfill，无需重派 task-match。（案例：22UL5d4G3mY c44 修正被否；LyU6a4PuDjo 3 轮 13 处全走此路径、0 次重派）
+- 当用户参与审阅时 → 每次改 r02 **前重读文件**、改**后复核关键串是否落地**，因为用户可能同时手动编辑该文件（人工编辑与脚本写入相互覆盖），按旧内容替换会 MISS 或覆盖用户改动。（案例：LyU6a4PuDjo 用户手删「（信号）」、把「允许下降」改「就下降」，复核才发现未落地）
+
+### 修复策略
+
+- 当 task-fix 定点修 r03 拆句子单元（行宽重切）时 → 慎用（易破坏 EN/ZH 互斥拼接、收敛慢）；同块错误密集（拆句互斥 + 行宽 + 锚定混合）→ 直接整块重派；结构性修复（跨块句/占位）→ 主会话脚本精确替换优于逐处定点。（案例：uVOFckoMdIU chunk_002 前 2 轮 task-fix 修出 6 组新互斥破坏→拆半重派根治；chunk_004 脚本替换 6 处一次通过）
+- 当 reflow 走 5-2 脚本断句路径时 → check-r03 的互斥/忠实天然满足（build-r03 机械填回、模板子句段复用），违规集中在「行宽超限 + 引号不配对」，task-fix 1-2 轮可收敛、无需拆半重派；共享 cue 中间断句大量出现与行宽 22-26 软预警属预期。（案例：p-k5MPhBSjk 205 整句，行宽 5 处 + 引号 2 处两轮清零，未匹配 Z/E 均 0）
+
+> **已固化于脚本**（再现即回归）：回填拆段以句末标点优先；EN 切句保护小数点（`1.21`/`1.20.4` 不被 `.` 切半，`srt_reflow_presplit.is_en_sentence_end`）；`STITCH_RE` 按标记分型 + DOTALL 剥离跨折行半句（【延伸句】到句号、【承接句】句号或行尾）。（案例：edkkLsir9M8 修复后 E 句 119→113；uVOFckoMdIU chunk_004 半句剥离失败致 r01=1560 词）
+
+## ASR 误识别（防重犯）
+
+- 当字幕出现「不像词」的短语时 → 先查 `.github/experience/asr_fixes.md`（跨视频通用、按正确词聚合），未命中再查 `_work/<视频名>/asr_fixes.md`。误听高度集中于少数主题：人名密集视频（SciCraft 成员/嘉宾）与「落沙/命令方块」主题可单视频爆发上百条，需重点准备人名库与主题词集；机制讲解视频中机制词会被误听为常见词（末影龙：note→node、pat find→pathfind、gender dragon→ender dragon、by level→y level、pallet→valid path、third→dirt、carry→cut it；潜影贝农场：sugar→shulker、I grow→aggro、trash Muppets→trash mob、replacement shoes→placement chute、title ability→tileability、red coder→redstone coder、an ilmango um→omega long pulse extender）。
+
