@@ -130,7 +130,7 @@
   - 渲染命令：`python scripts/render_subagent_prompt.py task-translate --video <工作目录> [--chunk <k> | --all] [--prior-file <前文摘要>]`（先验知识自动注入 humanizer 注入版 + 术语表；前文摘要用 `--prior-file` 追加）
   - **输入**：`r01_results/chunk_<k>.txt` + 前后块 CONTEXT 衔接（`--ctx 10`，每侧 10 cue，覆盖前块末尾 1–2 句；语义段是步骤 3/4/6 统一分块单位，见 conventions）——**数据文件引用**（渲染脚本注入 `## 本块数据`）
   - **先验知识注入**（渲染脚本自动注入 `## 先验知识`）：
-    - **humanizer 注入版**：`humanizer-inject.md`（~50 行），**勿注入 humanizer-zh 354 行全量版**（仅主会话/审核深读）——禁止只写"去口语化/去翻译腔"笼统要求（subagent 看不到主会话加载的规则）
+    - **humanizer 注入版**：`humanizer-inject.md`（精简清单），**勿注入 humanizer-zh 354 行全量版**（仅主会话/审核深读）——禁止只写"去口语化/去翻译腔"笼统要求（subagent 看不到主会话加载的规则）
     - **前文摘要注入（可选）**：需跨块长距离语义照应时，先对前文做摘要（派 `task-summary` → `reflow/summary.md`），用 `--prior-file` 追加注入本块（见 [task-summary](task-summary.md)）
   - **产物**：`reflow/r02_results/chunk_<k>.txt`，各块独立文件（整段中文，格式/折行见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md) 与任务文件）——**中间不拼全文**
 2. **注意事项**：
