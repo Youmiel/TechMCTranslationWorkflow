@@ -2,7 +2,7 @@
 term: server-sided hitbox
 aliases: [服务端碰撞箱, server hitbox]
 category: mechanical
-source: The Minecraft World Border - Technical Analysis (FX) / TechMCDocs GameMechanics/WorldBorder
+source: The Minecraft World Border - Technical Analysis（76uNUrHFxJE） / _repos/TechMCDocs/GameMechanics/WorldBorder.md
 version: [通用]
 status: 已确认
 license: 社区通用
@@ -19,5 +19,5 @@ license: 社区通用
 - 语境中常与 client-sided（客户端）对举。
 
 ## 备注
-- 来源：TechMCDocs 文章 `GameMechanics/WorldBorder`（FX 视频），2026-08-01 用户确认；词汇表登记见 `01_terminology/_uncategorized.csv`。
+- 来源：`_repos/TechMCDocs/GameMechanics/WorldBorder.md`（FX 视频 The Minecraft World Border - Technical Analysis，76uNUrHFxJE），2026-08-01 用户确认；词汇表登记见 `knowledge/01_terminology/_uncategorized.csv`。
 - 关联：B36、世界边界、方块破坏进度保存（MC-54587）

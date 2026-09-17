@@ -19,7 +19,7 @@ license: 社区通用
 
 ## 翻译注意事项
 
-- 标准译名：TNT 掠夺（`.cache/glossary/mob_farm.csv` L2 词条 `TNT Looting`→TNT掠夺；looting=抢夺，官方译名）。
+- 标准译名：TNT 掠夺（`_repos/techmc-glossary/`（mob_farm 类）词条 `TNT Looting`→TNT掠夺；looting=抢夺，官方译名）。
 - 语境区分：`looting`（附魔「抢夺」）与「掠夺」在农场语境指同一机制；`non-looting`=非抢夺模式。
 - "玩家点燃的 TNT"（player-lit TNT）是本机制的成立条件，翻译时需与"玩家放置的 TNT"（放置≠点燃）区分。
 

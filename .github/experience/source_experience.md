@@ -42,14 +42,14 @@
 ## Mojang 官方表
 
 - 当需要「物品/方块标准中文名」时 → 必用 Mojang 官方表，不可自创/覆盖。
-- 当需要「官方中文术语」而 zh wiki 与 Mojang 词表均无该词条时 → 查游戏内置字幕键（`.cache/mojang/_download_tmp/lang/zh_cn.json`，key 形如 `subtitles.*`），因为官方字幕文本同样是 Mojang 官方译名来源，且与 zh wiki 相应小节一致。（案例：edkkLsir9M8 burnout→「烧毁」，社区另作「燃尽」）
+- 当需要「官方中文术语」而 zh wiki 与 Mojang 词表均无该词条时 → 查游戏内置字幕键（Mojang 官方 zh_cn 语言文件的 `subtitles.*` 键，由 `scripts/glossary_fetch_mojang.py` 获取，缓存在`.cache/mojang/_download_tmp/lang/zh_cn.json`），因为官方字幕文本同样是 Mojang 官方译名来源，且与 zh wiki 相应小节一致。（案例：edkkLsir9M8 burnout→「烧毁」，社区另作「燃尽」）
 - 盲区：快照新增特性、社区术语与俗称、1.12 黑科技概念（falling block 非法形态、字撕裂、safe state 等）不在 Mojang 表收录范围。
 
 ## 数据源路由（三级路由 / 领域预判）
 
 - 当出现「人名/服务器名」时 → 先查 `knowledge/01_terminology/proper_nouns.csv`，直接覆盖则复用。（案例：cubicmetre、Wavetech）
 - 当术语属「数字电路/逻辑门」时 → 直接用[数电常识]标准译名，因为数电译名固定、无需网络源。（案例：xyw455piBUE 视频 22 条逻辑门/锁存器/半加器/进位/LSB/MSB/时钟电路全数电常识命中）
-- 当术语属「世界生成/噪声/算法/编程」类（Perlin noise、octave、生物群系参数、数据结构等）时 → 查 zh wiki 生物群系页/噪声页，并查 `.cache/glossary/coding.csv`，因为 1.18+ 世界生成参数与噪声术语有官方中文译名（温度/湿度/大陆性/侵蚀度/奇异性/深度、倍频程、柏林噪声），算法词部分已收在该分类、可省一次网络请求。（案例：p-k5MPhBSjk 69 词 L3 查证中 6 参数 + octave 由 zh wiki 两页覆盖、Perlin Noise/Noise Map 由 coding.csv 命中 2 词）
+- 当术语属「世界生成/噪声/算法/编程」类（Perlin noise、octave、生物群系参数、数据结构等）时 → 查 zh wiki 生物群系页/噪声页，并查 `_repos/techmc-glossary/`（coding 类），因为 1.18+ 世界生成参数与噪声术语有官方中文译名（温度/湿度/大陆性/侵蚀度/奇异性/深度、倍频程、柏林噪声），算法词部分已收在该分类、可省一次网络请求。（案例：p-k5MPhBSjk 69 词 L3 查证中 6 参数 + octave 由 zh wiki 两页覆盖、Perlin Noise/Noise Map 由 coding.csv 命中 2 词）
 - 当字幕是「手动转录」（非 YouTube ASR 自动生成）时 → 跳过 ASR 误识别解码，直接按原文语义翻译，因为词汇正确率高、过度“修正”反而破坏原意。（案例：22UL5d4G3mY 用户明确要求保留 Mxi、free pistons 原文拼写）
 - 当视频属非 Minecraft 领域（人物传记/科普/纪实）时 → 跳过项目术语表与知识库加载（不适用），技术事实与专名拼写以维基百科等权威网络源为准，且**专名密集时先按权威源建立正确拼写清单再翻译**，因为项目资产只覆盖 Minecraft 技术域、ASR 对专名误识别密集且大小写不可信。（案例：Terry Davis/TempleOS 传记，行数 119,667、ASU 电气工程硕士等从维基词条确认，J Operating System/LoseThos/HolyC 均由词条校正）
 - 当术语在三级路由（knowledge → .cache → Wiki）均无权威源、属社区/视频机制专属时 → 以视频内原文定义 + 上下文推断 + 用户确认作锚，因为此类术语常由机制命名、无官方译名，用户确认是最可靠锚点（与数电常识/官方表固定译名形成对照）。（案例：uVOFckoMdIU 潜影贝农场主题 supercharger/social aggro/trash mob/aggro engine 等 16 条社区术语全用户确认；duplication mechanic 用 Wiki 机制确认）

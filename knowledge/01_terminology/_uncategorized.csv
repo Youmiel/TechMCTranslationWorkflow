@@ -1,6 +1,6 @@
 term_en,short_form,definition,notes,term_zh,term_ja
 Louvain method;Louvain algorithm,,一种基于模块度（modularity）优化的贪心启发式社区发现算法，通过“局部移动节点最大化模块度 + 将社区聚合为新节点”两阶段反复迭代，在大规模网络中快速提取非重叠社区结构。2008 年由鲁汶大学（UCLouvain）的 Blondel 等人提出。,来源：Blondel et al. 2008 / 维基百科；2026-08-01 用户确认；亦译“鲁汶方法”；其改进版为 Leiden 算法,鲁汶聚类,
-storage tech aid program,,"cubicmetre 自制的 scarpet 程序，用于存储技术辅助（最早出现在其""How to Build the Ultimate Storage""视频中）",[存储] 来源：cubicmetre 视频；2026-08-01 用户确认直译,存储技术辅助程序,
+storage tech aid program,,"cubicmetre 自制的 scarpet 程序，用于存储技术辅助（最早出现在其""How to Build the Ultimate Storage""视频中）",[存储] 来源：视频 Solving Minecraft's Storage Problem（wG5Zqi1DD1I）00:01:04；2026-08-01 用户确认直译,存储技术辅助程序,
 safe state,,1.12.2 技术术语：区块处于可安全保存/不受保存干扰的状态，用于支撑落沙、非法方块等操作。,来源：6sPS4yqC72I 视频 c216/c220/c969/c1236/c1313-1314；2026-08-04 用户确认,安全状态,
 global flag,,视频内部 jargon：指被操控的全局标志（如 power、falling 等），用于控制区块/落沙行为。,来源：6sPS4yqC72I 视频 c1213；2026-08-04 用户确认,全局标志,
 falling flag,,视频内部 jargon：落沙（重力方块下落）相关的标志位，通过装饰另一区块来关闭。,来源：6sPS4yqC72I 视频 c1234-1236；2026-08-04 用户确认,落沙标志,
@@ -23,7 +23,7 @@ item conveyor,,由活塞推动运送物品的传送带（本视频指潜影弹�
 replacement module,,补货替换模块（restock 替换用）,来源：uVOFckoMdIU 视频 00:31:37；2026-08-14 用户确认,替换模块,
 restock station,,,来源：uVOFckoMdIU_Engineering Minecraft's Fastest Shulker Farm 视频 00:31:06；2026-08-13 用户确认,补货站,
 kernel-fitting algorithm,,核拟合算法：本视频合成系统用 3×3 配方矩阵做核匹配到合成格上的算法。,[推断：视频自述] 来源：p-k5MPhBSjk 视频 00:13:41；2026-08-25 用户确认,核拟合算法,
-combat update,,战斗更新：Java 版 1.9 官方命名更新（本视频提及旧版伤害减免公式）。,来源：zh wiki「战斗更新」页（.cache/wiki/战斗更新.md）；2026-08-25 用户确认,战斗更新,
+combat update,,战斗更新：Java 版 1.9 官方命名更新（本视频提及旧版伤害减免公式）。,来源：zh wiki「战斗更新」页；2026-08-25 用户确认,战斗更新,
 block change,,方块变更：玩家挖/放方块产生的变更记录（本视频 6 字节数据结构）。,[推断：视频自述] 来源：p-k5MPhBSjk 视频 00:10:13；2026-08-25 用户确认,方块变更,
 pattern table,,模式表：由世界种子算出的重复表，决定各生物群系岛屿的类型。,[推断：视频自述] 来源：p-k5MPhBSjk 视频 00:08:20；2026-08-25 用户确认,模式表,
 Waxed Lightly Weathered Cut Copper Stairs,,涂蜡的斑驳切制铜楼梯（梗：视频以此超长物品名调侃方块种类数）。,来源：zh wiki 切制铜楼梯页 21w05a 历史（旧译「涂蜡的轻度锈蚀切制铜楼梯」）；2026-08-25 用户确认,涂蜡的斑驳切制铜楼梯,

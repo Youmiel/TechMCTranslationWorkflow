@@ -42,7 +42,7 @@ license: CC BY-NC-SA
 ## 备注
 
 - 来源：
-  - `.cache/wiki/红石术语表（教程）.md`（zh wiki `红石电路#基本种类`，2026-09-11 抓取）
+  - zh wiki「红石术语表（教程）」页（`红石电路#基本种类`）
   - `_repos/techmc-glossary/TechMC Glossary.csv`（`Slimestone` = Flying machine related technology）
   - `_repos/gtmc-articles/_Drafts/Molforte/README.zh.md`（「绿萌与械电高度相关，绿萌可视为可移动的械电科技」「飞行器是一种特殊的械电」）
 - 用户裁定（2026-09-13）：

@@ -13,7 +13,7 @@
 term: <英文术语/概念名>
 aliases: [<同义词/缩写>]
 category: <分类，与 glossary_categories.yaml 一致>
-source: <来源：视频标题 / 文档 / 人工审核>
+source: <来源：〈视频标题〉（视频 ID） / Wiki 页面 / 文档 / 人工审核>
 version: [<适用版本>]
 status: 待审核
 license: <内容来源协议：CC0 / CC BY-SA / CC BY-NC-SA / MIT / 原创等>
@@ -38,7 +38,7 @@ license: <内容来源协议：CC0 / CC BY-SA / CC BY-NC-SA / MIT / 原创等>
 | `term` | 英文标准术语/概念名 |
 | `aliases` | 同义词/缩写 |
 | `category` | 分类，与 `glossary_categories.yaml` 一致 |
-| `source` | 来源：视频标题 / 文档 / 人工审核 |
+| `source` | 来源：视频须写 `〈视频标题〉（<视频 ID>）` 或至少 `<视频 ID>`（标题可从 `coverage_log.md` 反查），Wiki 页面 / 文档 / 人工审核照常；**只写原始资料源或仓库内引用，勿写 `.cache/`、`_work/` 路径**（见 `maintain-knowledge`「来源规范」） |
 | `version` | 适用版本，遵循 `indexing-rules` 版本标注（`[通用]`/`[1.21+]` 等） |
 | `status` | `待审核`；用户确认后改 `已确认` |
 | `license` | 卡片内容的来源协议（如 **社区通用** / CC0 / CC BY-SA / CC BY-NC-SA / MIT）；原创或人工整理填 `原创` |
@@ -50,7 +50,7 @@ license: <内容来源协议：CC0 / CC BY-SA / CC BY-NC-SA / MIT / 原创等>
 term: main storage
 aliases: [MS, main storage item sorter]
 category: storage
-source: Solving Minecraft's Storage Problem (cubicmetre)
+source: Solving Minecraft's Storage Problem（wG5Zqi1DD1I）
 version: [通用]
 status: 已确认
 license: 社区通用
@@ -62,9 +62,9 @@ license: 社区通用
 存储科技术语：可分类并存储几乎所有可获得物品的巨型仓库；本视频特指 Wavetech 的全物品仓库，勿译"主存储"。
 
 ## 翻译注意事项
-全物品仓库。依据：TechMC Glossary `storage` 分类 + 用户审计确认。
+全物品仓库。依据：`_repos/techmc-glossary/`（storage 类）+ 用户审计确认。
 
 ## 备注
 - 首次出现：00:07:01（Wavetech's main storage item sorter）
-- 关联：`storage.csv`、`.github/experience/trap_words.md`
+- 关联：`knowledge/01_terminology/storage.csv`、`.github/experience/trap_words.md`
 ```

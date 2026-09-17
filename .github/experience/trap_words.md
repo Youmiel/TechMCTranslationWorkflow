@@ -20,7 +20,7 @@
 | main storage / main storage item sorter | main storage | 全物品仓库 | TechMC 存储分类；曾误判直译"主存储" |
 | filter / item filter / filters | item filter | 物品分类器（语境常作"分类器"） | TechMC 存储分类；非"过滤器" |
 | sorter | item sorter | 物品分类器 | TechMC 存储分类 |
-| blocker / blocker items | blocker | 占位物 | TechMC 存储分类（`.cache/glossary/storage.csv`：填充物, 占位物）；非"阻挡物" |
+| blocker / blocker items | blocker | 占位物 | TechMC 存储分类（`_repos/techmc-glossary/` storage 类：填充物, 占位物）；非"阻挡物" |
 | loader / box loader / unloader | box loader / unloader | 打包机 / 拆包机 | TechMC 存储分类；潜影盒语境作"潜影盒打包机/拆包机" |
 | tileable / tiling | tileable | 可堆叠 | L1 three-wide tileable=三宽可堆叠；非"可平铺/可拼接" |
 | footprint | footprint | 占地尺寸 | 红石装置语境；非"足迹/脚印" |

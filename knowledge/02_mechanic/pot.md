@@ -59,6 +59,5 @@ wiki「漏斗」页「开启的漏斗」小节：漏斗捕捉凹槽内及上方 
 
 ### 来源与关联
 
-- 来源：`.cache/wiki/花盆.md`、`.cache/wiki/饰纹陶罐.md`（2026-09-17 新抓取）、`.cache/wiki/漏斗.md`、`.cache/wiki/判定箱.md`、`.cache/wiki/堆肥桶.md`
-- 关联：`.github/experience/trap_words.md`（storage 分类）、`.cache/mojang/blocks.csv`（官方译名）、`knowledge/01_terminology/storage.csv`
-- 查证记录：`_work/wiki_resolve.md`（第 1 批）、`_work/wiki_resolve_2.md`（第 2 批，纠正版别标注读法）
+- 来源：zh minecraft wiki「花盆」「饰纹陶罐」「漏斗」「判定箱」「堆肥桶」页（2026-09-17 查证）
+- 关联：`.github/experience/trap_words.md`（storage 分类）、Mojang 官方用语（方块译名）、`knowledge/01_terminology/storage.csv`

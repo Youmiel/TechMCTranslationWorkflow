@@ -70,6 +70,9 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 - 术语/人物/组织：CSV，共享 `_example.csv` 表头；Agent 新建术语只能写入 `_uncategorized.csv`
 - **CSV 表头列含义**：`csv-rules` Skill（唯一权威）
 - **CSV 读写规范**：`csv-rules` Skill（编码/解析/写入）
+- **来源规范**（2026-09-17；登记细则见 `term-registration`，模板见 `knowledge/_template_knowledge.md`）：知识记录（术语 CSV 的 `notes`、知识卡的 `source`/「来源」、索引「来源」行、`experience/` 条目）的来源须满足：
+  - **可移植**：只写**原始资料源**（`zh wiki〈页面〉页`、`Mojang 官方用语`）或**仓库内引用**（`_repos/…`、`knowledge/…`、`.github/…`）；**禁止**指向 `.cache/`（脚本生成的缓存）与 `_work/`（工作产物）——换环境即失效
+  - **视频必带唯一 ID**：合格形式为 `〈视频标题〉（<视频 ID>）`，**至少** `<视频 ID>`（如 `A Closer Look at Minecraft's Storage Blocks（ZXGpmaIcMMo）`、`uVOFckoMdIU 视频 00:26:48`）。ID（YouTube ID / B站 BV 号）是本项目视频主键（`_input/<ID>_*.srt` 同名），标题会被改、作者不唯一——**只写标题或只写作者（如「cubicmetre 视频」「（FX）」）不算合格来源**；只写 ID 时标题可从 `.github/experience/coverage_log.md`（视频流水表）反查；位置定位（`c<块号>` / `HH:MM:SS`）附末尾；确实无法确定 ID 时标 `[ID 待补]`
 - **版本标注**：`indexing-rules` Skill
 
 ## 通用知识卡
