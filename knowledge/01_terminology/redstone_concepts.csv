@@ -39,3 +39,8 @@ one way signal,,红石粉向上可穿过红石导体、向下不可，据此实�
 conductive block,,能接受充能并向相邻红石元件供能的方块；非红石导体则不能,来源：knowledge/02_mechanic/power-vs-charge.md + zh wiki（术语表把 Conductive Block 列为「红石导体」别名）；2026-09-16 用户确认,红石导体,
 block update,,方块状态变化时向相邻方块发出的更新（烧毁后的红石火把需收到一次更新才恢复）,来源：zh wiki；2026-09-16 用户确认,方块更新,
 bleed over,,比较器输出越过阈值后外溢到相邻单元、致其误动作（AB 堆叠需规避）,四级查找未命中；对照 knowledge/01_terminology/storage.csv Container Threshold 描述“单片间信号溢出”,信号溢出,
+neighbour change update;NC update,NC,方块更新的别名（邻接变化更新）,来源：PRR3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:01:50；用户裁定缩写译法,NC 更新,
+state update detector;SUD,SUD,观察者实际检测的更新类型：相邻方块的方块状态变化（与 BUD 对应）,来源：PRR3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:03:42,状态更新检测器,
+odd gametick delay,,奇数游戏刻延迟；常规元件延迟均为偶数刻，借助脚手架/树叶可做出奇数刻延迟,来源：PRR3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:05:24,奇数游戏刻延迟,
+provide power,,红石元件向外输出信号的动作,用户裁定（2026-09-17）：元件输出语境作「输出能量」以区别 wiki Powering（供能）；其余 power 处仍作「供能」；视频 LyU6a4PuDjo,输出能量,
+receive power,,红石元件从输入端接收信号的动作,用户裁定（2026-09-17）：与 provide power 成对，元件输入语境作「接收能量」；视频 LyU6a4PuDjo,接收能量,

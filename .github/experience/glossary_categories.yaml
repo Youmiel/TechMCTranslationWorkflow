@@ -15,7 +15,7 @@
 categories:
   mechanical:
     label: "红石元件、信号、更新机制"
-    keywords: [piston extender, DPE, TPE, 0-tick, observer, comparator, quasi connectivity, scheduled tick, repeater, diode, torch stub, fadeout clock]
+    keywords: [piston extender, DPE, TPE, 0-tick, observer, comparator, quasi connectivity, scheduled tick, repeater, diode, torch stub, fadeout clock, state update, leafstone, wallstone]
   slimestone:
     label: "绿萌、飞行器、粘液块技术"
     keywords: [flying machine, piston, slime block, sticky piston]

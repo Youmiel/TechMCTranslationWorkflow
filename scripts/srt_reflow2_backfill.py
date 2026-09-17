@@ -13,6 +13,8 @@ Z 句（中文）通过对齐（align，Z组=E组）**继承** E 固化时间—
    无则 100ms 取整预测点）——阅读舒适优先（≤22 字），不因「尊重原轴」保留超长句。
    拆段标点分级 = 句末标点（。！？…）优先 → 句内标点（，；：—、）；由标点切不动仍超宽的单句
    保留原样并计入告警（此类需回 r02 改写句子，加句内标点）
+   **分号（；）不作跨拼合点**——以「；」结尾的候选段之后强制断段，分号前后内容分属不同
+   显示单元（用户裁定 2026-09-17：并列项不挤在同一屏段）
 
 产物：
 - `r04_draft.srt`：标准 SRT 单语中文（显示单元 = Z 整句或子段）
@@ -111,11 +113,26 @@ def parse_zsent(text):
     return out
 
 
+def pack_no_cross_semicolon(segs, hard_max, min_unit):
+    """贪心拼合，但**分号（；）不作跨拼合点**：以「；」结尾的候选段之后强制断段，
+    分号前后内容因此分属不同显示单元（用户裁定 2026-09-17）。buck 内其余逻辑同 pack_candidates。"""
+    units = []
+    buf = []
+    for seg in segs:
+        buf.append(seg)
+        if seg.rstrip().endswith("；"):
+            units.extend(pack_candidates(buf, hard_max, min_unit))
+            buf = []
+    if buf:
+        units.extend(pack_candidates(buf, hard_max, min_unit))
+    return units
+
+
 def split_zh_units(text, punct_levels):
     """Z 句按标点切候选段 + 贪心拼合（复用 presplit：只在标点处切、段拼接 == Z 原文）。
     返回 (units, notes)；units = [(文本, 宽度)]；超硬上限/碎片由调用方决策。"""
     cands = split_recursive(text, punct_levels, HARD_MAX)
-    units = pack_candidates(cands, HARD_MAX, 5)
+    units = pack_no_cross_semicolon(cands, HARD_MAX, 5)
     return units
 
 
@@ -216,7 +233,7 @@ def main():
                     if text_width(st) <= SOFT_MAX:
                         units.append((st, text_width(st)))
                     else:
-                        units.extend(pack_candidates(
+                        units.extend(pack_no_cross_semicolon(
                             split_recursive(st, ["，；：", "—", "、"], HARD_MAX), HARD_MAX, 5))
                 if not units:
                     units = [(zh, text_width(zh))]

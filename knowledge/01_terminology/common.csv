@@ -26,3 +26,5 @@ hunger bar,,玩家界面上显示饥饿值的指标条。,来源：zh.minecraft.
 wooden button,,木质按钮，按下后供电 30 游戏刻（1.5 秒），可被弹射物触发,[推断] Mojang 官方仅有各材质按钮名（如 Oak Button 橡木按钮），无材质大类名；2026-09-16 用户确认,木质按钮,
 resource pack,,资源包，用于替换材质/模型/文本等客户端资源,来源：Mojang 官方用语（界面文本）；2026-09-16 用户确认,资源包,
 hitbox,,实体或方块的碰撞判定箱,来源：knowledge/02_mechanic/hitbox-sorting.md + zh wiki 正文；Mojang 界面作「判定箱」、zh wiki 页名为「判定箱」，项目统一用「碰撞箱」；2026-09-16 用户裁定,碰撞箱,
+snowy dirt,,泥土被细雪覆盖后的形态（方块状态）,来源：Practical Redstone Reloaded EP3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:07:10,覆雪泥土,
+skull block,,生物头颅方块；具有 powered 方块状态,来源：Practical Redstone Reloaded EP3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:07:24；zh wiki 页面名「生物头颅」,生物头颅,

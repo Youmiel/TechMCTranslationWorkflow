@@ -51,5 +51,6 @@ loop lock,,练习名：可用拉杆把脉冲停在当前灯上的慢时钟（练
 lamp countdown,,练习名：按按钮后灯柱由全亮逐级熄灭（练习 3）,来源：视频自造练习名；[推断] 用户确认；视频 LyU6a4PuDjo,灯柱倒计时,
 tryhards,,口语词：愿意挑战额外难度的玩家,来源：视频上下文；[推断] 用户确认；视频 LyU6a4PuDjo,硬核玩家,
 slot,,容器/物品栏中存放单个物品的格子；容器语境用「格」,来源：zh wiki 槽位页通用作「槽位」；用户裁定（2026-09-17）容器语境用「格」；装备语境另有 armor slot→盔甲槽；视频 LyU6a4PuDjo,格,
-provide power,,红石元件向外输出信号的动作,用户裁定（2026-09-17）：元件输出语境作「输出能量」以区别 wiki Powering（供能）；其余 power 处仍作「供能」；视频 LyU6a4PuDjo,输出能量,
-receive power,,红石元件从输入端接收信号的动作,用户裁定（2026-09-17）：与 provide power 成对，元件输入语境作「接收能量」；视频 LyU6a4PuDjo,接收能量,
+up state,,墙（wall）的方块状态之一，决定墙心立柱（post）是否生成,来源：Practical Redstone Reloaded EP3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:08:17,up 状态,
+distance state,,脚手架（scaffolding）距支撑的横向格数状态,来源：Practical Redstone Reloaded EP3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:04:48,distance 状态,
+gametick clock,,游戏刻时钟：每次只推进一个游戏刻的循环装置,来源：Practical Redstone Reloaded EP3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:09:57；用户裁定译名,1gt 流水灯,
