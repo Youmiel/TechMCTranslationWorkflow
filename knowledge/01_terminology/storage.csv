@@ -24,3 +24,4 @@ silent dropper elevator,,只在有物品可向容器转移时才激活、因而�
 smart dropper,,检测到内部有物品即激活、持续投掷直至清空的投掷器装置,四级查找未命中；视频自释,智能投掷器,
 SS2 filter,,信号强度 2 的物品分类器（Impulse SV 推广，分类槽需 41 个物品才排空）,四级查找未命中；对照 knowledge/01_terminology/storage.csv Impulse Style Item Filter=经典物品分类器,SS2 分类器,
 SS3 filter,,信号强度 3 的物品分类器（在 SS2 基础上多一颗红石粉）,四级查找未命中；视频自释,SS3 分类器,
+item alignment,,存储科技中使物品实体排列到确定位置的技巧,来源：用户裁定；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:10:30,物品实体对齐,

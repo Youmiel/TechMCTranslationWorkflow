@@ -20,3 +20,6 @@ world generation,,世界生成的机制：区块、地形、生物群系等由�
 biome parameters,,生物群系生成参数：温度、湿度、大陆性、侵蚀度、奇异性、深度等，决定地形特征。,[推断] 来源：zh.minecraft.wiki 生物群系页 + _repos/techmc-glossary/（Biome→生物群系）；p-k5MPhBSjk 视频 00:02:31；2026-09-10 用户确认,生物群系参数,
 ticking block entity,,方块实体系统每游戏刻调用其 tick() 方法的方块实体（如漏斗），只要处于加载状态即被每刻检查,四级查找未命中；2026-09-13 用户确认,每刻运算的方块实体,
 tick phases,,服务端每游戏刻的方块运算阶段（随机刻、计划刻等）,四级查找未命中；2026-09-13 用户裁决,游戏刻阶段,
+blast resistance,,方块在爆炸中吸收并阻止爆炸破坏传播的强度,来源：zh wiki 方块基本属性页；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:03:45,爆炸抗性,
+fluid tick,,流体按速率扩散所依赖的计划刻系统（与方块计划刻成对）,来源：_repos/gtmc-articles/（基础概念与结构）；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:13:35,流体计划刻,
+block state;blockstates,,方块存储的属性集合（如朝向、开关等）,来源：zh wiki 方块实体页；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:14:19,方块状态,

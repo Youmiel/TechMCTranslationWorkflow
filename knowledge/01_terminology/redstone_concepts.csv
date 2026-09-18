@@ -44,3 +44,7 @@ state update detector;SUD,SUD,观察者实际检测的更新类型：相邻方�
 odd gametick delay,,奇数游戏刻延迟；常规元件延迟均为偶数刻，借助脚手架/树叶可做出奇数刻延迟,来源：PRR3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:05:24,奇数游戏刻延迟,
 provide power,,红石元件向外输出信号的动作,用户裁定（2026-09-17）：元件输出语境作「输出能量」以区别 wiki Powering（供能）；其余 power 处仍作「供能」；视频 LyU6a4PuDjo,输出能量,
 receive power,,红石元件从输入端接收信号的动作,用户裁定（2026-09-17）：与 provide power 成对，元件输入语境作「接收能量」；视频 LyU6a4PuDjo,接收能量,
+updater block,,放置后向相邻红石粉发送方块更新、解除 BUD 停滞的方块,来源：视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:07:54,更新方块,
+zero tick;zero ticks,,零刻（0-tick）机制：使方块在 1 游戏刻内完成推动的活塞特性,来源：用户裁定（社区更常用 0t）；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:12:28,0t,
+player input bug,,玩家直接激活活塞时看似延迟 1 游戏刻的现象,来源：_repos/TechMCDocs/GameTick/TileTicks.md；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:14:45,玩家输入漏洞,
+input bug,,player input bug 的简称,来源：_repos/TechMCDocs/GameTick/TileTicks.md；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:12:24,输入漏洞,

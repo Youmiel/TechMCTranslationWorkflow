@@ -28,3 +28,4 @@
 | 2026-09-16 | edkkLsir9M8 Minecraft Redstone Is Easier Than You Think（PRR 1）（reflow2） | 红石基础元件（红石粉/火把/拉杆/按钮/压力板/游戏刻） | 155 cue 全绿；修切句器小数点与拆段句末标点两处脚本坑；原字幕 meme 缺字由用户补齐 | source_experience.md |
 | 2026-09-17 | LyU6a4PuDjo What You Don't Know About Minecraft's Diodes（PRR 2）（reflow2） | 中继器/比较器（红石元件、信号机制、容器检测） | 350 cue 全绿（原字幕高质量、0 处 ASR 修正）；13 处词级改动复用 align 即收敛；power level/signal strength 统一「信号强度」 | source_experience.md |
 | 2026-09-17 | xh511sviyXc Minecraft's Observers are More Powerful Than You Think（PRR 3）（reflow2） | 侦测器/方块更新类型（红石机制） | 136 cue 全绿（原字幕 0 处 ASR 修正）；分号断段改脚本（分号不作跨拼合点）；加括号译注→回退一轮 | source_experience.md |
+| 2026-09-18 | f7N4bmqWUco Minecraft's Pistons are probably The BEST Addition To The Game（PRR 4）（reflow2） | 活塞 / 黏性活塞、黏液块、蜂蜜块（元件、36 号方块、半连接性、游戏刻阶段） | 213 cue 全绿（原字幕人工级质量、0 处 ASR 修正）；块边界落在句中致跨块句 → 重分块（--owned 199）贴句末后归零；6 条社区俗称经用户裁定；12 处行宽超限经 r02 补逗号三轮收敛至 0 | source_experience.md |
