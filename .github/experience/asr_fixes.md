@@ -131,6 +131,8 @@
 | omega long pulse extender | an ilmango um / a ill mango | 欧米伽长脉冲延长器（ilmango 人名误听） |
 | Mojang | mojing | Mojang（公司/官方） |
 | chute | shoots / shoes / shoot | 滑道 |
+| bogged sheep | bog sheep | 沼骸（"bogged, sheep" 逗号被吞，常与 sheep 并列） |
+| X in Y（分数口语） | X and Y / 1 and N / 1 and two | 口语 "in" 被听成 "and"（1 in 3 / 1 in N 等） |
 
 <!-- 低价值/视频专属映射（主表超限整理时移出，暂存于此）：不参与通用解码。
      2026-08-22 已归档 2 条到对应视频：ideal→QSDpdXT9SPs、cubicmetre→uVOFckoMdIU。
@@ -166,6 +168,6 @@
 | carved pumpkin | cve pumpkins / the car pumpkin | — |
 | shears | shars | — |
 | Storage Tech | no Tech | — |
-| chest boat / chest cart | chest boards chest cards / boards | — |
+| chest boat / chest cart | chest boards chest cards / boards / CET box | — |
 | tileable | tied | — |
 | ghast fireball | gas Fireballs | — |

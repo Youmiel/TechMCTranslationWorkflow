@@ -29,3 +29,5 @@ hitbox,,实体或方块的碰撞判定箱,来源：knowledge/02_mechanic/hitbox-
 snowy dirt,,泥土被细雪覆盖后的形态（方块状态）,来源：Practical Redstone Reloaded EP3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:07:10,覆雪泥土,
 skull block,,生物头颅方块；具有 powered 方块状态,来源：Practical Redstone Reloaded EP3 — Minecraft's Observers are More Powerful Than You Think（xh511sviyXc） 00:07:24；zh wiki 页面名「生物头颅」,生物头颅,
 piston base,,活塞的底座部分，与活塞头共同构成伸出的活塞,来源：zh wiki 活塞页；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:01:11,活塞底座,
+hopper bowl,,漏斗上部固定的输入部分（与 spout 口部相对）,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5） 00:07:30,漏斗斗部,
+hopper spout,,漏斗底部朝向所放置方块的输出部分,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5）00:07:30；2026-09-18 用户裁定 spout→输出口（原「漏斗口部」弃用）,漏斗输出口,

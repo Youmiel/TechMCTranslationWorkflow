@@ -48,3 +48,6 @@ updater block,,放置后向相邻红石粉发送方块更新、解除 BUD 停滞
 zero tick;zero ticks,,零刻（0-tick）机制：使方块在 1 游戏刻内完成推动的活塞特性,来源：用户裁定（社区更常用 0t）；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:12:28,0t,
 player input bug,,玩家直接激活活塞时看似延迟 1 游戏刻的现象,来源：_repos/TechMCDocs/GameTick/TileTicks.md；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:14:45,玩家输入漏洞,
 input bug,,player input bug 的简称,来源：_repos/TechMCDocs/GameTick/TileTicks.md；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:12:24,输入漏洞,
+container block,,可存放物品的容器类方块（箱子、木桶、潜影盒等），投掷器可向其内插入物品,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5） 00:01:19,容器方块,
+container entity,,带容器功能的实体（运输船、运输矿车、漏斗矿车等），投掷器/漏斗可与之交互,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5） 00:01:21,容器实体,
+randomizer,,利用投掷器随机选槽（概率 1/N）实现随机输出的简单装置,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5） 00:02:42,随机发生器,

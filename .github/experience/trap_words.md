@@ -28,6 +28,7 @@
 | impulse filter / impulse sorter | impulse sorter | 经典物品分类器（上下文提及作者时用原名 Impulse 分类器） | 指最经典的物品分类器（三格红石粉布局），最早由 Impulse SV 推广使用，词源于人名而非"脉冲"（2026-09-13 用户确认）；**禁用"脉冲式分类器"** |
 | pots / pot | decorated pot | 陶罐（正式作「饰纹陶罐」） | 判据：**陶罐是容器**（存 1 格物品、漏斗/投掷器/比较器可交互），**花盆不是容器**（JE 非方块实体、无红石交互、3/8 格高）——与 droppers / composters 等容器并列、讲存储/漏斗/比较器 → 「陶罐」；与植物/装饰并列 → 「花盆」；`flower pot` 才译花盆，勿见 pot 即译花盆（2026-09-13 用户指正；2026-09-17 wiki 查证补判据，详见 knowledge/02_mechanic/pot.md） |
 
+| spout / hopper spout | hopper spout | 输出口（漏斗部件，与 bowl「斗部」相对） | 存储类：漏斗由 bowl（斗部，输入侧）与 spout（输出侧）两部件构成；spout 指底部那截朝向所贴方块的输出口——**非「出料口」**（2026-09-18 用户裁定弃用）；勿与 bowl 混译（曾把 the spout of the hopper 误译「漏斗的斗部」）。见 knowledge/01_terminology/_uncategorized.csv |
 ## mechanical（红石元件、信号、更新机制）
 
 | 陷阱词 | 正确术语 | 标准译名 | 依据 |
