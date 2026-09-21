@@ -11,10 +11,15 @@ Z 句（中文）通过对齐（align，Z组=E组）**继承** E 固化时间—
 2. **拆子段**：Z 句文本超宽（>hard_max）或时长碎片（<min_ms）时按中文阅读速度/宽度比例在
    E 组区间内细分（复用 allocate._allocate_by_weight 逻辑：吸附真实 cue 边界 ≤snap_ms，
    无则 100ms 取整预测点）——阅读舒适优先（≤22 字），不因「尊重原轴」保留超长句。
-   拆段标点分级 = 句末标点（。！？…）优先 → 句内标点（，；：—、）；由标点切不动仍超宽的单句
-   保留原样并计入告警（此类需回 r02 改写句子，加句内标点）
-   **分号（；）不作跨拼合点**——以「；」结尾的候选段之后强制断段，分号前后内容分属不同
-   显示单元（用户裁定 2026-09-17：并列项不挤在同一屏段）
+   拆段标点分级 = **标点功能角色表**（`srt_reflow_punct`）——句末标点（`。！？…`，terminator）
+   为显示段硬边界（逐句独立成段）；句内按断点**强度**做代价最小化拼合：
+   `strong`（`；：—`）> `clause`（`，`）> `list`（`、`）。
+   **拼合 = 代价最小化**（取代旧「贪心填满 hard_max」与「分号硬断」）：贪心会吞掉强断点
+   （实例 `…回答一下：第一，`(17) + `怎么搭…？`(12)，断点落在逗号而非冒号；
+   代价最小化给出 `…回答一下：`(14) + `第一，怎么搭…？`(15)）。
+   分号自 2026-09-21 起**降为 strong 强优先**（可被宽度否决），不再硬断——
+   旧裁定「并列项不挤在同一屏段」改由断点代价表达（`strong` 2.0 ≪ `clause` 5.0）。
+   由标点切不动仍超宽的单句保留原样并计入告警（此类需回 r02 改写句子）
 
 产物：
 - `r04_draft.srt`：标准 SRT 单语中文（显示单元 = Z 整句或子段）
@@ -37,7 +42,8 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 from srt_reflow_common import collect_chunk_files, fmt, text_width
-from srt_reflow_presplit import split_zh, split_recursive, pack_candidates
+from srt_reflow_presplit import split_zh, pack_candidates
+from srt_reflow_punct import build_profile, split_atomic
 from srt_reflow_build_r03 import split_en_by_weights
 
 PM = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -48,6 +54,9 @@ from scripts.srt_reflow_core.allocate import _allocate_by_weight, cjk_reading_ms
 # 行宽阈值（与 reflow check-r03/check-width 一致：软 22 / 硬 26）
 SOFT_MAX = 22.0
 HARD_MAX = 26.0
+# 拆段时的目标区间下限与最小单元（与 presplit 默认一致：15 / 5）
+SOFT_MIN_UNIT = 15.0
+DEFAULT_MIN_UNIT = 5.0
 # 最小单元时长（< 此值 = 长句碎片，触发拆/并决策）
 MIN_FRAG_MS = 1000
 # 阅读速度（字/秒，allocate 同款）
@@ -113,29 +122,6 @@ def parse_zsent(text):
     return out
 
 
-def pack_no_cross_semicolon(segs, hard_max, min_unit):
-    """贪心拼合，但**分号（；）不作跨拼合点**：以「；」结尾的候选段之后强制断段，
-    分号前后内容因此分属不同显示单元（用户裁定 2026-09-17）。buck 内其余逻辑同 pack_candidates。"""
-    units = []
-    buf = []
-    for seg in segs:
-        buf.append(seg)
-        if seg.rstrip().endswith("；"):
-            units.extend(pack_candidates(buf, hard_max, min_unit))
-            buf = []
-    if buf:
-        units.extend(pack_candidates(buf, hard_max, min_unit))
-    return units
-
-
-def split_zh_units(text, punct_levels):
-    """Z 句按标点切候选段 + 贪心拼合（复用 presplit：只在标点处切、段拼接 == Z 原文）。
-    返回 (units, notes)；units = [(文本, 宽度)]；超硬上限/碎片由调用方决策。"""
-    cands = split_recursive(text, punct_levels, HARD_MAX)
-    units = pack_no_cross_semicolon(cands, HARD_MAX, 5)
-    return units
-
-
 def main():
     ap = argparse.ArgumentParser(description="继承时间 + 回填：中文 Z 句继承 E 固化时间 → 拆子段 → r04（新 reflow2）")
     ap.add_argument("zsent_dir", help="Z 句文本目录：reflow2/zh_sentences/")
@@ -146,7 +132,14 @@ def main():
     ap.add_argument("--alert", default=None, help="输出 r04_alerts.md（默认与 r04 同目录）")
     ap.add_argument("--snap-ms", type=int, default=SNAP_MS, help="吸附真实 cue 边界最大距离（默认 300ms）")
     ap.add_argument("--cjk-speed", type=float, default=CJK_SPEED, help="中文阅读速度 字/秒（默认 5）")
+    # 标点角色表覆盖（srt_reflow_punct；不传 = 语言默认）
+    ap.add_argument("--punct-terminators", default=None, help="句界字符集（默认 。！？…；扩它会改变 Z 句数、使 align/ 失效）")
+    ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认 ；：—）")
+    ap.add_argument("--punct-clause", default=None, help="句内断点字符集（默认 ，）")
+    ap.add_argument("--punct-list", dest="punct_list", default=None, help="并列内部断点字符集（默认 、）")
     args = ap.parse_args()
+    zh_prof = build_profile("zh", terminators=args.punct_terminators, strong=args.punct_strong,
+                            clause=args.punct_clause, list_chars=args.punct_list)
 
     z_blocks = collect_chunk_files(args.zsent_dir)
     a_blocks = collect_chunk_files(args.align_dir)
@@ -209,7 +202,7 @@ def main():
             zh, start, end = cu["zh"], cu["start"], cu["end"]
             en_full = cu["en"]
             span = end - start
-            sents = split_zh(zh)
+            sents = split_zh(zh, zh_prof)
             if len(sents) <= 1 and text_width(zh) <= SOFT_MAX:
                 # 单 cue；时长碎片（<1s 但语义自足）→ 告警提示（对齐 reflow 独立短句可接受）
                 if span < MIN_FRAG_MS:
@@ -226,15 +219,18 @@ def main():
                     real_bounds.add(et[e][0])
                     real_bounds.add(et[e][1])
                 # 候选段按阅读时长权重分配区间
-                # 句界硬边界：逐句独立成段（禁止跨句拼合）；句内超宽按「，；：→—→、」降级切分，
-                # 单段切不动仍超宽时保留（由告警暴露）
+                # 句界硬边界：逐句独立成段（禁止跨句拼合）；句内超软限则按**断点强度**
+                # （角色表 ：strong=冒号/分号 > clause=逗号 > list=顿号）做代价最小化拼合——
+                # 取代旧「贪心填满 hard_max」（会吞掉强断点：`…回答一下：第一，`+`怎么搭…？`）。
+                # 单段切不动仍超宽时保留（由告警暴露，需回 r02 改写）
                 units = []
                 for st in sents:
                     if text_width(st) <= SOFT_MAX:
                         units.append((st, text_width(st)))
                     else:
-                        units.extend(pack_no_cross_semicolon(
-                            split_recursive(st, ["，；：", "—", "、"], HARD_MAX), HARD_MAX, 5))
+                        units.extend(pack_candidates(
+                            split_atomic(st, zh_prof), HARD_MAX, DEFAULT_MIN_UNIT,
+                            SOFT_MIN_UNIT, SOFT_MAX, zh_prof))
                 if not units:
                     units = [(zh, text_width(zh))]
                 weights = [max(1, cjk_reading_ms(u, args.cjk_speed)) for u, _w in units]

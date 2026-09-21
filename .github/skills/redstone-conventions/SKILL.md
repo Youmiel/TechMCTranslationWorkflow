@@ -90,14 +90,16 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、**过期判定�
 
 > 工具本身不绑工作流；translate 与 reflow 的分块用法见 §3 / §4。
 
-- **工具**：`python scripts/text_chunk.py <输入> --out <dir> [--type srt|text] [--unit 段|句|整句组] [--owned <每块单位数>] [--ctx <衔接单位数>] [--max-chars <字符>] [--order en-zh|zh-en] [--gaps]`
+- **工具**：`python scripts/text_chunk.py <输入> --out <dir> [--type srt|text] [--unit 段|句|整句组] [--owned <每块单位数>] [--ctx <衔接单位数>] [--max-chars <字符>] [--order en-zh|zh-en] [--gaps] [--gaps-file <tsv>]`
   - 默认自动判型：`.srt` 为 srt、否则 text
   - srt 默认 `--owned 100` / `--ctx 6`；text 默认 `--owned 1` / `--ctx 1`
   - 输出统一块格式见 [PRODUCT_FORMATS#通用文本分块](../../../docs/PRODUCT_FORMATS.md)
 - **分块根基 = 01_subtitle_asr_fixed.srt（阶段一产物、阶段二入口）**——r01/r02/r03 都是 01 的派生，**从 01 分块**后所有阶段锚定同一套块（块 ↔ cue 区间天然存在），无需中间合并、无需继承边界。**禁止从 r01/r02/r03 文本分块**（那些文本本就需先合并才能切，是弯路）
 - **srt 分块两种模式**：
   - **默认**：每 `--owned` 个 cue 一块，块边界 = 纯 cue 数切（translate 用，见 §3）
-  - **`--gaps`**：先探测空隙点分组成「空隙组」，组内按 `--owned` cue 分片；块标识「块G-片P」；同组片合并时无缝拼接（reflow 用——**空隙点强制切块、`--owned` 语义见 §4**）
+  - **`--gaps` / `--gaps-file`**：按空隙点分组成「空隙组」，组内按 `--owned` cue 分片；块标识「块G-片P」；同组片合并时无缝拼接（reflow 用——**空隙点强制切块、`--owned` 语义见 §4**）
+    - **`--gaps-file <r00_gaps_active.tsv>`（推荐）**：读 `srt_reflow_gap_scan.py` 产出的**生效空隙点集**（人工可编辑 tsv），`status=excluded` 的项自动跳过——这是「排除误判空隙」的**正式通道**（取代旧 hack：去掉 `--gaps` 开关）
+    - `--gaps`（旧）：脚本自行探测，不读人工裁决——仅在无 tsv 时兼容保留
 - **非 SRT 文本（仅当需处理无 cue 边界的辅助文本）**：按**语义单位**分块（`--unit 段`=空行分隔 / `--unit 整句组`=r03 的 `## S<n>` / `--unit 句`=按标点）；超长单位自动细分（`--max-chars`）为「组-片」，**同组片合并时无缝拼接**
 - **`--max-chars`（text 超长细分阈值）**：按 `context_estimate.py` 反推（单块目标字符 ≈ 阈值 token × 1.5 ÷ 安全系数），拿不准默认 6000
 - **旧 `srt_chunk.py` 保留兼容**（历史产物/旧流程），**新任务一律用 `text_chunk.py`**
@@ -135,13 +137,16 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、**过期判定�
       - 单块容量上限（token）= `context_estimate.py` 输出 = `min(输入预算, 输出预算÷amplification)`，**经 min 统一、已含分句放大**
       - ×1.5 = token→字符；再 ÷ 每 cue 平均字符数（拿不准用保守兜底，宁小勿大）
     - 各阶段共用同一套块（01 骨架），**块定即全局、无法在分句阶段中途改**，宁小勿大
-- **分块前先验证 gap 准确性（必做）**：跑 `python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md` 得到空隙点清单（长停顿 >5s / 剪辑跳转 >10s），**人工确认后**再用 `--gaps` 分块。
-  - `--gaps` 的 `detect_gap_groups` 用同一空隙点算法，与 r00_gaps.md 应一致
-  - **已有 r00_gaps.md 则复用，勿重复探测**（探测结果与人工复核以 r00_gaps.md 为准）
-- **一次分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——块 = 「空隙组-片」（块0 单独、块1 拆多片...），块边界 = 明确 cue 区间；**`--ctx` 建议 10**（每侧衔接 cue 数，约覆盖前块末尾 1–2 句）
+- **分块前先验证 gap 准确性（必做）**：跑 `python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md` 得到：
+  - `reflow/r00_gaps.md`（人读报告）——长停顿 >5s / 剪辑跳转 >10s，**并单独分节报告「疑似源切分缺陷」**（判据：前 cue 末尾无句末标点 **且** 后 cue 首字母小写；此类空隙多因原字幕把同一句切成两条 cue，非真实停顿）
+  - `reflow/r00_gaps_active.tsv`（**生效空隙点集 = 单一事实源，人工可编辑**）——列 `a_idx b_idx gap_ms kind status note`；`status` 取值 `active`（真实空隙）/ `suspect`（疑似源缺陷，**默认仍生效**，待人工裁决）/ `excluded`（已排除）
+  - **脚本只报告不改行为**：确认是源缺陷后，把 tsv 该行 `status` 改为 `excluded` 即为正式排除（不分块 / 不断句 / 校验跳过）；**重跑 gap_scan 不覆盖人工决定**
+  - **已有 tsv 则复用**，勿重复探测（以 tsv 的人工裁决为准）
+- **一次分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps-file reflow/r00_gaps_active.tsv --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`——块 = 「空隙组-片」，块边界 = 明确 cue 区间；**`--ctx` 建议 10**（每侧衔接 cue 数）
 - **各阶段共用同一套块**：：r01 合并文本读 `chunks/`、r01 补标点读 `r01_normalized/`、r02 翻译读 `r01_results/` 对应块、r03 分句读 `r01_results/` + `r02_results/` 对应块对照——**块边界始终来自 01 分块骨架，不做链式继承**
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态——分块/不分块产物契约统一
-- **校验逐块化**：`check_words` / `check_breaks` / `check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，**不需要先合并全文**。
+- **校验逐块化**：`check_words` / `check_breaks` / `check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps reflow/r00_gaps_active.tsv`），逐块校验 + 空隙点检查，**不需要先合并全文**。
+  - `check_breaks --gaps` 现接受 **tsv**（生效集；`excluded` 项自动跳过）——传旧 `r00_gaps.md` 亦可（脚本自动找同目录 tsv），兼容历史命令
   - **全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**
   - subagent 不调用全局校验（见 [subagent-dispatch#纪律母版](../subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)「五、工作区与工具纪律」——避免每块 subagent 重复跑全量校对）
 - **必须合并的**：`r03_plan.md`（`srt_reflow.py` 回填输入，各块 r03 方案按块序直接拼接）、`r04_draft.srt`（最终产物，由 `srt_reflow.py reflow` 生成）——这两个合并后走全局校验

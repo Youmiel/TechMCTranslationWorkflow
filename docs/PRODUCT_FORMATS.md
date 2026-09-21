@@ -42,6 +42,7 @@
 | `s03_plan.md` | translate | Agent（断句定稿） | `srt_check_segments.py`（md 模式） |
 | `s04_draft.srt` | translate | Agent（逐段翻译） | `srt_check_segments.py`、`srt_check_width.py` |
 | `r00_gaps.md` | reflow | `srt_reflow_gap_scan.py` | Agent 参考 |
+| `r00_gaps_active.tsv` | reflow | `srt_reflow_gap_scan.py`（人工可编辑） | `text_chunk.py --gaps-file`、`srt_reflow_check_breaks.py --gaps`（**生效空隙点集单一事实源**） |
 | `r01_breaks.md` | reflow | `srt_reflow_breaks.py` + Agent 回填 | `srt_reflow_check_breaks.py` |
 | `r01_normalized/chunk_<k>.txt` | reflow（块数 = 空隙组×片数） | 脚本 `srt_reflow_normalize.py`（一次性全目录） | Agent（补标点 subagent 输入） |
 | `r01_results/chunk_<k>.txt` | reflow（块数 = 空隙组×片数） | Agent（补标点 subagent） | `srt_reflow_check_breaks.py`、`srt_reflow_check_words.py`（块级模式） |
@@ -95,7 +96,7 @@
 - **`## BEFORE` / `## AFTER`**：前后只读上下文，格式同 OWNED；解析脚本按 `## ` 分区通用判断切 OWNED（任意分区标题切换），不受顺序/缺区影响；旧块头格式（`# chunk ... 源:`）不兼容新解析，历史产物不再重新合并
 - **`manifest.md`**：块清单（组/片 → 块号映射），`text_merge.py` 与人工核对用
 - **类型与语义单位**：
-  - `srt`：单位=cue（`01_subtitle_asr_fixed.srt`、双语段 SRT），`--owned` 默认 100、`--ctx` 默认 6；**`--gaps`** 时块标识 =「空隙组-片」（如 `块0`、`块1-片10`），空隙点强制切块（reflow，见「块级流水线」）
+  - `srt`：单位=cue（`01_subtitle_asr_fixed.srt`、双语段 SRT），`--owned` 默认 100、`--ctx` 默认 6；**`--gaps-file <tsv>`**（推荐，读生效空隙点集）或 **`--gaps`**（脚本自行探测，兼容）时块标识 =「空隙组-片」（如 `块0`、`块1-片10`），空隙点强制切块（reflow，见「块级流水线」）
   - `text`：单位=`段`（空行分隔，r01/r02 默认）/ `句`（按标点，同组多句片号连续）/ `整句组`（r03 的 `## S<n>`），`--owned` 默认 1、`--ctx` 默认 1
 - **超长单位细分**：text 单原子单位超过 `--max-chars`（默认 6000 字符）时拆为「组-片」（如 `块0-片2`）；**同组多片合并时无缝拼接**（中文空连接、英文空格），解决 r01 块 0 拆 0a..0f 场景
 - **约束**：块边界永远在单位边界（不切开 cue / 语义段）；text 单元可多行；确定性输出
@@ -109,14 +110,15 @@
 >
 > 减少「拼全文 → 整读 → 再分块」的反复。
 
-- **一次分块（从 01）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`
+- **一次分块（从 01）**：`python scripts/text_chunk.py <01.srt> --type srt --gaps-file <r00_gaps_active.tsv> --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`
   - 块 = 「空隙组-片」（**空隙点强制切块 = 语义硬边界**、组内按 `--owned` 分片 = 容量控制）
   - 块边界 = 明确 cue 区间
-- **分块前先验证 gap**：`srt_reflow_gap_scan.py` → `r00_gaps.md` 空隙点清单（长停顿 >5s / 剪辑跳转 >10s）人工确认后作为 `--gaps` 分块的组边界依据。
-  - **已有 r00_gaps.md 则复用，勿重复探测**
+  - `--gaps-file` 读**生效空隙点集**（`status=excluded` 自动跳过 = 排除源切分缺陷的正式通道）；旧 `--gaps` 保留兼容（自行探测，不读人工裁决）
+- **分块前先验证 gap**：`srt_reflow_gap_scan.py` → `r00_gaps.md`（人读报告：长停顿 >5s / 剪辑跳转 >10s / **疑似源切分缺陷**分节）+ `r00_gaps_active.tsv`（生效集，人工可编辑）。
+  - **已有 tsv 则复用，勿重复探测**；人工裁决改 tsv 的 `status` 列（`excluded` = 排除），**重跑不覆盖人工决定**
 - **各阶段共用同一套块**：：r01 合并文本读 `chunks/`、r01 补标点读 `r01_normalized/`、r02 翻译读 `r01_results/` 对应块、r03 分句读 `r01_results/` + `r02_results/` 对应块对照——**块边界始终来自 01 分块骨架，不做链式继承**
 - **中间产物只落块级（产物单轨）**：`reflow/r01_results/`、`r02_results/`、`r03_results/`（每块独立文件，块数 = 空隙组数 × 组内片数），不再有 `r01_merged_en.txt`/`r02_translation_zh.txt` 完整文件形态
-- **校验逐块化**：`check_words` / `check_breaks` / `check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps.md`），逐块校验 + 空隙点检查，不需要先合并全文。
+- **校验逐块化**：`check_words` / `check_breaks` / `check-r03` 支持块级模式（传 `reflow/<阶段>_results/` + `--chunks reflow/chunks/` + `--gaps r00_gaps_active.tsv`），逐块校验 + 空隙点检查，不需要先合并全文。
   - **全局校验（块级模式一次验全部块）由主会话在所有块 subagent 全部完成后统一执行一次**
   - subagent 不调用全局校验（见 [subagent-dispatch#纪律母版](../.github/skills/subagent-dispatch/SKILL.md#纪律母版派发时必须整体追加)「五、工作区与工具纪律」）
 - **回填直读 r03_results/（零拼接）**：`srt_reflow.py reflow` / `attach-en` / `check-duration` 的 r03 参数接受目录（`parse_r03_dir` 按块序解析 + **S 号全局重编号**）或单文件 r03_plan.md（兼容）。
@@ -339,21 +341,47 @@
 
 ## reflow 产物（阶段二）
 
-### `r00_gaps.md`
+### `r00_gaps.md` / `r00_gaps_active.tsv`
 
-- 命名：`<工作目录>/reflow/r00_gaps.md`（默认）
-- 生成：`python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md`
-- 格式（脚本生成，只读参考）：
+- 命名：`<工作目录>/reflow/r00_gaps.md`（默认）、同目录 `r00_gaps_active.tsv`
+- 生成：`python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md [--tsv reflow/r00_gaps_active.tsv]`
+- **`r00_gaps.md`（人读报告）**：
 
 ```markdown
 # r00 空隙探测报告 — <01 路径>
-- 输入 / 阈值 / 非语音标记统计
-## 长停顿清单
+- 输入 / 阈值 / 非语音标记统计 / 长停顿总数（含疑似源缺陷数、已排除数、生效数）
+## ⚠️ 疑似源切分缺陷（N 处，建议人工裁决）      ← 判据：① 前 cue 末尾无句末标点 ② 后 cue 首字母小写
+### 1. c88 → c89（5.2s）[生效·待裁决]          ← 两条强信号同时成立的空隙
+- 判据 / 区间 / 前 cue / 后 cue / 处置
+## 长停顿清单（>5s，N 处，按时长降序）           ← 剪辑跳转 ⚠️ / 普通长停顿
 ### 1. c43 → c48（9.2s）⚠️ 剪辑跳转
 - 区间 / 前 cue / 后 cue / 用途
 ## 非语音标记 cue（[Music] 等，已跳过空隙判定）
 ## 使用说明
 ```
+
+- **`r00_gaps_active.tsv`（生效空隙点集 = 单一事实源，人工可编辑）**——下游分块 `--gaps-file` 与断句校验 `check_breaks --gaps` 统一读它，不再各自探测：
+
+```
+# a_idx	b_idx	gap_ms	kind	status	note
+c88	c89	5150	suspect	suspect	前 cue 末尾无句末标点 + 后 cue 首字母小写（疑似源字幕切分缺陷：…）
+c43	c48	9200	jump	active	剪辑跳转
+```
+
+| `kind` | 含义 |
+|--------|------|
+| `gap` | 普通长停顿 |
+| `jump` | 剪辑跳转（>10s） |
+| `suspect` | **疑似源切分缺陷**（前 cue 无句末标点 + 后 cue 首字母小写） |
+
+| `status` | 含义 | 下游行为 |
+|----------|------|----------|
+| `active` | 真实空隙 | 分块硬边界 + 断句点 + 校验 |
+| `suspect` | 疑似源缺陷，**待人工裁决（默认仍生效）** | 同 `active`（脚本只报告不改行为） |
+| `excluded` | **人工确认排除** | 不分块 / 不断句 / 校验跳过 |
+
+- **裁决方式**：把该行 `status` 改为 `excluded`（排除）或 `active`（生效）——**重跑 `gap_scan` 不覆盖人工决定**（同 `(a_idx,b_idx)` 的 status/note 保留）
+- **替代的旧 hack**（已废弃）：① 分块去掉 `--gaps` 开关；② 把 `r00_gaps.md` 标题改成脚本不可解析格式以骗过 `check_breaks` 正则
 
 ### `r01_breaks.md`
 
@@ -450,7 +478,7 @@
   - agent 只做**填空与核对**（S 号 / EN / 关系 / 子单元 EN / 对应 / 游离词）
   - `默认 E<n>` 为按序启发式提示须核对
   - 不形成中英对照
-- 参数：`--soft-min/--soft-max/--hard-max/--min-unit/--punct-levels`（多语言通用，默认 CJK；`--punct-levels` 有序层级 = 优先级：逗号族>破折号>顿号，超宽段才降级用低层）
+- 参数：`--soft-min/--soft-max/--hard-max/--min-unit`（多语言通用，默认 CJK）+ 标点角色表 `--punct-terminators/--punct-strong/--punct-clause/--punct-list`（默认 zh：句界 `。！？…` / strong `；：—` / clause `，` / list `、`）；旧 `--punct-levels` 仍接受（按字符归属映射到角色，不推荐）
 - 消费：分句 subagent（`r03_results/` 对应块）
 
 ### `r03_zslim/chunk_<k>.txt`（分句输入·ZH 整句级精简列表，5-2 task-match 专用）

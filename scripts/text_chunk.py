@@ -30,6 +30,7 @@ import os
 import re
 import sys
 from collections import OrderedDict
+from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -72,25 +73,38 @@ def _is_marker(text):
     return BRACKET_RE.sub("", text).strip() == ""
 
 
-def detect_gap_groups(units, gap_ms=LONG_GAP_MS):
-    """按空隙点（相邻语音 cue 时间 gap > 阈值）把 SRT cue 分成「空隙组」。
-    返回 (groups, breaks)：groups = [组号→(起始 cue 索引, 结束 cue 索引+1, cue 数)]，
+def detect_gap_groups(units, gap_ms=LONG_GAP_MS, breaks=None):
+    """按空隙点把 SRT cue 分成「空隙组」。
+
+    `breaks` 省略 → 按 `gap_ms` 自行探测（旧行为，兼容）；传入 → **用给定空隙点集**
+    （`[(a_idx, b_idx), ...]`，来自 `r00_gaps_active.tsv` 的生效集——人工裁决后
+    分块与探测不再脱节；`excluded` 项调用方已过滤）。
+
+    返回 (groups, breaks)：groups = [(起始 cue 索引, 结束 cue 索引+1, cue 数)]，
     breaks = [(ia_idx, ib_idx, gap_ms), ...]（组边界处，供块内空隙点标记）。
     """
     n = len(units)
-    speech = [(i, u) for i, u in enumerate(units) if not _is_marker(u[3])]
-    breaks = []
-    for k in range(len(speech) - 1):
-        ia, ua = speech[k]
-        ib, ub = speech[k + 1]
-        gap = _ts_ms(ub[1]) - _ts_ms(ua[2])
-        if gap > gap_ms:
-            breaks.append((ia, ib, gap))
-    # 空隙组 = 空隙点之间（含空隙点前的 cue）的 cue 段
+    idx_pos = {u[0]: i for i, u in enumerate(units)}     # cue 号 → 位置
+    if breaks is None:
+        speech = [(i, u) for i, u in enumerate(units) if not _is_marker(u[3])]
+        found = []
+        for k in range(len(speech) - 1):
+            ia, ua = speech[k]
+            ib, ub = speech[k + 1]
+            gap = _ts_ms(ub[1]) - _ts_ms(ua[2])
+            if gap > gap_ms:
+                found.append((ua[0], ub[0], gap))        # 记 cue 号（非位置）
+        breaks = found
+    else:
+        breaks = [(b[0], b[1], b[2]) if len(b) >= 3 else (b[0], b[1], 0) for b in breaks]
+    # 空隙组 = 空隙点之间（含空隙点前的 cue）的 cue 段；按 cue 号定位到位置
     group_bounds = [0]
-    for ia, ib, _ in breaks:
-        group_bounds.append(ib)
+    for ia, ib, _g in breaks:
+        p = idx_pos.get(ib)
+        if p is not None and 0 < p <= n:
+            group_bounds.append(p)
     group_bounds.append(n)
+    group_bounds = sorted(set(group_bounds))
     groups = []
     for g in range(len(group_bounds) - 1):
         a, b = group_bounds[g], group_bounds[g + 1]
@@ -208,6 +222,10 @@ def main():
     ap.add_argument("--ctx", type=int, default=None, help="块前后只读上下文单位数 M（srt 默认 6、text 默认 1）")
     ap.add_argument("--gaps", action="store_true",
                     help="srt 类型：按空隙点（gap>5s）分组成「空隙组」，组内再按 --owned 分片（reflow 从 01 分块用；块边界优先在空隙点）")
+    ap.add_argument("--gaps-file", dest="gaps_file", default=None,
+                    help="【推荐】生效空隙点 tsv（`r00_gaps_active.tsv`，来自 srt_reflow_gap_scan.py）——"
+                         "用人工已裁决的生效集分块，取代自行探测（`status=excluded` 的项自动跳过，"
+                         "排除源切分缺陷空隙后无需再去掉 --gaps 开关）。传它即隐含 --gaps")
     ap.add_argument("--max-chars", type=int, default=6000,
                     help="text 类型单单位超长细分阈值（字符；默认 6000；r01 大块建议按 context_estimate 反推）")
     ap.add_argument("--order", choices=("en-zh", "zh-en"), default="en-zh", help="双语行语言顺序")
@@ -244,13 +262,35 @@ def main():
     # items 统一存 (组标识, part, 行文本)；text 行文本自带「组-片\t」前缀
     items = []  # (组标识, part, 行文本)
     n_split = 0
+    n_gap_groups = 0
 
     def _tl(gid, part):
         return gid if part == 1 else "%s-片%d" % (gid, part)
 
     if type_ == "srt":
-        if args.gaps:
-            groups, breaks = detect_gap_groups(units)
+        if args.gaps or args.gaps_file:
+            ext_breaks = None
+            if args.gaps_file:
+                from srt_reflow_gap_scan import load_breaks_tsv
+                rows = load_breaks_tsv(args.gaps_file)
+                if not rows:
+                    sys.exit(f"❌ --gaps-file 无有效空隙点（文件缺失或全部被排除）：{args.gaps_file}")
+                active = [r for r in rows if r["status"] != "excluded"]
+                n_ex = len(rows) - len(active)
+                if not active:
+                    print(f"ℹ️ {Path(args.gaps_file).name} 生效空隙点为空（{n_ex} 处已排除）"
+                          f"——按单块处理（不加空隙组边界）")
+                # 空隙点集来自 tsv（cue 号 + gap）；gap 缺省时由 01 时间戳补算
+                ts_by_idx = {u[0]: u for u in units}
+                ext_breaks = []
+                for r in active:
+                    a, b = r["ia"], r["ib"]
+                    ua, ub = ts_by_idx.get(a), ts_by_idx.get(b)
+                    gap = r["gap_ms"] or ((_ts_ms(ub[1]) - _ts_ms(ua[2])) if (ua and ub) else 0)
+                    ext_breaks.append((a, b, gap))
+                print(f"空隙点集: {Path(args.gaps_file).name}（生效 {len(active)} / 排除 {n_ex}）")
+            groups, breaks = detect_gap_groups(units, breaks=ext_breaks)
+            n_gap_groups = len(groups)
             for g, (a, b, cnt) in enumerate(groups):
                 gid = "块%d" % g
                 for part, i in enumerate(range(a, b, N), start=1):
@@ -273,7 +313,8 @@ def main():
     #   srt --gaps：块边界 = 「空隙组-片」边界（片边界即块边界，不再按 N 重切）
     #   srt 无 --gaps / text：每 N 个最小单位一块
     chunk_gids = {}  # k -> [组-片标识...]（--gaps 模式用）
-    if type_ == "srt" and args.gaps:
+    gap_mode = bool(args.gaps or args.gaps_file)
+    if type_ == "srt" and gap_mode:
         # 按 (gid, part) 连续段分组 → 每片一块
         chunks = []
         cur_gid, cur_part = None, None
@@ -308,7 +349,7 @@ def main():
     def owned_desc(owned, k):
         """块头负责描述：srt --gaps 显示空隙组-片；srt 无 gaps 显示 cue 区间；text 显示组-片列表去重。"""
         if type_ == "srt":
-            if args.gaps:
+            if gap_mode:
                 return ", ".join(chunk_gids.get(k, []))
             cids = []
             for line in owned:
@@ -374,9 +415,10 @@ def main():
     print("类型: %s / 单位: %s" % (type_, args.unit if type_ == "text" else "cue"))
     print("最小单位数: %d / 分块数: %d（每块负责 %d，上下文 %d）" % (len(items), total, N, M))
     print("输出目录: %s" % os.path.abspath(args.out))
-    if type_ == "srt" and args.gaps:
-        ng = len(detect_gap_groups(units)[0])
-        print("空隙组: %d 个（块边界优先在空隙点，组内按 %d cue 分片）" % (ng, N))
+    if type_ == "srt" and gap_mode:
+        ng = n_gap_groups
+        src = Path(args.gaps_file).name if args.gaps_file else "脚本自行探测"
+        print("空隙组: %d 个（空隙来源: %s；块边界优先在空隙点，组内按 %d cue 分片）" % (ng, src, N))
     if type_ == "text" and n_split:
         print("超长单位硬切: %d 个原子单位被按字符拆为多片（合并时同组无缝拼接）" % n_split)
 

@@ -91,8 +91,11 @@ def main():
 
     cues = parse_srt(args.src)
 
-    # 空隙点：优先复用 r00_gaps.md（人工已验证），否则脚本自行探测
+    # 空隙点：优先复用 r00_gaps_active.tsv（人工已裁决的生效集），否则 r00_gaps.md、再到脚本自行探测
     breaks = load_breaks(args.gaps) if args.gaps else detect_breaks(cues)
+    meta, meta_src = load_breaks_meta(args.gaps) if args.gaps else ({}, None)
+    args.break_meta = meta
+    args.break_src = meta_src
 
     if os.path.isdir(args.r01):
         main_block(args, cues, breaks)
@@ -114,13 +117,52 @@ def detect_breaks(cues):
 
 
 def load_breaks(gaps_path):
-    """从 r00_gaps.md 解析空隙点清单：`c<ia> → c<ib>（<gap>s）`。返回 [(ia, ib, gap_ms), ...]。"""
+    """读空隙点清单 → [(ia, ib, gap_ms), ...]。**只收生效项**（`excluded` 跳过）。
+
+    优先按 tsv 解析（`r00_gaps_active.tsv`，权威）；若给的是旧 `r00_gaps.md`，
+    先尝试同目录同名 tsv（`r00_gaps_active.tsv`）——实现「排除某空隙改 tsv 即可」，
+    取代旧做法「把 md 标题改成脚本不可解析」（该 hack 已随本次改造废弃）。
+
+    回退：tsv 不存在时按旧 md 正则 `### N. c<ia> → c<ib>（<gap>s）` 解析（兼容历史产物）。
+    """
+    tsv = None
+    if gaps_path.endswith(".tsv"):
+        tsv = gaps_path
+    else:
+        cand = os.path.join(os.path.dirname(os.path.abspath(gaps_path)), "r00_gaps_active.tsv")
+        if os.path.exists(cand):
+            tsv = cand
+    if tsv:
+        try:
+            from srt_reflow_gap_scan import load_breaks_tsv
+            return [(r["ia"], r["ib"], r["gap_ms"]) for r in load_breaks_tsv(tsv)
+                    if r["status"] != "excluded"]
+        except Exception:
+            pass
+    # 回退：旧 md 正则（不含人工排除语义；建议迁移到 tsv）
     breaks = []
     for ln in open(gaps_path, encoding="utf-8").read().split("\n"):
         m = re.match(r"###?\s*\d+\.\s*c(\d+)\s*→\s*c(\d+)\s*（([\d.]+)s）", ln)
         if m:
             breaks.append((int(m.group(1)), int(m.group(2)), int(float(m.group(3)) * 1000)))
     return breaks
+
+
+def load_breaks_meta(gaps_path):
+    """读空隙点元信息（含 kind/status），供输出标注疑点与来源（tsv 优先）。"""
+    tsv = gaps_path if gaps_path and gaps_path.endswith(".tsv") else None
+    if tsv is None and gaps_path:
+        cand = os.path.join(os.path.dirname(os.path.abspath(gaps_path)), "r00_gaps_active.tsv")
+        if os.path.exists(cand):
+            tsv = cand
+    if not tsv:
+        return {}, None
+    try:
+        from srt_reflow_gap_scan import load_breaks_tsv
+        rows = load_breaks_tsv(tsv)
+        return {(r["ia"], r["ib"]): r for r in rows}, tsv
+    except Exception:
+        return {}, None
 
 
 def main_whole(args, cues, breaks):
@@ -141,7 +183,10 @@ def main_whole(args, cues, breaks):
         aligns.append((p, p + len(n) - 1))
         cursor = p + len(n)
 
-    print(f"r01: {args.r01}  空隙点: {len(breaks)} 处（长停顿 >{LONG_GAP_MS/1000:.0f}s）")
+    src_note = f"（来源: {os.path.basename(args.break_src)}）" if getattr(args, "break_src", None) else "（脚本自行探测）"
+    n_sus = sum(1 for b in breaks if getattr(args, "break_meta", {}).get((b[0], b[1]), {}).get("kind") == "suspect")
+    print(f"r01: {args.r01}  生效空隙点: {len(breaks)} 处{src_note}"
+          + (f"，含疑似源切分缺陷 {n_sus} 处" if n_sus else ""))
     print("-" * 60)
     n_violate, n_pass, n_skip = 0, 0, 0
     for ia, ib, gap in breaks:
@@ -173,9 +218,14 @@ def main_whole(args, cues, breaks):
                 print(f"   {os.path.basename(args.r01)} 行 {lb}｜{fb}")
                 print(f"   前 cue c{ia}: `{a_text}`")
                 print(f"   后 cue c{ib}: `{b_text}`")
-                print(f"   → 默认处置: 打回步骤 1，复核 r01_breaks.md 断句点清单后按空隙标记（【强制断句】先验知识注入补标点 subagent）重跑")
-                print(f"   受控例外: 若你判定该空隙为语义停顿（非剪辑跳转、语义本就连贯），可放行——")
-                print(f"   但须在 r03 分句对应时确保不跨空隙成单元，并在 r04 告警对照中记录（与 r00_gaps.md 对照）")
+                if getattr(args, "break_meta", {}).get((ia, ib), {}).get("kind") == "suspect":
+                    print("   ⚠️ **本处为「疑似源字幕切分缺陷」（前 cue 无句末标点 + 后 cue 首字母小写）**——")
+                    print("      若确认是源缺陷（而非作者停顿）：**不要**按空隙强制断句，"
+                          "而应在 `r00_gaps_active.tsv` 把该行 status 改为 `excluded` 后重跑（自动跳过本校验）")
+                else:
+                    print(f"   → 默认处置: 打回步骤 1，复核 r01_breaks.md 断句点清单后按空隙标记（【强制断句】先验知识注入补标点 subagent）重跑")
+                    print(f"   受控例外: 若你判定该空隙为语义停顿（非剪辑跳转、语义本就连贯），可放行——")
+                    print(f"   但须在 r03 分句对应时确保不跨空隙成单元，并在 r04 告警对照中记录（与生效空隙集对照）")
     print("-" * 60)
     print(f"结果: 通过 {n_pass} / 违规 {n_violate} / 未定位 {n_skip}（共 {len(breaks)}）")
     if n_violate:
@@ -223,7 +273,10 @@ def main_block(args, cues, breaks):
             print(f"ℹ️ chunk_{args.chunk:03d}: 无涉及该块的空隙点，无需校验")
             return
 
-    print(f"r01_results: {args.r01}  空隙点: {len(breaks)} 处")
+    src_note = f"（来源: {os.path.basename(args.break_src)}）" if getattr(args, "break_src", None) else "（脚本自行探测）"
+    n_sus = sum(1 for b in breaks if getattr(args, "break_meta", {}).get((b[0], b[1]), {}).get("kind") == "suspect")
+    print(f"r01_results: {args.r01}  生效空隙点: {len(breaks)} 处{src_note}"
+          + (f"，含疑似源切分缺陷 {n_sus} 处" if n_sus else ""))
     print("-" * 60)
     n_violate, n_pass, n_skip = 0, 0, 0
     for ia, ib, gap in breaks:

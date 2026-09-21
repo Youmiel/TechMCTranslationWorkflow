@@ -45,8 +45,8 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 2. **阶段二 语义回填**（本工作流，产物在 `<工作目录>/reflow/`）
    - 输入：`01` + `02`
    - **`context_estimate.py` 只定 `--owned`（每块 cue 数）；执行一律 subagent**（块数由空隙组 × 组内分片决定，见 conventions「长视频分块」）。产物统一块级，按序：
-     - 步骤 1 空隙探测 + 硬性断句 → `r00_gaps.md`、`r01_breaks.md`
-     - 步骤 2 确定块大小 + 分块 → `chunks/`（从 01 `--gaps` 分块：空隙点强制切块，块数下限 = 空隙点数+1）
+     - 步骤 1 空隙探测 + 硬性断句 → `r00_gaps.md`（人读报告）、`r00_gaps_active.tsv`（生效空隙点集）、`r01_breaks.md`
+     - 步骤 2 确定块大小 + 分块 → `chunks/`（从 01 `--gaps-file` 分块：生效空隙点强制切块，块数下限 = 生效空隙点数+1）
      - 步骤 3 归一化 → `r01_normalized/chunk_<k>.txt`
      - 步骤 3 处理（补标点）→ `r01_results/chunk_<k>.txt`
      - 步骤 4 处理（翻译 + 术语核对）→ `r02_results/chunk_<k>.txt`

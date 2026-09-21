@@ -22,9 +22,7 @@ from pathlib import Path
 sys.stdout.reconfigure(encoding="utf-8")
 
 from srt_reflow_common import is_pure_marker, parse_time, fmt, BRACKET_RE
-
-LONG_GAP_MS = 5000      # 长停顿阈值（与 srt_gap_scan.py / 步骤 2/5 一致）
-JUMP_GAP_MS = 10000     # 剪辑跳转阈值
+from srt_reflow_gap_scan import load_breaks_tsv, LONG_GAP_MS, JUMP_GAP_MS
 
 
 def parse_srt(path):
@@ -49,33 +47,63 @@ def main():
     ap = argparse.ArgumentParser(description="r01 硬性断句输入：生成断句点清单（含 Agent 复核字段）")
     ap.add_argument("src", help="01_subtitle_asr_fixed.srt")
     ap.add_argument("-o", dest="out", default=None, help="输出 r01_breaks.md（默认 01 同目录 reflow/r01_breaks.md）")
+    ap.add_argument("--tsv", dest="tsv", default=None,
+                    help="生效空隙点 tsv（默认 r00_gaps.md 同目录 r00_gaps_active.tsv）——"
+                         "复用 gap_scan 已人工裁决的生效集；缺失则回退脚本自行探测")
     args = ap.parse_args()
     out = args.out or str(Path(args.src).parent / "reflow" / "r01_breaks.md")
+    tsv_path = args.tsv or str(Path(out).parent / "r00_gaps_active.tsv")
 
     cues = parse_srt(args.src)
 
-    # 空隙点（与 srt_gap_scan.py 同一判定：先剔除纯标记 cue，在剩余语音 cue 上按顺序相邻判定——跨标记空隙也算）
-    breaks = []  # (ia, ib, gap, is_jump)
-    speech = [c for c in cues if not is_pure_marker(c["text"])]
-    for k in range(len(speech) - 1):
-        gap = speech[k + 1]["start"] - speech[k]["end"]
-        if gap > LONG_GAP_MS:
-            breaks.append((speech[k]["idx"], speech[k + 1]["idx"], gap, gap > JUMP_GAP_MS))
+    # 空隙点：**优先复用 r00_gaps_active.tsv**（人工已裁决的生效集，含疑点排除状态）；
+    # 缺失则回退自行探测（与 gap_scan 同一判定：先剔除纯标记 cue，再在语音 cue 上取相邻对）
+    rows = load_breaks_tsv(tsv_path)
+    from_tsv = bool(rows)
+    if from_tsv:
+        breaks = []
+        for r in rows:
+            ia, ib = r["ia"], r["ib"]
+            if r["status"] == "excluded":
+                continue                      # 人工排除：不作为断句点
+            ca = next((c for c in cues if c["idx"] == ia), None)
+            cb = next((c for c in cues if c["idx"] == ib), None)
+            if ca is None or cb is None:
+                continue
+            breaks.append((ia, ib, r["gap_ms"], r["gap_ms"] > JUMP_GAP_MS, r["kind"], r["status"]))
+    else:
+        breaks = []
+        speech = [c for c in cues if not is_pure_marker(c["text"])]
+        for k in range(len(speech) - 1):
+            gap = speech[k + 1]["start"] - speech[k]["end"]
+            if gap > LONG_GAP_MS:
+                breaks.append((speech[k]["idx"], speech[k + 1]["idx"], gap, gap > JUMP_GAP_MS,
+                               "jump" if gap > JUMP_GAP_MS else "gap", "active"))
 
     # —— 断句点清单 ——
     lines = []
     lines.append(f"# r01 硬性断句点清单 — {args.src}")
     lines.append("")
     lines.append(f"- 输入: `{args.src}`（{len(cues)} cue）；长停顿 >{LONG_GAP_MS/1000:.0f}s；剪辑跳转 >{JUMP_GAP_MS/1000:.0f}s")
-    lines.append(f"- 空隙点: {len(breaks)} 处（{sum(1 for b in breaks if b[3])} 处剪辑跳转）")
+    lines.append(f"- 空隙点: {len(breaks)} 处（{sum(1 for b in breaks if b[3])} 处剪辑跳转）"
+                 + (f"——**来自 `{Path(tsv_path).name}`（人工已裁决的生效集）**" if from_tsv
+                    else "——⚠️ 未找到 tsv，本清单由脚本自行探测（建议先跑 `srt_reflow_gap_scan.py` 并复核）"))
     lines.append("- 用途: 断句点清单供 Agent 复核回填（空隙点性质 / 断句方式 / 游离停顿词），")
     lines.append("  复核结果经先验知识注入补标点 subagent（`【强制断句】` 空隙标记，见 task-punctuate）与 r03 归属参考；")
     lines.append("  补标点后必须跑 `srt_reflow_check_breaks.py` 校验，未通过（跨空隙合句）打回重跑。软指令不足（S56 实证空隙被合句吞掉）。")
     lines.append("")
+    lines.append("> **生效空隙点集的裁决入口 = `r00_gaps_active.tsv`**（`status` 列）——"
+                 "排除某空隙请改 tsv，勿再改本文件格式（旧做法「把标题改成脚本不可解析」已废弃）。")
+    lines.append("")
     lines.append("## 断句点清单")
     lines.append("")
-    for i, (ia, ib, gap, is_jump) in enumerate(breaks, 1):
-        tag = "⚠️ 剪辑跳转" if is_jump else "长停顿"
+    for i, (ia, ib, gap, is_jump, kind, status) in enumerate(breaks, 1):
+        if kind == "suspect":
+            tag = "❓ 疑似源切分缺陷（已确认生效）"
+        elif is_jump:
+            tag = "⚠️ 剪辑跳转"
+        else:
+            tag = "长停顿"
         a_text = BRACKET_RE.sub("", next(c["text"] for c in cues if c["idx"] == ia))
         b_text = BRACKET_RE.sub("", next(c["text"] for c in cues if c["idx"] == ib))
         a_words = len(re.findall(r"[a-z0-9']+", a_text.lower()))
@@ -85,8 +113,15 @@ def main():
         lines.append(f"- 前 cue c{ia}（尾锚）: `{a_text[:60]}{'…' if len(a_text)>60 else ''}`")
         lines.append(f"- 后 cue c{ib}（首锚）: `{b_text[:60]}{'…' if len(b_text)>60 else ''}`")
         lines.append("- 强制: 两锚之间必须断句（句末标点 `.?!` 或段落边界），禁止合并为一句")
+        if kind == "suspect":
+            lines.append("- ⚠️ **本处被判为疑似源字幕切分缺陷**（前 cue 无句末标点 + 后 cue 首字母小写）——"
+                         "复核优先：若确认为源缺陷，请在 `r00_gaps_active.tsv` 把该行 status 改为 `excluded`"
+                         "（则不分块、不断句、跨它合并为一句），而非按真实停顿强制断句")
         lines.append("- **Agent 复核（每个空隙点必填，回填本清单）**:")
-        lines.append("  - 性质判定: [ ] 剪辑跳转（语义真断 → 断死）  [ ] 语义停顿（语义仍连贯 → 可松断）")
+        if kind == "suspect":
+            lines.append("  - 性质判定: [ ] 源切分缺陷（→ 改 tsv status=excluded 排除）  [ ] 真实停顿（→ 保持生效）")
+        else:
+            lines.append("  - 性质判定: [ ] 剪辑跳转（语义真断 → 断死）  [ ] 语义停顿（语义仍连贯 → 可松断）")
         lines.append("  - 断句方式: [ ] 独立成句  [ ] 分段（语义衔接，非硬拆）  [ ] 归前句句尾（仅单词级游离词）")
         if b_words <= 2:
             lines.append(f"  - ⚠️ 后 cue c{ib} 为{'单词' if b_words == 1 else '短语'}级游离停顿词（`{b_text}`）："
@@ -100,17 +135,22 @@ def main():
     lines.append("## 校验（补标点后必跑）")
     lines.append("")
     lines.append("```")
-    lines.append(f"python scripts/srt_reflow_check_breaks.py {args.src} reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md")
+    lines.append(f"python scripts/srt_reflow_check_breaks.py {args.src} reflow/r01_results/ --chunks reflow/chunks/ --gaps {Path(tsv_path).name}")
     lines.append("```")
     lines.append("")
-    lines.append("> 通过 = 每个空隙点两侧 cue 之间已断句；违规 = 存在跨空隙合句，打回步骤 1 重跑（带断句标记输入）。")
+    lines.append("> 通过 = 每个**生效**空隙点两侧 cue 之间已断句；违规 = 存在跨空隙合句，打回步骤 1 重跑（带断句标记输入）。")
+    lines.append("> `--gaps` 现接受 `r00_gaps_active.tsv`（生效集，`excluded` 项自动跳过校验）——"
+                 "旧版传 `r00_gaps.md` 仍兼容（脚本内部读同目录 tsv）。")
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
-    with open(out, "w", encoding="utf-8") as f:
+    with open(out, "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(lines) + "\n")
-    print(f"OK: {len(breaks)} 处断句点（{sum(1 for b in breaks if b[3])} 剪辑跳转）→ {out}")
-    for ia, ib, gap, is_jump in breaks:
-        print(f"  c{ia}→c{ib} {gap/1000:.1f}s {'⚠️跳转' if is_jump else '停顿'}")
+    src_note = "（生效集来自 tsv）" if from_tsv else "（脚本自行探测，建议先复核 r00_gaps）"
+    print(f"OK: {len(breaks)} 处生效断句点（{sum(1 for b in breaks if b[3])} 剪辑跳转；"
+          f"{sum(1 for b in breaks if b[4] == 'suspect')} 疑似源缺陷）{src_note} → {out}")
+    for ia, ib, gap, is_jump, kind, _st in breaks:
+        mark = "⚠️跳转" if is_jump else ("❓疑似源缺陷" if kind == "suspect" else "停顿")
+        print(f"  c{ia}→c{ib} {gap/1000:.1f}s {mark}")
 
 
 if __name__ == "__main__":

@@ -175,7 +175,7 @@ def extract_breaks(breaks_path):
             continue
         lines = blk.splitlines()
         title = lines[0].strip()
-        pre = nxt = force = concl = ""
+        pre = nxt = force = concl = suspect = ""
         for ln in lines[1:]:
             if ln.startswith("- 前 cue"):
                 pre = ln.replace("- 前 cue", "").strip()
@@ -185,6 +185,8 @@ def extract_breaks(breaks_path):
                 force = ln.split(":", 1)[1].strip()
             elif "复核结论**:" in ln:
                 concl = ln.split("复核结论**:", 1)[1].strip()
+            elif "疑似源字幕切分缺陷" in ln and "起首" not in ln:
+                suspect = "（形态提示：疑似源字幕切分缺陷——尚未经人工裁决，仍按强制断句执行）"
         line = f"- 空隙点 {title}"
         if pre:
             line += f"；前 {pre}"
@@ -192,6 +194,8 @@ def extract_breaks(breaks_path):
             line += f"；后 {nxt}"
         if force:
             line += f"；{force}"
+        if suspect:
+            line += f" {suspect}"
         if concl:
             line += f"\n  - 复核结论：{concl}"
         items.append(line)

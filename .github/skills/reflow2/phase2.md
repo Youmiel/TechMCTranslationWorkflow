@@ -21,12 +21,13 @@
 
 ##### 处理
 
-1. **空隙探测**：`python scripts/srt_reflow_gap_scan.py <01> -o reflow2/r00_gaps.md`——空隙点清单（长停顿 >5s / 剪辑跳转 >10s）即分块组边界依据；**已有 r00_gaps.md 则复用**；探测结果人工确认后作为 `--gaps` 分块空隙点集
+1. **空隙探测**：`python scripts/srt_reflow_gap_scan.py <01> -o reflow2/r00_gaps.md`——产出 `r00_gaps.md`（人读：长停顿 >5s / 剪辑跳转 >10s / **疑似源切分缺陷**分节）+ `r00_gaps_active.tsv`（**生效空隙点集 = 单一事实源**）；**已有 tsv 则复用**
 2. **硬性断句**：`python scripts/srt_reflow_breaks.py <01> -o reflow2/r01_breaks.md`——断句点清单（含 Agent 复核字段），供补标点先验知识注入
 
 ##### 校验
 
-1. **Agent 复核断句点清单**（回填 r01_breaks.md）：每空隙点判定性质（剪辑跳转→断死 / 语义停顿→可松断）、断句方式、游离停顿词归属
+1. **裁决疑似源切分缺陷**：脚本已自动标记（判据：前 cue 末尾无句末标点 **且** 后 cue 首字母小写）——确认是源字幕把同一句切成两条 cue 时，把 `r00_gaps_active.tsv` 该行 `status` 由 `suspect` 改为 **`excluded`**（正式排除：不分块 / 不断句 / 校验跳过；重跑不覆盖）。**脚本只报告不改行为**，默认仍生效
+2. **Agent 复核断句点清单**（回填 r01_breaks.md）：每空隙点判定性质（剪辑跳转→断死 / 语义停顿→可松断）、断句方式、游离停顿词归属
 
 ### 步骤 2：确定块大小 + 分块
 
@@ -40,8 +41,9 @@
 
 1. **定容量**：`python scripts/context_estimate.py <01>`（默认读 `configs/context_window.json`；输出 `--owned` 建议值）
    - **实践建议**（机制不变）：`--owned` ≤200 cue 封顶（同 reflow-redstone 步骤 2 补丁）
-2. **分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx 10 --out reflow2/chunks/`
+2. **分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps-file reflow2/r00_gaps_active.tsv --owned <每块cue数> --ctx 10 --out reflow2/chunks/`
    - 块 = 「空隙组-片」；空隙点强制切块（语义硬边界），组内按 `--owned` 拆片
+   - `--gaps-file` 读生效集（`excluded` 项自动跳过）——排除源切分缺陷空隙无需再去掉开关
 
 ##### 校验
 
@@ -69,7 +71,8 @@
 
 **任务**：主会话统一跑，所有块完成后一次执行；问题走定点修复（B 档 `task-fix`，见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正surgical-fix校验打回先小规模修不整块重派)）。
 
-1. **硬性校验**（空隙点句末标点）：`python scripts/srt_reflow_check_breaks.py <01> reflow2/r01_results/ --chunks reflow2/chunks/ --gaps reflow2/r00_gaps.md`
+1. **硬性校验**（空隙点句末标点）：`python scripts/srt_reflow_check_breaks.py <01> reflow2/r01_results/ --chunks reflow2/chunks/ --gaps reflow2/r00_gaps_active.tsv`
+   - 读 tsv 生效集（`excluded` 跳过）；命中疑似源缺陷且未排除时会提示「改 tsv 为 excluded」而非要求强制断句
 2. **措辞校验**（词序列与 01 一致）：`python scripts/srt_reflow_check_words.py <01> reflow2/r01_results/ --chunks reflow2/chunks/`
 3. **补标点质量校验**：`python scripts/srt_reflow_check_sentence_len.py reflow2/r01_results/`（硬：单句逗号 >10 / 单句 >600 / 句均 >350；软：≥8 逗号且 ≥250 字符）
 4. **衔接归位**：跨块句重复（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`）——只在一侧留无标记完整句，另一侧不留文本；单边标记兜底（回填 01 cue 拼接原文留完整句删标记）
@@ -143,7 +146,9 @@
 1. **继承 + 回填（脚本，唯一动作）**：`python scripts/srt_reflow2_backfill.py reflow2/zh_sentences/ reflow2/align/ reflow2/en_timeline/ -o reflow2/r04_draft.srt --alert reflow2/r04_alerts.md`
    - 处理方式（**脚本内一次性完成，主代理零读取、不参与时间分配**）：
      - **继承**：每 Z 组对应 E 组，时间 = E 组覆盖范围 [首 E.start, 末 E.end]（E 固化时间已含共享 cue 切分，继承天然零重叠）
-     - **拆子段**：Z 句超宽（>硬 26，视觉宽度）→ 按中文标点拆候选段 + 按阅读速度比例在 E 组区间内细分（复用 `allocate._allocate_by_weight`：吸附真实 cue 边界 ≤300ms，无则 100ms 取整预测点）——阅读舒适优先
+     - **拆子段**：Z 句超宽（>硬 26，视觉宽度）→ 按**标点功能角色表**（`srt_reflow_punct`）拆候选段 + 按阅读速度比例在 E 组区间内细分（复用 `allocate._allocate_by_weight`：吸附真实 cue 边界 ≤300ms，无则 100ms 取整预测点）——阅读舒适优先
+       - **拼合 = 代价最小化**（断点强度 + 段宽偏离 [15,22] + 碎片罚）：`strong`（`；：—`）> `clause`（`，`）> `list`（`、`）；括号内断点为**软代价**（优先保持括注完整，超宽时允许断开）
+       - 取代旧「贪心填满硬上限」：贪心会吞掉强断点（`…回答一下：第一，` + `怎么搭…？`，断点落在逗号而非冒号）；分号自 2026-09-21 起由硬断降为 `strong` 强优先（可被宽度否决）
      - **双语**：同步生成 `r04_bilingual.srt`（en-zh：英文行 = E 句/片段，子段 EN 按宽度比例机械切、互斥拼接 == 整句 EN）
    - 产物：`r04_draft.srt`（预览，止步 `_work/`）+ `r04_bilingual.srt` + `r04_alerts.md`
 2. **agent 复核（按需）**：`r04_alerts.md` 告警处置（长句碎片 🔪 / 独立短句 ⏱️ / 预测点 🎯）——主代理不读全量

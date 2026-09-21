@@ -29,10 +29,10 @@
 
 ##### 处理
 
-1. **空隙探测（先验证 gap 准确性）**：`python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md`——空隙点清单（长停顿 >5s / 剪辑跳转 >10s）即分块组边界依据；**已有 r00_gaps.md 则复用，勿重复探测**；探测结果人工确认后作为 `--gaps` 分块的空隙点集
+1. **空隙探测（先验证 gap 准确性）**：`python scripts/srt_reflow_gap_scan.py <01> -o reflow/r00_gaps.md`——产出 `r00_gaps.md`（人读：长停顿 >5s / 剪辑跳转 >10s / **疑似源切分缺陷**）+ `r00_gaps_active.tsv`（生效空隙点集，人工可编辑）；**已有 tsv 则复用，勿重复探测**
   - **统一阈值参数（全流程引用同一值）**：
     - 长停顿 **5s** / 剪辑跳转 **10s**：
-      - ① 步骤 2 `--gaps` 分块空隙组（空隙点 = 长停顿 >5s / 剪辑跳转 >10s）；
+      - ① 步骤 2 `--gaps-file` 分块空隙组（生效空隙点 = 长停顿 >5s / 剪辑跳转 >10s，`excluded` 项除外）；
       - ② 步骤 6 单元内部空隙告警（`gap > 5s` / 跳转 `> 10s`）；
       - ③ 游离停顿词归属（大空隙 > 5s 前最后 cue **时间层归前句句尾**——r01 复核时文本归前句、r03 分句时仍独立成单元覆盖自身 cue，两层不冲突，见 task-split 规则 5）
 2. **硬性断句输入**：`python scripts/srt_reflow_breaks.py <01> -o reflow/r01_breaks.md`——断句点清单（含 Agent 复核字段），供复核回填 + 补标点先验知识注入（`【强制断句】` 空隙标记，见 task-punctuate）
@@ -46,7 +46,7 @@
 
 分块机制见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) + [PRODUCT_FORMATS#通用文本分块](../../../docs/PRODUCT_FORMATS.md)。后续步骤共用此步骤的块骨架，块数为 1 时即单块骨架。
 
-输入： `01_subtitle_asr_fixed.srt` + `r00_gaps.md`（空隙点集）
+输入： `01_subtitle_asr_fixed.srt` + `r00_gaps_active.tsv`（生效空隙点集）
 
 ##### 归一化
 
@@ -58,11 +58,11 @@
   - 参数默认读 `configs/context_window.json`、CLI 可覆盖
   - 输出：估算 token / 单块容量上限（min 统一、已含放大）/ 每 cue 平均字符 / `--owned` 建议值（= 单块容量上限 × 1.5 ÷ 每 cue 平均字符）
   - **实践建议**（补丁，机制设计不变）：`--owned` 取值按 **≤200 cue** 封顶——实践发现单块 >200 cue 时分句 subagent 处理不了（no-think 输出超限中断，只能拆半重派）；封顶只在取值时做，`context_estimate.py` 反推公式与分块机制不变
-2. **分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`
+2. **分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps-file reflow/r00_gaps_active.tsv --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`
   - 块 = 「空隙组-片」，
   - `--owned` 填上一步建议值
   - `--ctx 10`（每侧衔接 cue 数，约覆盖前块末尾 1–2 句）
-  - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps` 把 01 按空隙点切成「空隙组」，**每个空隙组至少一块**——块数下限 = 空隙点数 + 1；仅 01 无空隙点才 1 块
+  - **空隙点强制切块（语义硬边界，与容量无关）**：`--gaps-file` 把 01 按**生效**空隙点切成「空隙组」，**每个空隙组至少一块**——块数下限 = 生效空隙点数 + 1；仅 01 无生效空隙点才 1 块
   - **组内按 `--owned` 拆片（容量控制）**：空隙组 cue 数 > `--owned` 时组内再拆多片；≤ `--owned` 则每组恰一块——**组内不分片 ≠ 不分块**（空隙点仍强制切块）
 
 ##### 校验
@@ -97,8 +97,8 @@
 **告警定位约定**（reflow 校验脚本通用）：问题项统一带「文件:行号 + 行上下文」（如 `chunk_008.txt:行28`），**主会话只读此清单作派发素材、不得**按行号自行读文件定位核对/编辑——定点修复一律下放 B 档 `task-fix`（见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正surgical-fix校验打回先小规模修不整块重派)，A 档已废弃）；通过项只汇总计数不逐项（`--verbose` 展开）。
 
 1. **硬性校验**（任务：逐空隙点查句末标点 `.?!`）
-  - 脚本：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps.md`
-  - 处理方式：复用 r00_gaps 已验证空隙点；脚本先剥离跨块句标记 `【承接句】`/`【延伸句】` 再判，避免标记补全文本干扰空隙断句；剥离衔接句后无文本的块（纯标记/空块）对应空隙跳过校验（未定位提示人工核对），**不计打回**
+  - 脚本：`python scripts/srt_reflow_check_breaks.py <01> reflow/r01_results/ --chunks reflow/chunks/ --gaps reflow/r00_gaps_active.tsv`
+  - 处理方式：读 tsv 生效空隙点（`excluded` 项自动跳过）；脚本先剥离跨块句标记 `【承接句】`/`【延伸句】`再判，避免标记补全文本干扰空隙断句；命中疑似源缺陷且未排除时提示「改 tsv 为 excluded」而非要求强制断句
   - 特例：空隙断句缺失 → 定点修复（B 档 `task-fix` 在空隙点补断句标点）；语义停顿可作受控例外放行（须 r03 不跨空隙成单元）
 2. **措辞校验 + 跨块句衔接**（任务：逐块词序列与对应 01 cue 段一致）
   - 脚本：`python scripts/srt_reflow_check_words.py <01> reflow/r01_results/ --chunks reflow/chunks/`——脚本剥离 `【承接句】`/`【延伸句】` 标记后比对
@@ -169,7 +169,7 @@
   - **不形成中英对照**：EN / ZH 各自编号（`S?_Z<n>` 默认按序提示对应 `E<n>`，启发式须核对）
     - **忠实铁律由结构保证**：段只在标点处切、不增删改（段拼接 == Z 原文 == r02）
     - **长短 / 宽度 / 断句类型机械化**，agent 不再自行判长短
-  - **多语言通用**：切分标点（`--punct-levels` 有序层级，默认逗号族>破折号>顿号，超宽才降级）、句长区间（`--soft-min/--soft-max/--hard-max/--min-unit`）全参数化，默认 CJK；宽度复用 `srt_reflow_common.text_width`（Unicode 块通用）
+  - **多语言通用**：断点强度由**标点角色表**表达（`srt_reflow_punct`：句界/strong `；：—`/clause `，`/list `、`，CLI `--punct-*` 可配）、句长区间（`--soft-min/--soft-max/--hard-max/--min-unit`）全参数化，默认 CJK；宽度复用 `srt_reflow_common.text_width`（Unicode 块通用）
   - 一次性全目录跑完（r02 折行副本不再需要——预分句输出已逐句折行，脚本直读 r02_results 原稿）
 
 ###### 处理

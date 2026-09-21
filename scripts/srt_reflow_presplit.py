@@ -40,71 +40,61 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 from srt_reflow_common import wrap_text, collect_chunk_files, strip_stitch_prefix, MAX_LINE, text_width
+from srt_reflow_punct import (
+    build_profile,
+    pack_by_strength,
+    split_atomic,
+    split_sentences,
+)
 
-# 机械化断句默认参数（CJK；可 CLI 覆盖——多语言适配只改这里 + 标点参数，核心算法零改动）
+# 机械化断句默认参数（CJK；可 CLI 覆盖——多语言适配改标点角色表 + 这里，核心算法零改动）
 DEFAULT_SOFT_MIN = 15      # 目标区间下限（视觉宽度）
 DEFAULT_SOFT_MAX = 22      # 目标区间上限（软；check-r03 ③ 软 22）
 DEFAULT_HARD_MAX = 26      # 硬上限（check-r03 ③ 硬 26，>26 必切）
 DEFAULT_MIN_UNIT = 5       # 最小单元宽度（≈1s 阅读时长 @5字/秒，防碎片）
-# 切分标点层级（有序 = 优先级从高到低；标点保留段尾；层级递增式切分——先用高层切，
-# 单段超 hard_max 才降级用低层；语义完整处优先、宽度兜底）：
-#   L1 逗号族（，；：）主断点；L2 破折号（—）插入/解释；
-#   L3 顿号（、）并列内部（避免切断「a、b」并列短语），最后手段。可 --punct-levels 扩展/覆盖（多语言只改这里）
-DEFAULT_PUNCT_LEVELS = ["，；：", "—", "、"]
-
-# EN 句末标点（可连续：... / !?）；ZH 句末标点（含省略号）
-EN_EOS_RE = re.compile(r"[.!?]+")
-ZH_EOS_RE = re.compile(r"[。！？…]+")
-# EN 常见缩写（缩写点不作句末）：字幕场景常用；匹配须紧邻标点（以 . 结尾）
-EN_ABBR_RE = re.compile(
-    r"(?i)(?<![A-Za-z])"
-    r"(?:Mr|Mrs|Ms|Dr|Prof|Rev|St|Sr|Jr|vs|etc|al|Inc|Ltd|Corp|Co|Dept|"
-    r"Fig|Eq|No|Vol|e\.g|i\.e|approx|min|max|hr|sec|"
-    r"Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)"
-    r"\.\s*$"
-)
-ZH_OPEN_RE = "（【「“‘"
-ZH_CLOSE_RE = "）】」”’"
+# 注：旧「有序层级切分标点」常量已删除（2026-09-22 自查）——断点强度由 srt_reflow_punct 的
+# 角色表表达；旧 `--punct-levels` 仍接受，但按**字符归属**映射（见 make_profile）。
 
 
-def is_en_sentence_end(text, start, end):
-    """EN 判定 [start,end) 处标点是否为句末：字幕句首常小写——省略号（...）与缩写点为非句末，
-    标点后跟空格/结束即句末（无空格直接续小写 = 异常粘连，非句末）。"""
-    seg = text[start:end]
-    if "..." in seg:
-        return False  # 省略号 = 句内停顿（不切；agent 按语义再切）
-    if EN_ABBR_RE.search(text[:end]):
-        return False  # 缩写点保护（Mr./Fig./e.g. 等）
-    nxt = text[end : end + 1]
-    if nxt and nxt.islower():
-        return False  # 标点后无空格直接续小写（异常粘连）→ 非句末
-    if nxt.isdigit() and text[start - 1 : start].isdigit():
-        return False  # 小数点保护（版本号 1.21 / 1.20.4、小数 0.2）→ 非句末
-    return True
+def make_profile(lang="zh", punct_levels=None, **kw):
+    """构造标点角色 profile。
+
+    `punct_levels=None`（**推荐/默认**）→ 直接用 `srt_reflow_punct` 的角色表默认。
+    `punct_levels` 给出（旧 CLI `--punct-levels`）→ 按**字符归属**把层级映射为角色字符集：
+    旧默认层级 `["，；：", "—", "、"]` 中，L1 同时含强断点（`；：`）与句内断点（`，`）——
+    按层级位置整体套用会把逗号误升为 strong、破折号误降为 clause（与角色表默认冲突，
+    2026-09-22 自查发现）。故按**语言默认角色的字符归属**拆分 L1：
+    `；：` 归 strong、`，` 归 clause，其余层级按序补入尚未覆盖的角色。
+    """
+    levels = list(punct_levels) if punct_levels else []
+    if not levels:
+        return build_profile(lang, **kw)
+    base = build_profile(lang)                      # 语言默认角色（用于判定字符归属）
+    strong, clause, lst = [], [], []
+    for lv in levels:
+        for ch in lv:
+            role = base.role_of(ch)
+            if role == "strong" and ch not in strong:
+                strong.append(ch)
+            elif role == "clause" and ch not in clause:
+                clause.append(ch)
+            elif role == "list" and ch not in lst:
+                lst.append(ch)
+    kw.setdefault("strong", "".join(strong) or None)
+    kw.setdefault("clause", "".join(clause) or None)
+    kw.setdefault("list_chars", "".join(lst) or None)
+    return build_profile(lang, **kw)
 
 
-def split_en(text):
-    """英文整段按句末标点 .?! 分句（先合并显示折行、剥跨块句标记前缀）→ [句文本]。"""
+def split_en(text, profile=None):
+    """英文整段按句末标点 .?! 分句（先合并显示折行、剥跨块句标记前缀）→ [句文本]。
+
+    委托 `srt_reflow_punct.split_sentences`（角色表 + 例外模式 guards：缩写/小数点/省略号/
+    括号配平/续小写粘连）——取代旧 `is_en_sentence_end` + `EN_ABBR_RE` 的本模块硬编码。
+    """
     text = re.sub(r"\s+", " ", text.strip())
     text = strip_stitch_prefix(text).strip()
-    sentences, buf = [], []
-    i, n = 0, len(text)
-    while i < n:
-        m = EN_EOS_RE.search(text, i)
-        if not m:
-            buf.append(text[i:])
-            i = n
-            break
-        end = m.end()
-        if is_en_sentence_end(text, m.start(), end):
-            sentences.append("".join(buf) + text[i:end])
-            buf = []
-        else:
-            buf.append(text[i:end])
-        i = end
-    if buf:
-        sentences.append("".join(buf))
-    return [s.strip() for s in sentences if s.strip()]
+    return split_sentences(text, profile or build_profile("en"))
 
 
 def _is_cjk(ch):
@@ -140,30 +130,15 @@ def _collapse_ws(text):
     return "".join(out).strip()
 
 
-def split_zh(text):
-    """中文整段按句末标点 。！？… 分句（折行合并保留中英/数字空格、括号配平保护；剥跨块句标记前缀）→ [句文本]。"""
+def split_zh(text, profile=None):
+    """中文整段按句末标点 。！？… 分句（折行合并保留中英/数字空格、括号配平保护；剥跨块句标记前缀）→ [句文本]。
+
+    委托 `srt_reflow_punct.split_sentences`（角色表 + 例外模式 guards）——取代旧本模块
+    硬编码 `ZH_EOS_RE` + depth 循环。
+    """
     text = strip_stitch_prefix(text)
     text = _collapse_ws(text)
-    sentences, buf = [], []
-    i, n = 0, len(text)
-    depth = 0
-    while i < n:
-        c = text[i]
-        if c in ZH_OPEN_RE:
-            depth += 1
-        elif c in ZH_CLOSE_RE:
-            depth = max(0, depth - 1)
-        m = ZH_EOS_RE.match(text, i)
-        if m and depth == 0:
-            sentences.append("".join(buf) + text[i : m.end()])
-            buf = []
-            i = m.end()
-        else:
-            buf.append(c)
-            i += 1
-    if buf:
-        sentences.append("".join(buf))
-    return [s.strip() for s in sentences if s.strip()]
+    return split_sentences(text, profile or build_profile("zh"))
 
 
 def render(prefix, sentences):
@@ -178,71 +153,50 @@ def render(prefix, sentences):
     return "\n".join(lines) + "\n"
 
 
-def split_by_punct(text, puncts):
-    """按切分标点把整句切成候选段（标点保留在段尾，归属前段）→ [段文本]。
-    无标点时返回 [text]（单段）；连续标点/空白段剔除。"""
-    segs, buf = [], []
-    for ch in text:
-        buf.append(ch)
-        if ch in puncts:
-            s = "".join(buf).strip()
-            if s:
-                segs.append(s)
-            buf = []
-    if buf:
-        s = "".join(buf).strip()
-        if s:
-            segs.append(s)
-    return segs
+def pack_candidates(segs, hard_max, min_unit, soft_min=None, soft_max=None, profile=None):
+    """拼合候选段 → 显示单元 [(文本, 宽度)]。
+
+    **兼容包装**：接受旧式 `[段文本]` 或新式 `[(段文本, 段尾角色)]`；
+    内部委托 `srt_reflow_punct.pack_by_strength`（**代价最小化** DP，取代旧的贪心填满）。
+
+    旧贪心会吞掉强断点、保留弱断点（实例：`…回答一下：第一，`(17) + `怎么搭…？`(12)，
+    断点落在逗号而非冒号）；DP 版本让断点强度参与决策（结果 `…回答一下：`(14) + `第一，…？`(15)）。
+
+    - 旧式输入（纯字符串）→ 段尾角色按段文本末尾字符反查 profile（未传 profile 用 zh）
+    - 旧调用不传 soft_min/soft_max → 退化为「仅防碎片 + 约束 ≤ hard_max」（保持旧语义的宽度部分）
+    """
+    if not segs:
+        return []
+    prof = profile or build_profile("zh")
+    first = segs[0]
+    if isinstance(first, tuple):
+        typed = list(segs)          # 已是 (文本, 角色[, 括号内]) 形态，直接透传
+    else:
+        # 旧式输入（纯字符串）→ 段尾角色按段文本末尾字符反查 profile；
+        # 括号内标记无法从字符串还原（旧调用点不涉及），按 False 处理
+        typed = []
+        for s in segs:
+            tail = s.rstrip()[-1:] if s.rstrip() else ""
+            typed.append((s, prof.role_of(tail) if tail else None, False))
+    return pack_by_strength(typed, hard_max, min_unit, soft_min, soft_max, prof)
 
 
-def split_recursive(text, levels, hard_max):
-    """多级切分：按 levels[0] 标点切候选段；单段超 hard_max 时递归用更细标点切。
-    语义完整处优先（高层级标点先试），宽度兜底；最终每段 ≤ hard_max（切不动则保留原段，由调用方标 ❌）。"""
-    if text_width(text) <= hard_max or not levels:
-        return [text]
-    parts = split_by_punct(text, levels[0])
-    if len(parts) <= 1:
-        return split_recursive(text, levels[1:], hard_max) if len(levels) > 1 else [text]
-    out = []
-    for p in parts:
-        out.extend(split_recursive(p, levels[1:], hard_max))
-    return out
-
-
-def pack_candidates(segs, hard_max, min_unit):
-    """贪心拼合候选段 → 子单元 [(文本, 宽度)]（保持顺序；语言无关、参数化）。
-
-    - 从每段起点累加后续段，直到累加超过 hard_max 断开——单元尽量填满（软 soft_max 是目标、非硬约束）
-    - 断开后新段重新累加；首段即超 soft_max 时单段成单元（标点边界优先，可接受）
-    - 防碎片后处理：从尾向前，宽度 < min_unit 的单元并入前单元（合并后 ≤ hard_max）"""
-    units = []
-    i, n = 0, len(segs)
-    while i < n:
-        cur, cur_w = [segs[i]], text_width(segs[i])
-        k = i + 1
-        while k < n and cur_w + text_width(segs[k]) <= hard_max:
-            cur.append(segs[k])
-            cur_w += text_width(segs[k])
-            k += 1
-        units.append(("".join(cur), cur_w))
-        i = k
-    merged = []
-    for u, w in units:
-        if merged and w < min_unit and merged[-1][1] + w <= hard_max:
-            merged[-1] = (merged[-1][0] + u, merged[-1][1] + w)
-        else:
-            merged.append((u, w))
-    return merged
-
-
-def plan_sentence(text, punct_levels, hard_max, min_unit):
+def plan_sentence(text, punct_levels, hard_max, min_unit, soft_min=None, soft_max=None,
+                  lang="zh", profile=None):
     """整句机械化断句 → (状态, 子单元列表 [(段文本, 宽度)], 备注)。
 
-    状态：ok（全部 ≤ hard_max，可采）/ warn（含 < min_unit 碎片段，已尽量合并）/ err（单段切不动仍 > hard_max）。
-    优先级：punct_levels 有序层级（高层先切，超宽段才降级低层）——语义完整处优先、宽度兜底。"""
-    cands = split_recursive(text, punct_levels, hard_max)
-    units = pack_candidates(cands, hard_max, min_unit)
+    **算法（2026-09-21 起）**：标点角色表切原子段（`srt_reflow_punct.split_atomic`，
+    含小数点/序号/缩写/省略号/括号配平等例外模式）→ **代价最小化拼合**
+    （`pack_by_strength`：断点强度 + 段宽偏离 + 碎片罚）。
+    取代旧的「有序层级递归切分 + 贪心填满 hard_max」——后者会吞掉强断点
+    （实例：`…回答一下：第一，`(17) + `怎么搭…？`(12)，断点落在逗号而非冒号）。
+
+    状态：ok（全部 ≤ hard_max 且无碎片）/ warn（含 < min_unit 碎片段）/ err（单段切不动仍 > hard_max）。
+    `punct_levels`（旧 CLI）经 `make_profile` 映射为角色字符集，保持旧命令可用。
+    """
+    prof = profile or make_profile(lang, punct_levels)
+    typed = split_atomic(text, prof)
+    units = pack_by_strength(typed, hard_max, min_unit, soft_min, soft_max, prof)
     status = "ok"
     notes = []
     for u, w in units:
@@ -258,7 +212,8 @@ def plan_sentence(text, punct_levels, hard_max, min_unit):
     return status, units, notes
 
 
-def render_zh_template(zh_sentences, soft_min, soft_max, hard_max, min_unit, punct_levels):
+def render_zh_template(zh_sentences, soft_min, soft_max, hard_max, min_unit, punct_levels,
+                       lang="zh"):
     """渲染 r03 模板骨架：每 Z 句一组（`## S?_Z<n>` 占位 + ZH 原文 + 子句段预填 + 关系预填 1:1/1:n + EN 待填）。
     分句 agent 填空（S 号/EN/子单元 EN/关系核对）后即 r03_results；ZH 行忠实铁律由结构保证。"""
     lines = [
@@ -267,12 +222,15 @@ def render_zh_template(zh_sentences, soft_min, soft_max, hard_max, min_unit, pun
         "#   ① S 号：`S?_Z<n>` → 块内连续 `S<号>`（删占位与默认标注）；② EN：从 r03_normalized_1 抄对应 E 整句",
         "#      （`默认 E<n>` 为按序启发式提示，须核对对应）；③ 关系：已按段数预填 1:1/1:n（多 E 对单 Z 改 n:1）",
         "#   ④ 子单元 EN：填互斥英文片段。n:1 合并、游离停顿词、跨 Z 句并入同一整句按需调整（见 task-split）",
-        "# 参数：切分标点层级（高→低）%s；宽度复用 text_width（全角=1.0/拉丁=0.5/数字=0.5/空格=0.5）" % " → ".join(punct_levels),
+        "# 参数：切分标点层级（高→低）%s（映射为断点角色强度）；宽度复用 text_width（全角=1.0/拉丁=0.5/数字=0.5/空格=0.5）"
+        % " → ".join(punct_levels),
         "",
     ]
+    prof = make_profile(lang, punct_levels)
     for i, (zn, text) in enumerate(zh_sentences, 1):
         total = text_width(text)
-        status, units, notes = plan_sentence(text, punct_levels, hard_max, min_unit)
+        status, units, notes = plan_sentence(text, punct_levels, hard_max, min_unit,
+                                             soft_min, soft_max, lang, prof)
         if len(units) == 1:
             lines.append(f"## S?_Z{i}（默认 E{i}）")
             lines.append("- EN: <待填>")
@@ -328,9 +286,24 @@ def main():
     ap.add_argument("--hard-max", type=float, default=DEFAULT_HARD_MAX, help=f"硬上限（默认 {DEFAULT_HARD_MAX}；check-r03 ③ 硬 26）")
     ap.add_argument("--min-unit", type=float, default=DEFAULT_MIN_UNIT, help=f"最小单元宽度/防碎片（默认 {DEFAULT_MIN_UNIT}，≈1s@5字/秒）")
     ap.add_argument("--punct-levels", action="append", default=None,
-                    help="切分标点层级（可多次指定，先高后低；默认 %s——逗号族/破折号/顿号）" % "/".join(DEFAULT_PUNCT_LEVELS))
+                    help="【兼容保留·不推荐】旧式有序层级切分标点（可多次指定，先高后低）。"
+                         "**不给则用角色表默认**（推荐，见 srt_reflow_punct）；"
+                         "给了则按各字符在旧默认层级中的归属映射到 strong/clause/list"
+                         "（旧 L1 `，；：` 中：`；：` 为 strong、`，` 为 clause）")
+    # 标点角色表细粒度覆盖（srt_reflow_punct；不传 = 语言默认，保持既有行为）
+    ap.add_argument("--punct-terminators", default=None,
+                    help="句界字符集（默认 zh 。！？… / en .?!）——扩它会改变 Z 句数、使 align/ 失效，谨慎")
+    ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认 zh ；：— / en ;:—）")
+    ap.add_argument("--punct-clause", default=None, help="句内断点字符集（默认 zh ， / en ,）")
+    ap.add_argument("--punct-list", dest="punct_list", default=None, help="并列内部断点字符集（默认 zh 、 / en 空）")
     args = ap.parse_args()
-    punct_levels = args.punct_levels or DEFAULT_PUNCT_LEVELS
+
+    en_prof = make_profile("en", args.punct_levels, terminators=args.punct_terminators,
+                           strong=args.punct_strong, clause=args.punct_clause,
+                           list_chars=args.punct_list)
+    zh_prof = make_profile("zh", args.punct_levels, terminators=args.punct_terminators,
+                           strong=args.punct_strong, clause=args.punct_clause,
+                           list_chars=args.punct_list)
 
     en_blocks = collect_chunk_files(args.en_dir)
     zh_blocks = collect_chunk_files(args.zh_dir)
@@ -349,7 +322,7 @@ def main():
     for k in keys:
         if k in en_blocks:
             with open(en_blocks[k], encoding="utf-8") as fh:
-                sents = split_en(fh.read())
+                sents = split_en(fh.read(), en_prof)
             n_en += len(sents)
             with open(os.path.join(en_out, "chunk_%03d.txt" % k), "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(render("E", sents))
@@ -357,7 +330,7 @@ def main():
                 print(f"   chunk_{k:03d}（EN）: {len(sents)} 句")
         if k in zh_blocks:
             with open(zh_blocks[k], encoding="utf-8") as fh:
-                sents = split_zh(fh.read())
+                sents = split_zh(fh.read(), zh_prof)
             n_zh += len(sents)
             zh_sents = [(f"Z{i}", s) for i, s in enumerate(sents, 1)]
             with open(os.path.join(zh_out, "chunk_%03d.txt" % k), "w", encoding="utf-8", newline="\n") as fh:
@@ -375,6 +348,9 @@ def main():
         print(f"   ZH 整句级精简列表 {len(zh_blocks)} 块 / {n_zl} 句 → {zh_list_out}")
     print(f"   ZH 断句参数: 目标区间 [{args.soft_min:.0f},{args.soft_max:.0f}] 硬 ≤{args.hard_max:.0f} 最小单元 ≥{args.min_unit:.0f}；"
           f"切分标点层级（高→低）{' → '.join(punct_levels)}")
+    print(f"   标点角色表: 句界 `{args.punct_terminators or '语言默认'}`；强断点 `{args.punct_strong or '语言默认'}`；"
+          f"句内 `{args.punct_clause or '语言默认'}`；并列 `{args.punct_list if args.punct_list is not None else '语言默认'}`"
+          f"（拼合 = 断点强度 + 段宽偏离 + 碎片 的代价最小化）")
     return 0
 
 
