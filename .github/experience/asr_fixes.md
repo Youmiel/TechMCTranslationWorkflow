@@ -118,6 +118,15 @@
 | piston block 36 | eight plus block 36 | 活塞 |
 | lava pocket | liquid pocket | 岩浆池 |
 | flying machine | pingu freedom of flying machine | 飞行器 |
+| intensive | intenensive | 常见拼写错位 |
+| simple | simle | 常见拼写错位 |
+| design | deisgn | 常见拼写错位 |
+| successfully | sucessfully | 常见拼写错位 |
+| success | sucess | 常见拼写错位 |
+| equilibrium | equilibirum | 常见拼写错位 |
+| eighth | eigth | 常见拼写错位 |
+| single-cell | sincle-cell | 常见拼写错位 |
+| efficiency | efficinecy | 常见拼写错位 |
 | palette of blocks | palace down there / palette of blogs | 方块调色板 |
 | node | note / notes / endnote / i know / red nose / a no | 节点（末影龙寻路机制主题高发） |
 | pathfind | path finds / pat find / path find | 寻路（末影龙寻路机制） |

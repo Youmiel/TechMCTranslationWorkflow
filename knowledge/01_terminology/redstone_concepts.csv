@@ -51,3 +51,4 @@ input bug,,player input bug 的简称,来源：_repos/TechMCDocs/GameTick/TileTi
 container block,,可存放物品的容器类方块（箱子、木桶、潜影盒等），投掷器可向其内插入物品,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5） 00:01:19,容器方块,
 container entity,,带容器功能的实体（运输船、运输矿车、漏斗矿车等），投掷器/漏斗可与之交互,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5） 00:01:21,容器实体,
 randomizer,,利用投掷器随机选槽（概率 1/N）实现随机输出的简单装置,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5） 00:02:42,随机发生器,
+redstoneless,,形容装置完全不使用红石元件,来源：Shulker reactors - a new shulker farm paradigm!（mv3OAZGKfs4） 00:03:50；2026-09-21 用户确认；项目 `-less`→「无X」惯例（storage 无粉 / slimestone 无黏液）,无红石的,
