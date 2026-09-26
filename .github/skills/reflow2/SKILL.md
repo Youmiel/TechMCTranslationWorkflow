@@ -92,7 +92,7 @@ description: Minecraft 红石技术视频字幕的「时间轴源头固化」工
 
 按 [redstone-preprocess](../redstone-preprocess/SKILL.md) 原样执行（阶段〇 / §1.1 扫描 → `01_subtitle_asr_fixed.srt` / §1.2 补齐 / §1.3 确认 → `02_terms.md` / §1.4 入库）。`--cue-exact` 校验保留（保护原轴骨架）。**阶段门禁：`01`/`02` 交用户确认后才进入阶段二，不得擅自跨阶段**。
 
-> **实践建议**（机制设计不变）：阶段〇/一 分块 `--owned` ≤300 cue 封顶（见 reflow-redstone SKILL 实践建议，同机制）
+> **实践建议**（机制设计不变）：阶段〇/一 分块（preprocess §1.1 第一次遍历 `_en_chunks/`）`--owned` 按 **≤300 cue** 封顶。是实践建议，只在取值时做，脚本输出结果不变
 
 ### 阶段二：源头固化 + 继承回填
 

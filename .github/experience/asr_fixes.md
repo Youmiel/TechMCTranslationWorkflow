@@ -75,9 +75,18 @@
 | end stone farm | start farm | 末地石农场 |
 | kill that wither | feel that wither | 击杀凋灵 |
 | carts | cars / cards | 矿车（minecart） |
-| shulker | sugar / should / shocker / shoulder / shelter / choker / schulker / shoulders | 潜影贝（本视频最高频误听） |
-| aggro | agreeing / agree on / I grow / agar / Egger engine | 仇恨（潜影贝农场/红石语境） |
-| trash mob | trash Muppets / trash weapons / trash puppets | 垃圾怪（不参与复制的边缘潜影贝） |
+| shulker | sugar / should / shocker / shoulder / shelter / choker / schulker / shoulders / Ashoka / shortcode / Strokers / shock or / Sher / shers / Shuler / Cher / Shockers | 潜影贝（最高频误听） |
+| aggro | agreeing / agree on / I grow / agar / Egger engine / avgware / Agro | 仇恨（潜影贝农场/红石语境） |
+| trash mob | trash Muppets / trash weapons / trash puppets / Muffets / Muppets / muppet / non-muppets | 垃圾怪（不参与复制的边缘潜影贝） |
+| wither rose | River roses / river roses / River ranges | 凋灵玫瑰 |
+| entity cramming | Cramer / energy cram | 实体挤压（Cramer 在 minecart 语境也指 cram） |
+| armor stand | elmerstand / I'm a stand | 盔甲架 |
+| pufferfish | puff fish / buffer fish | 河豚 |
+| powder snow | out of snow / out of the snow | 细雪 |
+| minecart | main car | 矿车 |
+| comparator | comparative | 比较器（comparative cooldown clock → comparator cooldown clock） |
+| lava cauldron | lava quadrant | 装有熔岩的炼药锅 |
+| despawn | spawn | 消失（"items will eventually despawn" 被听成 spawn） |
 | minecart | mine guards / mine car / Minecraft / my car / cars / micro | 矿车 |
 | shulker bullet | Bulls / bolts / Ebola | 潜影弹 |
 | peeking | peaking | 开壳（潜影贝） |
@@ -129,7 +138,7 @@
 | efficiency | efficinecy | 常见拼写错位 |
 | palette of blocks | palace down there / palette of blogs | 方块调色板 |
 | node | note / notes / endnote / i know / red nose / a no | 节点（末影龙寻路机制主题高发） |
-| pathfind | path finds / pat find / path find | 寻路（末影龙寻路机制） |
+| pathfind / pathfinding | path finds / pat find / path find / pathf finding | 寻路（末影龙寻路机制；潜影弹寻路 bullet pathfinding） |
 | island | iceland | 岛（末地岛） |
 | place blocks | play blocks | 放置方块 |
 | y level | by level | Y 坐标层 |
@@ -142,6 +151,9 @@
 | chute | shoots / shoes / shoot | 滑道 |
 | bogged sheep | bog sheep | 沼骸（"bogged, sheep" 逗号被吞，常与 sheep 并列） |
 | X in Y（分数口语） | X and Y / 1 and N / 1 and two | 口语 "in" 被听成 "and"（1 in 3 / 1 in N 等） |
+| hopper | Harpers | 漏斗 |
+| trapdoor | trapo | 活板门 |
+| AFK | FK | 挂机（"FK" 漏掉 A） |
 
 <!-- 低价值/视频专属映射（主表超限整理时移出，暂存于此）：不参与通用解码。
      2026-08-22 已归档 2 条到对应视频：ideal→QSDpdXT9SPs、cubicmetre→uVOFckoMdIU。
