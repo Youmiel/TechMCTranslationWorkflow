@@ -180,6 +180,16 @@ def loc_of(path):
 
 
 # ---- 视觉宽度（通用工具；2026-08-20 自 srt_reflow_core/io.py 上移，供独立脚本与 reflow 核心复用）----
+# ---- 行宽阈值（单一事实源；改这里即全链生效）----
+# 为什么在此：生成侧（presplit 机械化断句 / backfill 拆子段）与校验侧（check-r03 / check-width / alerts）
+# 必须同一口径——否则生成侧算 26 放行、校验侧算 27 报错（2026-09-27 曾因副本脱节出假 ERROR）。
+# 语义：目标区间 [SOFT_MIN, SOFT_MAX]，超 SOFT_MAX = 软告警、超 HARD_MAX = 硬违规（必切/打回）。
+# 仅作**默认值**——各脚本仍可 CLI 覆盖（`--soft-max` / `--hard` / `--warn`），用于单视频调试。
+SOFT_MIN = 15.0
+SOFT_MAX = 22.0
+HARD_MAX = 27.0
+MIN_UNIT = 5.0        # 最小单元宽度（≈1s 阅读时长 @5字/秒，防碎片）
+
 # 全角块（宽 1.0）：CJK 统一表意 + 扩展 A/B + 假名 + 谚文 + 兼容表意 + 全角标点
 FULLWIDTH_RE = re.compile(r"[\u2e80-\u9fff\uac00-\ud7af\u3040-\u30ff\uf900-\ufaff\uff00-\uffef]")
 LATIN_RE = re.compile(r"[A-Za-z]")
@@ -187,23 +197,28 @@ DIGIT_RE = re.compile(r"[0-9]")
 
 
 def text_width(s):
-    """视觉宽度（半角/全角标准，2026-08-11 修正：拉丁/数字由 1.5/1.0 改为 0.5，此前虚高把带英文行推成长句）：
-    全角=1.0 / 拉丁=0.5 / 数字=0.5 / 空格=0.5。
+    """视觉宽度：全角=1.0 / 拉丁=0.4 / 数字=0.5 / 空格=0.4。
+
+    修正史（每次改动都会平移各脚本阈值语义，须同步各引用处）：
+    - 2026-08-11：拉丁/数字由 1.5/1.0 改为 0.5（此前虚高把带英文行推成长句）。
+    - 2026-09-27：拉丁/空格由 0.5 降为 0.4——用户实测「所以这次我和同为红石玩家、YouTuber 的
+      mattbatwings 一样，」在播放器里显示 26.5，旧口径（拉丁/空格 0.5）算成 28.5、偏大 2.0
+      （= 20 拉丁 × 0.1）。比例字体下拉丁与空格平均宽度约为全角的 0.4。数字保持 0.5
+      （多为等宽数字、未实测偏差）。行宽硬限随本次由 26 调至 27。
 
     已按 Unicode 块通用化（含假名/谚文/扩展表意），不再只认 CJK——将来加书写系统
-    只需扩展 FULLWIDTH_RE 等判定，权重不改。被 check-r03 / reflow 行宽告警 / presplit 机械化断句复用：
-    权重按真实显示（拉丁/数字为半角，≈0.5 汉字），改权重会改变阈值语义，需同步各引用处。
+    只需扩展 FULLWIDTH_RE 等判定，权重不改。被 check-r03 / reflow 行宽告警 / presplit 机械化断句复用。
     """
     w = 0.0
     for ch in s:
         if FULLWIDTH_RE.match(ch):
             w += 1.0
         elif LATIN_RE.match(ch):
-            w += 0.5
+            w += 0.4
         elif DIGIT_RE.match(ch):
             w += 0.5
         elif ch == " ":
-            w += 0.5
+            w += 0.4
         else:
             w += 1.0
     return w

@@ -228,7 +228,8 @@ def main():
                          "排除源切分缺陷空隙后无需再去掉 --gaps 开关）。传它即隐含 --gaps")
     ap.add_argument("--max-chars", type=int, default=6000,
                     help="text 类型单单位超长细分阈值（字符；默认 6000；r01 大块建议按 context_estimate 反推）")
-    ap.add_argument("--order", choices=("en-zh", "zh-en"), default="en-zh", help="双语行语言顺序")
+    ap.add_argument("--order", choices=("en-zh", "zh-en"), default="zh-en",
+                    help="双语行语言顺序（默认 zh-en：中文行在前）")
     ap.add_argument("--inherit", default=None,
                     help="【已弃用 deprecated】旧块级流水线：继承 <父块目录> 的块边界，内容换成 <--content> 结果目录的对应块。"
                          "新方案改为从 01 分块（--type srt --gaps）+ 块级独立流转，不再需要继承；此参数仅兼容旧流程，后续删除")
@@ -272,14 +273,19 @@ def main():
             ext_breaks = None
             if args.gaps_file:
                 from srt_reflow_gap_scan import load_breaks_tsv
+                if not Path(args.gaps_file).exists():
+                    sys.exit(f"❌ --gaps-file 文件不存在：{args.gaps_file}")
                 rows = load_breaks_tsv(args.gaps_file)
-                if not rows:
-                    sys.exit(f"❌ --gaps-file 无有效空隙点（文件缺失或全部被排除）：{args.gaps_file}")
                 active = [r for r in rows if r["status"] != "excluded"]
                 n_ex = len(rows) - len(active)
-                if not active:
+                if not rows:
+                    print(f"ℹ️ {Path(args.gaps_file).name} 无空隙点"
+                          f"——按单块处理（不加空隙组边界）")
+                elif not active:
                     print(f"ℹ️ {Path(args.gaps_file).name} 生效空隙点为空（{n_ex} 处已排除）"
                           f"——按单块处理（不加空隙组边界）")
+                else:
+                    print(f"空隙点集: {Path(args.gaps_file).name}（生效 {len(active)} / 排除 {n_ex}）")
                 # 空隙点集来自 tsv（cue 号 + gap）；gap 缺省时由 01 时间戳补算
                 ts_by_idx = {u[0]: u for u in units}
                 ext_breaks = []
@@ -288,7 +294,6 @@ def main():
                     ua, ub = ts_by_idx.get(a), ts_by_idx.get(b)
                     gap = r["gap_ms"] or ((_ts_ms(ub[1]) - _ts_ms(ua[2])) if (ua and ub) else 0)
                     ext_breaks.append((a, b, gap))
-                print(f"空隙点集: {Path(args.gaps_file).name}（生效 {len(active)} / 排除 {n_ex}）")
             groups, breaks = detect_gap_groups(units, breaks=ext_breaks)
             n_gap_groups = len(groups)
             for g, (a, b, cnt) in enumerate(groups):

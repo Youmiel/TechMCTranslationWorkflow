@@ -45,6 +45,7 @@ TASKS = {
             "template": "task-punctuate.md",
             "role": "补标点",
             "format_section": "r01_results/chunk_<k>.txt（补标点块）",
+            "format_file": "docs/PRODUCT_FORMATS_REFLOW.md",
             "inputs": ["reflow/r01_normalized/chunk_<k>.txt"],
             "output": "reflow/r01_results/chunk_<k>.txt",
             "prior": ["breaks"],
@@ -54,6 +55,7 @@ TASKS = {
             "template": "task-punctuate.md",
             "role": "补标点",
             "format_section": "r01_results/chunk_<k>.txt（补标点块）",
+            "format_file": "docs/PRODUCT_FORMATS_REFLOW.md",
             "inputs": ["reflow2/r01_normalized/chunk_<k>.txt"],
             "output": "reflow2/r01_results/chunk_<k>.txt",
             "prior": ["breaks"],
@@ -65,6 +67,7 @@ TASKS = {
             "template": "task-translate.md",
             "role": "整段翻译",
             "format_section": "r02_results/chunk_<k>.txt（翻译块）",
+            "format_file": "docs/PRODUCT_FORMATS_REFLOW.md",
             "inputs": ["reflow/r01_results/chunk_<k>.txt"],
             "output": "reflow/r02_results/chunk_<k>.txt",
             "prior": ["humanizer", "terms"],
@@ -74,6 +77,7 @@ TASKS = {
             "template": "task-translate.md",
             "role": "整段翻译",
             "format_section": "r02_results/chunk_<k>.txt（翻译块）",
+            "format_file": "docs/PRODUCT_FORMATS_REFLOW.md",
             "inputs": ["reflow2/r01_results/chunk_<k>.txt"],
             "output": "reflow2/r02_results/chunk_<k>.txt",
             "prior": ["humanizer", "terms"],
@@ -83,6 +87,7 @@ TASKS = {
             "template": "task-translate.md",
             "role": "翻译",
             "format_section": "_trans_results/chunk_<k>.txt（翻译块）",
+            "format_file": "docs/PRODUCT_FORMATS_TRANSLATE.md",
             "inputs": ["_merge_results/chunk_<k>.txt"],
             "output": "_trans_results/chunk_<k>.txt",
             "prior": ["humanizer", "terms"],
@@ -93,6 +98,7 @@ TASKS = {
         "template": "task-merge.md",
         "role": "合并断句",
         "format_section": "_merge_results/chunk_<k>.txt（断句块）",
+        "format_file": "docs/PRODUCT_FORMATS_TRANSLATE.md",
         "inputs": ["chunks/chunk_<k>.txt"],
         "output": "_merge_results/chunk_<k>.txt",
         "prior": ["terms"],
@@ -102,6 +108,7 @@ TASKS = {
         "template": "task-humanize.md",
         "role": "去翻译腔",
         "format_section": "_humanize_results/chunk_<k>.txt（去翻译腔块）",
+        "format_file": "docs/PRODUCT_FORMATS_TRANSLATE.md",
         "inputs": ["_humanize_chunks/chunk_<k>.txt"],
         "output": "_humanize_results/chunk_<k>.txt",
         "prior": ["humanizer"],
@@ -111,6 +118,7 @@ TASKS = {
         "template": "task-split.md",
         "role": "分句",
         "format_section": "r03_plan.md（## S<n> 整句分组格式；r03_results/chunk_<k>.txt 同此格式）",
+        "format_file": "docs/PRODUCT_FORMATS_REFLOW.md",
         "inputs": ["reflow/r03_normalized_1/chunk_<k>.txt", "reflow/r03_normalized_2/chunk_<k>.txt"],
         "output": "reflow/r03_results/chunk_<k>.txt",
         "prior": ["breaks"],
@@ -121,6 +129,7 @@ TASKS = {
             "template": "task-match.md",
             "role": "句子匹配",
             "format_section": "r03_matches/chunk_<k>.txt（匹配文件）",
+            "format_file": "docs/PRODUCT_FORMATS_REFLOW.md",
             "inputs": ["reflow/r03_normalized_1/chunk_<k>.txt", "reflow/r03_zslim/chunk_<k>.txt"],
             "output": "reflow/r03_matches/chunk_<k>.txt",
             "prior": [],
@@ -130,6 +139,7 @@ TASKS = {
             "template": "task-match.md",
             "role": "句子匹配",
             "format_section": "align/chunk_<k>.txt（对齐文件）",
+            "format_file": "docs/PRODUCT_FORMATS_REFLOW2.md",
             "inputs": ["reflow2/en_timeline/chunk_<k>.txt", "reflow2/zh_sentences/chunk_<k>.txt"],
             "output": "reflow2/align/chunk_<k>.txt",
             "prior": [],
@@ -163,11 +173,13 @@ def write(path, text):
 
 
 def extract_breaks(breaks_path):
-    """从 r01_breaks.md 提取空隙点清单（前/后 cue + 强制 + 复核结论），供补标点先验知识。"""
+    """从 r01_breaks.md 提取断句先验：空隙点清单（强制断句）+ 说话人话轮参考点（**提示，非硬约束**）。"""
     text = read(breaks_path)
     if "## 断句点清单" not in text:
         return "（r01_breaks.md 无断句点清单）"
+    # 空隙点清单：截到下一个 `## ` 节前（否则「参考断句点」的 ### 标题会被误当成空隙点）
     body = text.split("## 断句点清单", 1)[1]
+    body = re.split(r"(?m)^## ", body, 1)[0]
     blocks = re.split(r"(?m)^### ", body)
     items = []
     for blk in blocks:
@@ -199,7 +211,42 @@ def extract_breaks(breaks_path):
         if concl:
             line += f"\n  - 复核结论：{concl}"
         items.append(line)
-    return "\n".join(items)
+    out = "\n".join(items)
+
+    # 说话人话轮参考点（**结构提示，非硬约束**）——归一化抹平 cue 边界后，这是补标点判断话轮切换的唯一线索
+    TURN_SECTION = "## 参考断句点（说话人话轮）——"        # 用带「——」的完整标题，避免被正文引用行提前命中
+    if TURN_SECTION in text:
+        turn_raw = text.split(TURN_SECTION, 1)[1]
+        turn_raw = re.split(r"(?m)^## ", turn_raw, 1)[0]
+        turn_items = []
+        for blk in re.split(r"(?m)^### ", turn_raw):
+            if not blk.strip():
+                continue
+            lines = blk.splitlines()
+            pre = nxt = ""
+            for ln in lines[1:]:
+                if ln.startswith("- 前 cue"):
+                    pre = ln.replace("- 前 cue", "").strip()
+                elif ln.startswith("- 后 cue"):
+                    nxt = ln.replace("- 后 cue", "").strip()
+            if not pre and not nxt:
+                continue                                  # 节首说明块（非 cue 条目）
+            item = f"- {lines[0].strip()}"
+            if pre:
+                item += f"；前 {pre}"
+            if nxt:
+                item += f"；后 {nxt}"
+            turn_items.append(item)
+        if turn_items:
+            out += (
+                "\n\n### 参考断句点（说话人话轮）——提示，**不是**硬约束\n\n"
+                "- 下列 cue 边界来自**原字幕行结构**（前 cue 末尾无句末标点 + 涉及说话人标签 `Name:`）——\n"
+                "  归一化抹平 cue 边界后，这是你判断话轮切换的唯一结构线索。\n"
+                "- **必须结合语义判断**：确为话轮切换（换人说话 / 一问一答）才在标签前补句末标点；\n"
+                "  同一说话人的长话被字幕行切断 → **不要断**；拿不准就不动。**禁止机械逐条断句。**\n\n"
+                + "\n".join(turn_items)
+            )
+    return out
 
 
 def collect_priors(cfg, video_dir, chunk, prior_files):
@@ -305,7 +352,7 @@ def render(task, video_dir, chunk, prior_files, chunks_dir, skill=None):
     # 4. 产物格式约定（subagent 唯一允许的外部读取）
     fmt_section = cfg["format_section"].replace("<k>", f"{chunk:03d}")
     fmt_block = (
-        f"> **产物格式约定**（唯一允许的外部读取）：见 `docs/PRODUCT_FORMATS.md` 的 `{fmt_section}` 节"
+        f"> **产物格式约定**（唯一允许的外部读取）：见 `{cfg['format_file']}` 的 `{fmt_section}` 节"
     )
 
     # 5. 先验知识

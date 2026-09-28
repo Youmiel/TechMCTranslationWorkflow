@@ -51,7 +51,7 @@ description: 分句 + 语义对应任务（reflow）——对照 r03_normalized_
 
 ## 输出（写入 `_work/<视频名>/reflow/r03_results/chunk_<k>.txt`）
 
-- 产物 = r03 整句分组格式（`## S<n>`），与 PRODUCT_FORMATS 的 `r03_plan.md` 节一致
+- 产物 = r03 整句分组格式（`## S<n>`），与 PRODUCT_FORMATS_REFLOW 的 `r03_plan.md` 节一致
 - **EN / ZH 值必须单行**：`- EN: ` / `- ZH: ` 的值（整句与子单元片段）各占**恰好一行**
   - 值内**禁止换行 / 折行 / 空行**——跨行会破坏脚本按行解析与忠实校验
 - **输入标号锚点**：`- E1:` / `- Z1:` / `- ZH:` 前缀为标号，**值内不得夹带折行**
@@ -85,7 +85,7 @@ description: 分句 + 语义对应任务（reflow）——对照 r03_normalized_
 
 > **渲染步骤**（agent / 脚本通用）：最终 prompt = 任务文件内容（含任务特有规则）按下列顺序拼接——
 > 1. `纪律母版` = subagent-dispatch 纪律母版（`_discipline.md` 整体追加）
-> 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS.md` 的 `r03_plan.md` 节（`## S<n>` 整句分组格式；subagent 唯一允许的外部读取）
+> 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS_REFLOW.md` 的 `r03_plan.md` 节（`## S<n>` 整句分组格式；subagent 唯一允许的外部读取）
 > 3. `## 先验知识` = 空隙断句标记（`r01_breaks.md` 复核结果，紧贴任务规则 5）；**不注入术语表**（分句不产出译名）；主会话复核结论用 `--prior-file` 追加
 > 4. `## 本块数据` = 数据文件引用：`reflow/r03_normalized_1/chunk_<k>.txt`（E 号预分句）+ `reflow/r03_normalized_2/chunk_<k>.txt`（ZH 模板骨架）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `reflow/r03_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`

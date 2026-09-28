@@ -38,7 +38,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 翻译结果写入 `_output/`，文件名同输入。默认输出**双语对照**（原文 + 中文翻译），输出变体见 [redstone-conventions#语言顺序与输出变体](../redstone-conventions/SKILL.md#语言顺序与输出变体)（`bilingual` 默认 / `zh-only` / `annotated`）。
 
-> 语言顺序固定 `en-zh`、脚本 `--order` 约定见 [redstone-conventions#语言顺序与输出变体](../redstone-conventions/SKILL.md#语言顺序与输出变体)。
+> 语言顺序固定 `zh-en`、脚本 `--order` 约定见 [redstone-conventions#语言顺序与输出变体](../redstone-conventions/SKILL.md#语言顺序与输出变体)。
 
 ### 中间产物与断点恢复
 
@@ -57,7 +57,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
      - 分块：`<工作目录>/chunks/`（01 `text_chunk.py --type srt` 分块骨架）
      - 合并断句：`<工作目录>/_merge_results/chunk_<k>.txt`，`text_merge.py` 合并为 `<工作目录>/s03_plan.md`
      - 逐段翻译：`<工作目录>/_trans_results/chunk_<k>.txt`，`text_merge.py` 合并为 `<工作目录>/s04_draft.srt`（标准 SRT 双语）
-   - 校验（机械，硬闸门）：断句措辞一致性（`srt_check_plan_words.py`）/ 术语全量核对（`srt_check_terms.py`）/ 行宽（`srt_check_width.py` >26 打回）
+   - 校验（机械，硬闸门）：断句措辞一致性（`srt_check_plan_words.py`）/ 术语全量核对（`srt_check_terms.py`）/ 行宽（`srt_check_width.py` >27 打回）
 4. **阶段二+ 去翻译腔**（`humanizer-zh`，可选）
    - 输入：`s04_draft.srt` 全稿
    - 产物：修订稿（回写 `s04`）
@@ -104,7 +104,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ### 通用规则
 
-见 [redstone-conventions](../redstone-conventions/SKILL.md)（环境 / 工作区隔离 / 断点恢复 / en-zh / 时间纪律 / 长视频分块 / 输出门禁 / 禁删）+ [AGENTS.md](../../../AGENTS.md)（项目原则）。
+见 [redstone-conventions](../redstone-conventions/SKILL.md)（环境 / 工作区隔离 / 断点恢复 / zh-en / 时间纪律 / 长视频分块 / 输出门禁 / 禁删）+ [AGENTS.md](../../../AGENTS.md)（项目原则）。
 
 ### 特有规则
 
@@ -152,7 +152,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 - 输出（块级 subagent 产物 + 合并稿）：
   - `chunks/`（01 分块骨架，从 01 `text_chunk.py --type srt` 分块）
    - `_merge_results/chunk_<k>.txt`（断句块），`text_merge.py` 合并为 `s03_plan.md`（断句定稿，交用户审核前落盘）
-   - `_trans_results/chunk_<k>.txt`（翻译块），`text_merge.py` 合并为 `s04_draft.srt`（标准 SRT 双语 en-zh，逐段翻译落盘）
+   - `_trans_results/chunk_<k>.txt`（翻译块），`text_merge.py` 合并为 `s04_draft.srt`（标准 SRT 双语 zh-en，逐段翻译落盘）
 - 各产物结构/分隔符/标记约定（单一权威）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)，处理前先查对应节
 
 **翻译风格**：翻译前读 `ref_translations/` 参考译例（如有），模仿其**语气 / 句长偏好 / 术语偏好 / 注释风格**。
@@ -178,10 +178,10 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 1. **渲染**：`python scripts/render_subagent_prompt.py task-translate --skill translate-redstone --video <工作目录> --all --chunks-dir <工作目录>/chunks`
 2. **逐块派发** `task-translate`（翻译 subagent，任务文件 [task-translate.md](task-translate.md)）→ `_trans_results/chunk_<k>.txt`
-3. **合并**：`python scripts/text_merge.py chunks/ _trans_results/ --out <中间稿> [--report <报告>]` → 主会话转 `s04_draft.srt`（标准 SRT 双语 en-zh；**逐段落盘**，中断可从未完成段继续）
+3. **合并**：`python scripts/text_merge.py chunks/ _trans_results/ --out <中间稿> [--report <报告>]` → 主会话转 `s04_draft.srt`（标准 SRT 双语 zh-en；**逐段落盘**，中断可从未完成段继续）
 4. **校验（硬闸门，全量）**：
    - 术语全量核对：`python scripts/srt_check_terms.py 01_subtitle_asr_fixed.srt 02_terms.md <_trans_results/> --chunks <chunks/>`（分块时）或 `... s04_draft.srt --plan s03_plan.md`（合并后）
-   - 行宽：`python scripts/srt_check_width.py s04_draft.srt --order en-zh`（>26 硬打回退出码 1、>22 软告警）
+   - 行宽：`python scripts/srt_check_width.py s04_draft.srt --order zh-en`（>27 硬打回退出码 1、>22 软告警）
    - 时间边界：`python scripts/srt_check_segments.py s04_draft.srt --orig 01_subtitle_asr_fixed.srt`
 5. **校验打回 → 定点修复（B 档）**：收集**全部错误清单**一次派发 `task-fix`（[task-fix.md](task-fix.md)，见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正surgical-fix校验打回先小规模修不整块重派)）。
    - 修复范围：断句措辞按 01 改回；译文改措辞 / 术语漂移 / 行宽（**translate 修复就是改译文本身**，无 reflow「r03 只许切不许译」约束）

@@ -1,43 +1,33 @@
 # -*- coding: utf-8 -*-
-"""检查 SRT 各段中文行视觉宽度（CJK=1, latin≈0.5, digit≈0.5, space≈0.5，半角标准）。
+"""检查 SRT 各段中文行视觉宽度（CJK=1, latin≈0.4, digit≈0.5, space≈0.4；单一事实源 = srt_reflow_common.text_width，阈值同源于其 SOFT_MAX/HARD_MAX）。
 
-用法: python srt_check_width.py <draft.srt> [--warn 22] [--hard 26] [--order en-zh|zh-en] [--expand]
---warn: 软告警阈值（默认 22，>warn 且 ≤hard 提示，软告警）；--hard: 硬限制阈值（默认 26，>hard 必切）。
---order: 双语行语言顺序，en-zh=英文行在前中文行在后（默认），zh-en=中文行在前英文行在后。
+用法: python srt_check_width.py <draft.srt> [--warn 22] [--hard 27] [--order en-zh|zh-en] [--expand]
+--warn: 软告警阈值（默认 22，>warn 且 ≤hard 提示，软告警）；--hard: 硬限制阈值（默认 27，>hard 必切）。
+--order: 双语行语言顺序，zh-en=中文行在前英文行在后（默认），en-zh=英文行在前中文行在后。
 统一反馈：默认只输出「超限段数 + 提示」（不输出每处内容/行号）；--expand 展开每处 文件:行号+内容。
 硬闸门：>hard 计 ERROR 并定位「文件:行号」（--expand），退出码 1 = 打回信号；软告警不阻断。
 """
 import argparse, os, re, sys
 sys.stdout.reconfigure(encoding='utf-8')
 
+from srt_reflow_common import SOFT_MAX as _DEFAULT_WARN, HARD_MAX as _DEFAULT_HARD
+
 ap = argparse.ArgumentParser(description='检查 SRT 中文行视觉宽度')
-ap.add_argument('srt', help='目标 SRT 路径（如 _work/<视频>/04_translation_draft.srt）')
-ap.add_argument('--warn', type=float, default=22, help='软告警阈值，默认 22（>warn 提示）')
-ap.add_argument('--hard', type=float, default=26, help='硬限制阈值，默认 26（>hard 必切）')
-ap.add_argument('--order', choices=('en-zh', 'zh-en'), default='en-zh',
-                help='双语行语言顺序：en-zh=英文行在前中文行在后（默认）；zh-en=中文行在前英文行在后')
+ap.add_argument('srt', help='目标 SRT 路径（如 _work/<视频>/s04_draft.srt）')
+ap.add_argument('--warn', type=float, default=_DEFAULT_WARN, help=f'软告警阈值，默认 {_DEFAULT_WARN:g}（>warn 提示）')
+ap.add_argument('--hard', type=float, default=_DEFAULT_HARD, help=f'硬限制阈值，默认 {_DEFAULT_HARD:g}（>hard 必切）')
+ap.add_argument('--order', choices=('en-zh', 'zh-en'), default='zh-en',
+                help='双语行语言顺序：zh-en=中文行在前英文行在后（默认）；en-zh=英文行在前中文行在后')
 ap.add_argument('--expand', action='store_true',
                 help='展开每处超限段的「文件:行号 + 内容」（默认只给超限段数+提示）')
 args = ap.parse_args()
 
-CJK = re.compile(r'[\u4e00-\u9fff\u3000-\u303f\uff00-\uffef]')
-LATIN = re.compile(r'[A-Za-z]')
-DIGIT = re.compile(r'[0-9]')
-
-def width(s):
-    w = 0.0
-    for ch in s:
-        if CJK.match(ch):
-            w += 1.0
-        elif LATIN.match(ch):
-            w += 0.5
-        elif DIGIT.match(ch):
-            w += 0.5
-        elif ch == ' ':
-            w += 0.5
-        else:
-            w += 1.0
-    return w
+# 视觉宽度复用 srt_reflow_common.text_width（**单一事实源**）。
+# 2026-09-27 修：本脚本原有独立 width() 副本（拉丁/空格 0.5），与生成侧（pack_by_strength /
+# srt_reflow2_backfill）用的 text_width 口径脱节——改一处不改另一处会出**假 ERROR**
+# （实测 `所以这次我和同为红石玩家、YouTuber 的 mattbatwings 一样，`：
+# 生成侧按拉丁/空格 0.4 算 26.2，本脚本副本按 0.5 报 28.5）。
+from srt_reflow_common import text_width as width
 
 with open(args.srt, encoding='utf-8-sig') as fh:
     lines_all = fh.read().split('\n')

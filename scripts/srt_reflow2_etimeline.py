@@ -72,6 +72,9 @@ def main():
         # 块内 OWNED cue 子集 + 子 full（锚定域，防跨块重复误配）
         bcues = [c for c in all_cues if owned[0] <= c["idx"] <= owned[1]] if owned else []
         bfull, bmapping, boffsets = build_full(bcues) if bcues else ("", [], [])
+        # 本块 OWNED 时间范围（global 兜底越界钳制用——见下方 clamp 说明）
+        o_start = bcues[0]["start"] if bcues else None
+        o_end = bcues[-1]["end"] if bcues else None
 
         # 每 E 句锚定 → info dict：{key, text, kind(block/global/miss/skip), a(anchor|None), note}
         infos = []
@@ -97,14 +100,44 @@ def main():
             gp = all_full.find(n)
             if gp != -1:
                 gsi, gei = all_mapping[gp], all_mapping[gp + len(n) - 1]
-                a = {"key": key, "start": all_cues[gsi]["start"], "end": all_cues[gei]["end"],
+                gs, ge = all_cues[gsi]["start"], all_cues[gei]["end"]
+                # **钳制到本块 OWNED 时间范围**（2026-09-27）：跨块句（衔接归位后留在前块）在全文命中时
+                # 会一直占到后块的 cue（global 路径不做共享 cue 切分）→ 与后块首 E 重叠
+                # （实测 ZXGpmaIcMMo：`...transfer items.` 占 c198-c201 与块 2 的 c201-c203 重叠 2s）。
+                # E 句固化时间语义 = 「该句在本块内的可显示范围」，块外部分由相邻块承担。
+                if o_start is not None and gs < o_start:
+                    gs = o_start
+                if o_end is not None and ge > o_end:
+                    ge = o_end
+                if ge <= gs:
+                    # 钳制后无有效区间（句子几乎全在块外）→ 保留原值并记 note（不静默丢时间）
+                    gs, ge = all_cues[gsi]["start"], all_cues[gei]["end"]
+                    note = "钳制后区间为空，保留全文范围（复核跨块归属）"
+                else:
+                    note = None
+                a = {"key": key, "start": gs, "end": ge,
                      "si": None, "ei": None, "pos": None, "pos_end": None}
-                infos.append({"key": key, "text": etext.strip(), "kind": "global", "a": a, "note": None})
+                infos.append({"key": key, "text": etext.strip(), "kind": "global", "a": a, "note": note})
                 continue
             infos.append({"key": key, "text": etext.strip(), "kind": "miss", "a": None, "note": "锚定失败"})
 
         # 相邻 E 句共享 cue 中间断句估算切分（resolve_shared_cues 直接改 anchor start/end）
         resolve_shared_cues(anchors, bcues, boffsets, [])
+
+        # global 兜底 anchor 的前向钳制（2026-09-27）：global 不参与上面的共享 cue 切分，
+        # 因此可能与**前一句 anchor 共享某一 cue**（前句 end = cue.end，global start = cue.start
+        # → 重叠整条 cue；实测 4 处重叠中的 2 处即此形态）。按 E 句顺序保证单调：
+        # global.start ≥ 前一 anchor.end（block anchor 为精确锚定，保持不动）。
+        prev_end = None
+        for info in infos:
+            a = info["a"]
+            if a is None:
+                continue
+            if info["kind"] == "global" and prev_end is not None and a["start"] < prev_end:
+                a["start"] = prev_end
+                if a["end"] <= a["start"]:
+                    a["end"] = a["start"] + 100      # 保底非零（极短由 backfill 碎片告警暴露）
+            prev_end = a["end"]
 
         out_lines = []
         for info in infos:
@@ -113,7 +146,8 @@ def main():
                 c1, c2 = bcues[a["si"]], bcues[a["ei"]]
                 out_lines.append(f"{kk}\t{fmt(a['start'])} --> {fmt(a['end'])}\tc{c1['idx']}-c{c2['idx']}\t{info['text']}")
             elif info["kind"] == "global":
-                out_lines.append(f"{kk}\t{fmt(a['start'])} --> {fmt(a['end'])}\t-\t{info['text']}\t(global)")
+                tail = f"\t(global{'；' + info['note'] if info['note'] else ''})"
+                out_lines.append(f"{kk}\t{fmt(a['start'])} --> {fmt(a['end'])}\t-\t{info['text']}{tail}")
             elif info["kind"] == "miss":
                 out_lines.append(f"{kk}\tMISS\t-\t{info['text']}\t{info['note']}")
             else:

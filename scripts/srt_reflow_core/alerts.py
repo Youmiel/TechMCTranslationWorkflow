@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from .io import fmt, text_width, parse_srt
+from ..srt_reflow_common import SOFT_MAX as WIDTH_SOFT_MAX
 from .plan import parse_r03_any
 from .allocate import cjk_reading_ms, MIN_FRAG_MS, READING_MISMATCH_RATIO, READING_MIN_GAP_MS
 
@@ -81,13 +82,13 @@ def build_alerts(alerts, timeline, anchored, cues):
     alerts.append(f"极短单元(<300ms): {sum(1 for t in timeline if t[2]-t[1] < 300)} 处")
     alerts.append(f"长句碎片(<{MIN_FRAG_MS}ms): {n_frag} 处")
 
-    # 行宽预警（软 22 / 硬 26；>26 硬违规已由 check-r03 拦截）
+    # 行宽预警（超软限告警；超硬限为硬违规、已由 check-r03 拦截）
     for t in timeline:
         w = text_width(t[3])
-        if w > 22:
+        if w > WIDTH_SOFT_MAX:
             loc = unit_loc.get(t[0], ("", ""))
             loc_s = f"{loc[0]}:行{loc[1]}" if loc[0] else ""
-            alerts.append(f"📏 行宽 {w:.1f}（>22 软预警）{t[0]}（r03 {loc_s}）: {t[3]}")
+            alerts.append(f"📏 行宽 {w:.1f}（>{WIDTH_SOFT_MAX:g} 软预警）{t[0]}（r03 {loc_s}）: {t[3]}")
 
 
 def write_outputs(timeline, alerts, out_path, alert_path):

@@ -31,7 +31,7 @@ Project_Main/
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
 | `_input/` | 待翻译字幕入口。用户放入，Agent 读取 | 待翻译的 SRT / transcript 文件 |
-| `_work/<视频名>/` | 翻译中间产物，断点续翻依据 | ASR 修正稿 `01_subtitle_asr_fixed.srt`、术语清单 `02_terms.md`、分段方案 `03_segments.md`、翻译草稿 `04_translation_draft.srt`；**视频专属的一次性脚本**（如 `_verify_draft.py`） |
+| `_work/<视频名>/` | 翻译中间产物，断点续翻依据 | ASR 修正稿 `01_subtitle_asr_fixed.srt`、术语清单 `02_terms.md`、分段方案 `s03_plan.md`、翻译草稿 `s04_draft.srt`；**视频专属的一次性脚本**（如 `_verify_draft.py`） |
 | `_output/` | 翻译最终输出 | 定稿字幕（默认双语对照），文件名与输入一致 |
 | `ref_translations/` | 参考译例 | 供 Agent 模仿风格的优质译文样本 |
 
@@ -55,12 +55,12 @@ Project_Main/
 
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
-| `.github/skills/` | Skill 定义 | 工作流/机制说明 SKILL.md（如 translate-redstone、reflow-redstone、redstone-conventions、segment-subtitles、wiki-tools）+ 任务文件（`task-*.md`） |
+| `.github/skills/` | Skill 定义 | 工作流/机制说明 SKILL.md（如 translate-redstone、reflow-redstone、**reflow2**、redstone-conventions、segment-subtitles、wiki-tools）+ 任务文件（`task-*.md`） |
 | `.github/agents/` | agent 定义（系统提示词覆盖，Copilot `.agent.md` 格式） | `reflow-worker`（执行型）、`term-researcher` / `wiki-researcher`（研究型）；适配其它编辑器见 `docs/EDITOR_COMPAT.md` |
 | `.github/experience/` | Agent 运行经验 | `asr_fixes.md`、`coverage_log.md`、`source_experience.md`、`glossary_categories.yaml`、`trap_words.md` |
-| `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`srt_*`、`srt_reflow_*`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py`、`srt_split.py` 等）；一次性脚本不在此列 |
+| `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`dictionary_lookup.py`、`srt_*`、`srt_reflow_*`、`srt_reflow2_*`、`text_chunk.py`/`text_merge.py`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py`、`request_identity.py` 等）；一次性脚本不在此列 |
 | `configs/` | 配置 | 当前为空 |
-| `docs/` | 项目文档 | 本文档及 SETUP / EDITOR_COMPAT / PIPELINE_ISOLATION / PRODUCT_FORMATS / SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
+| `docs/` | 项目文档 | 本文档及 SETUP / EDITOR_COMPAT / PIPELINE_ISOLATION / PRODUCT_FORMATS（通用，含 PRODUCT_FORMATS_TRANSLATE / _REFLOW / _REFLOW2 工作流分文件）/ SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
 
 ## 产物归属速查
 
@@ -69,6 +69,7 @@ Project_Main/
 | 待翻译字幕 | `_input/` |
 | ASR 修正稿 / 术语清单 / 分段方案 / 翻译草稿 | `_work/<视频名>/`（`01_`/`02_`/`s03_`/`s04_`） |
 | 回填中间产物（空隙/合并/译文/回填方案/预览） | `_work/<视频名>/reflow/`（`r00_`–`r04_`） |
+| 源头固化中间产物（E 句时间轴 / Z 句列表 / 对齐文件 / 预览） | `_work/<视频名>/reflow2/`（`en_timeline`/`zh_sentences`/`align`/`r04_`） |
 | 翻译最终输出 | `_output/` |
 | 视频专属的一次性脚本 | `_work/<视频名>/` |
 | 通用可复用脚本 | `scripts/` |

@@ -6,7 +6,10 @@ from collections import Counter
 from pathlib import Path
 
 from .io import norm, text_width, parse_srt, build_full
-from ..srt_reflow_common import auto_wrap_file, collect_chunk_files, parse_owned_cue_range
+from ..srt_reflow_common import (
+    auto_wrap_file, collect_chunk_files, parse_owned_cue_range,
+    SOFT_MAX as WIDTH_SOFT_MAX, HARD_MAX as WIDTH_HARD_MAX,
+)
 from .allocate import (
     cjk_reading_ms,
     estimate_unit_durations,
@@ -294,7 +297,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
     - 锚定唯一性：每个整句 EN 在 01 唯一命中（未命中 / 重复命中均报告）
       ——块级（cue_range=(cmin,cmax)）时锚定缩到块内 cue 区间，避免跨块重复误报
     - 拆句互斥性：1:n 拆句子单元 EN 拼接 == 整句 EN
-    - 行宽：每个译文单元中文视觉宽度 ≤ 26（软 22 / 硬 26，与 srt_check_width 一致；>26 硬违规）
+    - 行宽：每个译文单元中文视觉宽度 ≤ 硬限（超软限仅告警；口径与 srt_check_width 同源于 srt_reflow_common）
     - ZH 忠实性（需 r02）：r03 整句 ZH 拼接（去标点空白）== r02 定稿（块级时缩到该块 r02 段）——断句只允许插断点标点，不得改写译文
     - 碎片预检（预警，不阻断；--no-frag 可关）：1:n 整句按中文阅读速度（--cjk-speed）粗估子单元时长，
       <1s 的提示 Agent 在 r03 阶段就合并/调整切分点（长句不碎，避免回填后返工）
@@ -343,8 +346,8 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
         for u in units:
             w = text_width(u[2])
             ul = s.unit_lines.get(u[0], s.line)
-            if w > 26:
-                problems.append(f"📏 行宽 {w:.1f}（>26 硬）{u[0]}（{base}:行{ul}）: {_clip(u[2])}")
+            if w > WIDTH_HARD_MAX:
+                problems.append(f"📏 行宽 {w:.1f}（>{WIDTH_HARD_MAX:g} 硬）{u[0]}（{base}:行{ul}）: {_clip(u[2])}")
 
     # 格式标记残留硬校验：r01 跨块句标记【承接句】/【延伸句】、ASR 残词占位【待审核】是 r01 阶段临时标记，
     # 分句产物 r03 不得残留（衔接归位/翻译/预分句应已消除）——残留 = 上游漏处理，回填会把标记原样写进交付 SRT

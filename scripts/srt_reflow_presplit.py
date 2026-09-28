@@ -39,7 +39,11 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import wrap_text, collect_chunk_files, strip_stitch_prefix, MAX_LINE, text_width
+from srt_reflow_common import (
+    wrap_text, collect_chunk_files, strip_stitch_prefix, MAX_LINE, text_width,
+    SOFT_MIN as DEFAULT_SOFT_MIN, SOFT_MAX as DEFAULT_SOFT_MAX,
+    HARD_MAX as DEFAULT_HARD_MAX, MIN_UNIT as DEFAULT_MIN_UNIT,
+)
 from srt_reflow_punct import (
     build_profile,
     pack_by_strength,
@@ -47,11 +51,7 @@ from srt_reflow_punct import (
     split_sentences,
 )
 
-# 机械化断句默认参数（CJK；可 CLI 覆盖——多语言适配改标点角色表 + 这里，核心算法零改动）
-DEFAULT_SOFT_MIN = 15      # 目标区间下限（视觉宽度）
-DEFAULT_SOFT_MAX = 22      # 目标区间上限（软；check-r03 ③ 软 22）
-DEFAULT_HARD_MAX = 26      # 硬上限（check-r03 ③ 硬 26，>26 必切）
-DEFAULT_MIN_UNIT = 5       # 最小单元宽度（≈1s 阅读时长 @5字/秒，防碎片）
+# 机械化断句默认参数来自 srt_reflow_common 单一事实源（CJK；可 CLI 覆盖——多语言适配改标点角色表 + 这里）
 # 注：旧「有序层级切分标点」常量已删除（2026-09-22 自查）——断点强度由 srt_reflow_punct 的
 # 角色表表达；旧 `--punct-levels` 仍接受，但按**字符归属**映射（见 make_profile）。
 
@@ -222,8 +222,8 @@ def render_zh_template(zh_sentences, soft_min, soft_max, hard_max, min_unit, pun
         "#   ① S 号：`S?_Z<n>` → 块内连续 `S<号>`（删占位与默认标注）；② EN：从 r03_normalized_1 抄对应 E 整句",
         "#      （`默认 E<n>` 为按序启发式提示，须核对对应）；③ 关系：已按段数预填 1:1/1:n（多 E 对单 Z 改 n:1）",
         "#   ④ 子单元 EN：填互斥英文片段。n:1 合并、游离停顿词、跨 Z 句并入同一整句按需调整（见 task-split）",
-        "# 参数：切分标点层级（高→低）%s（映射为断点角色强度）；宽度复用 text_width（全角=1.0/拉丁=0.5/数字=0.5/空格=0.5）"
-        % " → ".join(punct_levels),
+        "# 参数：切分标点层级（高→低）%s（映射为断点角色强度）；宽度复用 text_width（全角=1.0/拉丁=0.4/数字=0.5/空格=0.4）"
+        % ("（角色表默认）" if not punct_levels else " → ".join(punct_levels)),
         "",
     ]
     prof = make_profile(lang, punct_levels)
@@ -281,10 +281,10 @@ def main():
                     help="可选：额外输出整句级 Z 精简列表目录（生成 <此目录>/ 下 chunk_<k>.txt，供 5-2 task-match "
                          "语义匹配输入——独立产物路径，不替代 r03_normalized_2 模板骨架；不传则仅生成模板骨架）")
     ap.add_argument("--verbose", action="store_true", help="展开打印每块句数")
-    ap.add_argument("--soft-min", type=float, default=DEFAULT_SOFT_MIN, help=f"目标区间下限（默认 {DEFAULT_SOFT_MIN}）")
-    ap.add_argument("--soft-max", type=float, default=DEFAULT_SOFT_MAX, help=f"目标区间上限/软（默认 {DEFAULT_SOFT_MAX}；check-r03 ③ 软 22）")
-    ap.add_argument("--hard-max", type=float, default=DEFAULT_HARD_MAX, help=f"硬上限（默认 {DEFAULT_HARD_MAX}；check-r03 ③ 硬 26）")
-    ap.add_argument("--min-unit", type=float, default=DEFAULT_MIN_UNIT, help=f"最小单元宽度/防碎片（默认 {DEFAULT_MIN_UNIT}，≈1s@5字/秒）")
+    ap.add_argument("--soft-min", type=float, default=DEFAULT_SOFT_MIN, help=f"目标区间下限（默认 {DEFAULT_SOFT_MIN:g}）")
+    ap.add_argument("--soft-max", type=float, default=DEFAULT_SOFT_MAX, help=f"目标区间上限/软（默认 {DEFAULT_SOFT_MAX:g}；check-r03 ③ 软）")
+    ap.add_argument("--hard-max", type=float, default=DEFAULT_HARD_MAX, help=f"硬上限（默认 {DEFAULT_HARD_MAX:g}；check-r03 ③ 硬）")
+    ap.add_argument("--min-unit", type=float, default=DEFAULT_MIN_UNIT, help=f"最小单元宽度/防碎片（默认 {DEFAULT_MIN_UNIT:g}，≈1s@5字/秒）")
     ap.add_argument("--punct-levels", action="append", default=None,
                     help="【兼容保留·不推荐】旧式有序层级切分标点（可多次指定，先高后低）。"
                          "**不给则用角色表默认**（推荐，见 srt_reflow_punct）；"
@@ -335,7 +335,7 @@ def main():
             zh_sents = [(f"Z{i}", s) for i, s in enumerate(sents, 1)]
             with open(os.path.join(zh_out, "chunk_%03d.txt" % k), "w", encoding="utf-8", newline="\n") as fh:
                 fh.write(render_zh_template(zh_sents, args.soft_min, args.soft_max, args.hard_max,
-                                            args.min_unit, punct_levels))
+                                            args.min_unit, args.punct_levels))
             if zh_list_out:
                 with open(os.path.join(zh_list_out, "chunk_%03d.txt" % k), "w", encoding="utf-8", newline="\n") as fh:
                     fh.write(render_zslim(zh_sents))
@@ -347,7 +347,7 @@ def main():
     if zh_list_out:
         print(f"   ZH 整句级精简列表 {len(zh_blocks)} 块 / {n_zl} 句 → {zh_list_out}")
     print(f"   ZH 断句参数: 目标区间 [{args.soft_min:.0f},{args.soft_max:.0f}] 硬 ≤{args.hard_max:.0f} 最小单元 ≥{args.min_unit:.0f}；"
-          f"切分标点层级（高→低）{' → '.join(punct_levels)}")
+          f"切分标点层级（高→低）{'（角色表默认）' if not args.punct_levels else ' → '.join(args.punct_levels)}")
     print(f"   标点角色表: 句界 `{args.punct_terminators or '语言默认'}`；强断点 `{args.punct_strong or '语言默认'}`；"
           f"句内 `{args.punct_clause or '语言默认'}`；并列 `{args.punct_list if args.punct_list is not None else '语言默认'}`"
           f"（拼合 = 断点强度 + 段宽偏离 + 碎片 的代价最小化）")

@@ -32,7 +32,7 @@ description: Minecraft 红石技术视频字幕的「时间轴源头固化」工
 
 ### 输出
 
-- `<工作目录>/../_output/<文件名>.reflow.srt`，默认双语 en-zh（英文行 = E 句/片段原文，中文行 = 继承时间后的译文），时间轴 = 源头固化（贴原 cue，局部按中文阅读舒适拆/合）
+- `<工作目录>/../_output/<文件名>.reflow.srt`，默认双语 zh-en（中文行 = 继承时间后的译文，英文行 = E 句/片段原文），时间轴 = 源头固化（贴原 cue，局部按中文阅读舒适拆/合）
 - 输出变体见 [redstone-conventions#语言顺序与输出变体](../redstone-conventions/SKILL.md#语言顺序与输出变体)
 
 ### 中间产物与断点恢复
@@ -41,7 +41,7 @@ description: Minecraft 红石技术视频字幕的「时间轴源头固化」工
 
 1. **阶段〇/一 领域预判与术语补齐**（`redstone-preprocess`）→ `<工作目录>/01_subtitle_asr_fixed.srt`、`02_terms.md`
 2. **阶段二 源头固化 + 继承回填**（本工作流）：
-   - 步骤 1 空隙探测 + 硬性断句 → `reflow2/r00_gaps.md`、`r01_breaks.md`
+   - 步骤 1 空隙探测 + 硬性断句 → `reflow2/r00_gaps.md`、`r00_gaps_active.tsv`（生效空隙点集）、`r01_breaks.md`
    - 步骤 2 定容量 + 分块 → `reflow2/chunks/`
    - 步骤 3 归一化 + 补标点 → `r01_normalized/`、`r01_results/`
    - 步骤 4 **源头固化** → `en_timeline/`（★E 句 + 固化时间，只读真值锚）

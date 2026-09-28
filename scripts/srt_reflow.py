@@ -5,8 +5,8 @@
   reflow    r03（r03_results/ 目录 或 r03_plan.md）+ 01_subtitle_asr_fixed.srt -> r04_draft.srt + r04_alerts.md + r03_anchored.jsonl
             整句锚定 -> 单元级 cue 锚定 -> 阅读失配触发中文阅读速度插值（--cjk-speed，倒装/中英时长差）
             -> 分割点就近吸附真实 cue 边界 -> 100ms 取整预测点（兜底）；r04_alerts 含长句碎片检测
-  attach-en r04_draft.srt + r03（目录或文件） -> 双语 SRT（en-zh，英文行 = r03 英文片段）
-  check-r03 r03（文件或目录）+ 01 + r02 -> 写时即合规预检（锚定唯一性 / 拆句互斥 / 行宽 ≤20 / ZH 忠实），违规退出码 1
+  attach-en r04_draft.srt + r03（目录或文件） -> 双语 SRT（zh-en 默认，中文行在前、英文行 = r03 英文片段）
+  check-r03 r03（文件或目录）+ 01 + r02 -> 写时即合规预检（锚定唯一性 / 拆句互斥 / 行宽 ≤27（软 22） / ZH 忠实），违规退出码 1
             r03 为目录时走块级：check-r03 r03_results/ 01 r02_results/ --chunks chunks/（锚定缩块内、ZH 忠实缩块内）
             统一反馈：默认只输出「问题数 + 分类 + 提示」；--expand 展开每处明细；--chunk <k> 只校验单块并默认展开
   check-duration r04_draft.srt + r03 -> 回填后时长复核（长句碎片/独立短句/阅读失配），长句碎片退出码 1
@@ -66,6 +66,8 @@ def main():
     p2.add_argument("r04", help="r04_draft.srt（回填后单语）")
     p2.add_argument("r03", help="r03（英文片段）：r03_results/ 目录或 r03_plan.md")
     p2.add_argument("-o", dest="out", default=None, help="输出双语（默认 r04 同目录 r04_bilingual.srt）")
+    p2.add_argument("--order", choices=("en-zh", "zh-en"), default="zh-en",
+                    help="双语行语言顺序（默认 zh-en：中文行在前、英文行在后）")
 
     p3 = sub.add_parser("check-r03", help="r03 写时即合规预检（锚定唯一性/拆句互斥/行宽/ZH忠实/碎片/中英失配预警），硬违规退出码 1；r03 为目录时走块级（r03_results/ + --chunks + r02_results/）")
     p3.add_argument("r03", help="r03_results 目录（块级；整段 r03_plan.md 兼容历史）")
@@ -101,7 +103,7 @@ def main():
         reflow(args.r03, args.srt, out, alert, anchored, args.snap_ms, args.cjk_speed)
     elif args.cmd == "attach-en":
         out = args.out or str(Path(args.r04).parent / "r04_bilingual.srt")
-        attach_en(args.r04, args.r03, out)
+        attach_en(args.r04, args.r03, out, args.order)
     elif args.cmd == "check-r03":
         expand = args.expand or args.chunk is not None  # 单块模式默认展开（只查一块，输出量小且是修复目标）
         # r03 为目录 → 块级（r03_results/ + chunks/ 骨架 + r02_results/）；为文件 → 整段

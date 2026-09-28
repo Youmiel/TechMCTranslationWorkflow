@@ -200,8 +200,8 @@ def main():
     ap.add_argument("r02", help="译文输入：目录（r02_results/ 或 _trans_results/，每块一个 chunk_<k>.txt）或单文件（s04_draft.srt 双语合并稿）")
     ap.add_argument("--chunks", default=None, help="chunks 目录（目录模式解析块↔cue 区间）")
     ap.add_argument("--plan", default=None, help="s03_plan.md（SRT 单文件模式段→cue 区间映射，必填）")
-    ap.add_argument("--order", choices=("en-zh", "zh-en"), default="en-zh",
-                    help="双语行语言顺序（SRT 单文件模式中文行定位，默认 en-zh）")
+    ap.add_argument("--order", choices=("en-zh", "zh-en"), default="zh-en",
+                    help="双语行语言顺序（SRT 单文件模式中文行定位，默认 zh-en：中文行在前）")
     ap.add_argument("--verbose", action="store_true", help="展开打印全部 ✅ 命中（默认折叠）")
     ap.add_argument("--expand", action="store_true", help="展开每条 ⚠️/ℹ️ 明细（块行号/上下文/01 原句；默认只给问题数+提示）")
     ap.add_argument("--chunk", type=int, default=None, metavar="k",

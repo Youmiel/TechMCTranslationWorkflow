@@ -34,7 +34,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 ### 输出
 
-- `<工作目录>/../_output/<文件名>.reflow.srt`，默认双语 en-zh（英文行 = 分句原文，中文行 = 对应译文），时间轴 = 以原轴为基础局部合并/切分
+- `<工作目录>/../_output/<文件名>.reflow.srt`，默认双语 zh-en（中文行 = 对应译文，英文行 = 分句原文），时间轴 = 以原轴为基础局部合并/切分
 - 输出变体（`bilingual` 默认 / `zh-only` / `annotated`）见 [redstone-conventions#语言顺序与输出变体](../redstone-conventions/SKILL.md#语言顺序与输出变体)
 
 ### 中间产物与断点恢复
@@ -53,16 +53,16 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
    - 步骤 5 归一化（预分句 + ZH 机械化断句）→ 三个产物：
      - `r03_normalized_1/chunk_<k>.txt`（EN 预分句 E 号）
      - `r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架：Z 句 + 子句段预填）
-     - `r03_zslim/chunk_<k>.txt`（**独立产物**：ZH 整句级精简列表，`--zh-list-out` 生成，仅 5-2 task-match 输入，见 PRODUCT_FORMATS）
+     - `r03_zslim/chunk_<k>.txt`（**独立产物**：ZH 整句级精简列表，`--zh-list-out` 生成，仅 5-2 task-match 输入，见 PRODUCT_FORMATS_REFLOW）
    - 步骤 5 处理（分句，5-1 / 5-2 二选一）：
      - **5-1 LLM 语义分句**（老，现状）：`task-split` 直接写
      - **5-2 脚本断句**（新，省 token）：`r03_matches/chunk_<k>.txt`（匹配文件，LLM 只做句子匹配），`build-r03` 机械填回
      - 两路径产物均为 `r03_results/chunk_<k>.txt`（S 号块内从 1 连续编号；**回填输入 = 目录直读**，`parse_r03_dir` 按块序解析 + 全局重编号，零拼接）
      - `r03_plan.md` 仅审核 / 审计时 `join-r03` 按需生成
      - 步骤 6 处理（回填）→ `r04_draft.srt`（预览，止步 `_work/`）、`r03_anchored.jsonl`（锚定明细，JSONL 每行一整句：锚定状态 + 单元 cue 命中）
-     - 步骤 7 处理（组装）→ `r04_bilingual.srt`（双语预览 en-zh）
+     - 步骤 7 处理（组装）→ `r04_bilingual.srt`（双语预览 zh-en）
 
-> **产物格式 / 分隔符 / 标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)——处理前先查对应节，勿现查代码猜格式。
+> **产物格式 / 分隔符 / 标记约定（单一权威）**：各产物结构（r00–r04、r03_anchored.jsonl）见 [PRODUCT_FORMATS_REFLOW](../../../docs/PRODUCT_FORMATS_REFLOW.md)——处理前先查对应节，勿现查代码猜格式。
 > - 块间分隔一律空行
 > - 手写标记仅限跨块句补全的 `【承接句】` / `【延伸句】`
 > - `【强制断句】` 为空隙标记、非产物文本，经复核注入补标点先验知识
@@ -139,7 +139,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 > 6. 回填
 > 7. 组装
 
-- 本阶段产物链与中断恢复路由见上方「中间产物与断点恢复」+ [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)。产物顺序：
+- 本阶段产物链与中断恢复路由见上方「中间产物与断点恢复」+ [PRODUCT_FORMATS_REFLOW](../../../docs/PRODUCT_FORMATS_REFLOW.md)。产物顺序：
   1. `r00_gaps.md`
   2. `chunks/`
   3. `r01_normalized/`

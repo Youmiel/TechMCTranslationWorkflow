@@ -43,10 +43,10 @@
 | 阶段一 术语扫描 §1.1 | 宜隔离 | `01_subtitle_asr_fixed.srt` 分块 + 术语/陷阱词知识卡 | 块级术语清单 → 汇总去重 | 每块一个 subagent | `use-glossary` + `subagent-dispatch` | 隐式：逐句全量扫描（查词可能已 ad-hoc 拆派） |
 | 阶段一 集中补齐 §1.2 | 宜隔离 | 待查列表 | `.cache/wiki/*.md` + 术语映射补充 | 独立单步 | `translate-redstone` §1.2 | 隐式：主流程内连续网络请求 |
 | 阶段一 术语确认/入库 §1.3/1.4 | 需用户交互（宜主会话） | 术语清单 | `02_terms.md`、`_uncategorized.csv` | 主会话（需交互时）；否则视情况 | `term-registration` | 隐式：需用户确认 |
-| 阶段二 合并/断句 | 宜隔离 | 01 分块 + 只读上下文 | 块级分段 → `03_segments.md` | 每块一个 subagent | `segment-subtitles` | 隐式：两遍式手断 |
-| 阶段二 翻译 | 宜隔离 | 分段分块 + 知识卡 | 块级译文 → `04_translation_draft.srt` | 每块一个 subagent | `translate-redstone` + `subagent-dispatch` | 隐式：逐段译 |
-| 阶段二½ 审核循环 | 需用户交互（宜主会话） | 04 + 决策点清单 | 定稿 | 主会话（需交互时） | — | 隐式：需用户审核 |
-| 阶段二+ 去翻译腔 | 宜隔离 | 04 全稿 + `humanizer-zh` 规则 | 修订稿 | 独立上下文一遍 | `humanizer-zh` | 隐式：主会话顺带改 |
+| 阶段二 合并/断句 | 宜隔离 | 01 分块 + 只读上下文 | 块级分段 → `s03_plan.md` | 每块一个 subagent | `segment-subtitles` | 隐式：两遍式手断 |
+| 阶段二 翻译 | 宜隔离 | 分段分块 + 知识卡 | 块级译文 → `s04_draft.srt` | 每块一个 subagent | `translate-redstone` + `subagent-dispatch` | 隐式：逐段译 |
+| 阶段二½ 审核循环 | 需用户交互（宜主会话） | `s04_draft.srt` + 决策点清单 | 定稿 | 主会话（需交互时） | — | 隐式：需用户审核 |
+| 阶段二+ 去翻译腔 | 宜隔离 | `s04_draft.srt` 全稿 + `humanizer-zh` 规则 | 修订稿 | 独立上下文一遍 | `humanizer-zh` | 隐式：主会话顺带改 |
 | 阶段三 总结 | 视情况 | 各阶段产物 | `coverage_log.md` 流水 + `source_experience.md` 提炼 | 视情况 | `translate-redstone` | 隐式：收尾追加 |
 
 ## 5. 窗口节省原理

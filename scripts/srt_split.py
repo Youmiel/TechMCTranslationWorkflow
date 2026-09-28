@@ -37,7 +37,7 @@ from pathlib import Path
 #   其余字段名直接用作输出文件后缀（前缀.<字段名>.srt）。
 # 以后要加新语言，只需在这里加名字，例如加上 'jp'。
 # ============================================================
-FIELDS = ["index", "time", "en", "zh"]
+FIELDS = ["index", "time", "zh", "en"]
 COMMON_FIELDS = ("index", "time")
 
 

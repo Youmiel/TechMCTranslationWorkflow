@@ -31,7 +31,7 @@
 用法（模块）：
     from srt_reflow_punct import build_profile, split_atomic, pack_by_strength, split_sentences
     prof = build_profile("zh")
-    units = split_units(text, lang="zh", hard_max=26, min_unit=5, soft_min=15, soft_max=22)
+    units = split_units(text, lang="zh", hard_max=27, min_unit=5, soft_min=15, soft_max=22)
     sents = split_sentences(text, prof)          # 按句界切句
 
 命令根 = Project_Main/；本模块被 srt_reflow_presplit / srt_reflow2_backfill / srt_reflow2_zsent 复用。
@@ -50,15 +50,26 @@ LIST = "list"               # 并列内部（最后手段）
 ROLE_ORDER = (TERMINATOR, RPAREN, STRONG, CLAUSE, LIST)   # 强度降序
 
 # 断开代价（越小越优先在此断开；terminator=0 因句界本身是硬边界、不构成「代价」）
+# LIST（顿号）2026-09-27 由 8.0 提到 18.0（用户裁定「顿号处不断」）：
+#   上限约束：< FRAG_PENALTY(20.0) → 宁可顿号断开，也不制造碎片；
+#   下限依据：让「合并超软上限」胜过「在顿号断开」——实测案例
+#   `…同为红石玩家、YouTuber 的 mattbatwings 一样，`：
+#     不断顿号 = 低软 4.0 + 超软 4.2 + 逗号×3(15.0) = 23.2（用户要的结果）
+#     顿号断开 = 超软 2.0 + 逗号×2(10.0) + 顿号 → 需顿号代价 > 13.2 才落败 → 取 18.0（留余量）
+#   注意：顿号**仍可断**（超硬限时它是唯一出路）——完全禁止会使并列项长句切不动、直接超硬限。
 DEFAULT_BREAK_COST = {
     TERMINATOR: 0.0,
     STRONG: 2.0,
     RPAREN: 3.0,      # 比 strong 高：括注后是否可断需语义判断，宽度应作主导
     CLAUSE: 5.0,
-    LIST: 8.0,
+    LIST: 18.0,       # 最后手段：优先保住并列成分完整，切不动时才用
 }
 
-# 默认角色字符集（= 既有行为；terminator 保持现状以保 Z 句不变式）
+# 默认角色字符集（terminator 保持现状以保 Z 句不变式）
+# 2026-09-27 用户裁定「顿号处不断」：顿号保留为断点角色（list），但代价提到 18.0（见 DEFAULT_BREAK_COST）——
+# 语义 = 「最后手段」：顿号连接并列成分，断开会使语义断裂
+# （实例 `所以这次我和同为红石玩家、| YouTuber 的 mattbatwings 一样，`），
+# 故 DP 应优先选其他断点；但**不得完全禁止**——并列项长句只能在此断，禁止会切不动、直接超硬限（实测 4 个项目出现 12 段超限）。
 DEFAULT_ROLE_CHARS = {
     "zh": {TERMINATOR: "。！？…", STRONG: "；：—", CLAUSE: "，", LIST: "、"},
     "en": {TERMINATOR: ".?!", STRONG: ";:—", CLAUSE: ",", LIST: ""},
@@ -258,12 +269,27 @@ def split_atomic(text, profile):
             depth = max(0, depth - 1)
         role = profile.role_of(ch)
         if role is not None and not is_protected(text, i):
+            # 断点 = **整个连续标点序列**（不分角色）：`》。` / `》，` / `?!` / `——` 属同一断点，
+            # 不得拆开。旧实现只并入「连续同类标点」，于是 `…重制版》`(rparen) 处切一刀后，
+            # 紧跟的 `，` 成了新段首 → 打包产出 `，这个系列会教你红石是怎么运作的，`
+            # （用户 2026-09-27 指出；5 个项目共 6 处）。
+            # 段尾角色取序列中**最强**者（break_cost 最小）——`）`+`。` 取 terminator，
+            # 句界不丢（否则一行内会夹句号，用户明确否决）。
             j = i + 1
-            while j < n and profile.role_of(text[j]) == role:         # 连续同类标点并入（?! / ——）
+            best_role = role
+            while j < n:
+                cj = text[j]
+                if cj in profile.open_chars or cj in profile.close_chars:
+                    break                      # 括号不并入序列（depth 由主循环维护）
+                r2 = profile.role_of(cj)
+                if r2 is None or is_protected(text, j):
+                    break
+                if profile.break_cost.get(r2, 0.0) < profile.break_cost.get(best_role, 0.0):
+                    best_role = r2
                 j += 1
             seg = "".join(buf) + text[i:j]
             if seg.strip():
-                segs.append((seg, role, depth > 0))
+                segs.append((seg, best_role, depth > 0))
                 buf = []
             else:
                 buf.append(text[i:j])
@@ -362,7 +388,7 @@ def pack_by_strength(segs, hard_max, min_unit, soft_min=None, soft_max=None,
     return [("".join(texts[i:j]), sum(widths[i:j])) for i, j in cuts]
 
 
-def split_units(text, lang="zh", hard_max=26.0, min_unit=5.0, soft_min=15.0, soft_max=22.0,
+def split_units(text, lang="zh", hard_max=27.0, min_unit=5.0, soft_min=15.0, soft_max=22.0,
                 profile=None):
     """一步到位：切原子段 + 代价最小化拼合 → [(文本, 宽度)]（供拆显示段直接调用）。"""
     prof = profile or build_profile(lang)

@@ -3,22 +3,22 @@
 
   1. 相邻段时间不重叠：end_i <= start_{i+1}  —— 硬规则（允许相接，不允许交叉）
   2. 所有时间边界 ⊆ 原字幕边界集（不允许新造时间点）
-     - 03_segments.md 中标注 `~` 的估算切分点跳过此检查（受控例外，见
+     - s03_plan.md 中标注 `~` 的估算切分点跳过此检查（受控例外，见
        segment-subtitles「中间断句与估算时间」）；成稿 SRT 模式用 --allow-estimated 降级为告警
   3. 段序不逆序：start/end 单调不减
-  4. （03_segments.md 模式）cue 覆盖完整、段号连续
+  4. （s03_plan.md 模式）cue 覆盖完整、段号连续
 
 用法:
   python scripts/srt_check_segments.py <目标> --orig <原字幕.srt> [--allow-estimated] [--cue-exact]
 
 <目标> 两种输入：
-  - 03_segments.md（行格式 `段号|cstart[-cend][~]|文本`；`~` 标注该侧边界为估算切分点）
-  - 成稿 SRT（04_translation_draft.srt 等）
+  - s03_plan.md（行格式 `段号|cstart[-cend][~]|文本`；`~` 标注该侧边界为估算切分点）
+  - 成稿 SRT（s04_draft.srt 等）
 
 --cue-exact（SRT 模式专用，用于 01 修正字幕）：
   目标为逐 cue 流（如 01_subtitle_asr_fixed.srt），要求 cue 数与原始一致、
   且逐 cue 时间戳与原始完全一致（01 只改文本、保留原时间码、不增删 cue）。
-  时间轴错位会一路传给 03/04（表现为"字幕比语音快/慢"），须在断句前发现。
+  时间轴错位会一路传给 s03/s04（表现为"字幕比语音快/慢"），须在断句前发现。
 
 --missing-ctx <N>（搭配 --cue-exact）：cue 数不一致（字幕缺失/多余）时输出
   每条缺失 cue 的标号+时间+文本 + 每侧 N 条上下句，供 agent 直接定位（无需
@@ -35,7 +35,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 ap = argparse.ArgumentParser(description='校验分段/成稿时间约束：不重叠、⊆原边界集、不逆序')
-ap.add_argument('target', help='目标文件：03_segments.md 或成稿 SRT')
+ap.add_argument('target', help='目标文件：s03_plan.md 或成稿 SRT')
 ap.add_argument('--orig', required=True, help='原字幕 SRT（如 01_subtitle_asr_fixed.srt）')
 ap.add_argument('--allow-estimated', action='store_true',
                 help='允许估算切分点：成稿 SRT 中新时间点降级为告警（仅限受控例外的中间断句）')
@@ -152,7 +152,7 @@ def is_md(path):
 if is_md(args.target):
     segs = parse_md(args.target)
     if not segs:
-        sys.exit('目标解析失败（既非 03_segments.md 也非 SRT）：%s' % args.target)
+        sys.exit('目标解析失败（既非 s03_plan.md 也非 SRT）：%s' % args.target)
     n_cues = max(orig_cues)
     prev = None
     for seg_no, cs, cs_est, ce, ce_est in segs:
@@ -185,13 +185,13 @@ if is_md(args.target):
         if seg_no != expected:
             errors.append('段号不连续：期望 %d，实际 %d' % (expected, seg_no))
         expected = seg_no + 1
-    print('目标: %s（03_segments.md）  段数: %d  原字幕 cue 数: %d'
+    print('目标: %s（s03_plan.md）  段数: %d  原字幕 cue 数: %d'
           % (args.target, len(segs), n_cues))
 
 else:
     segs = parse_srt(args.target)
     if not segs:
-        sys.exit('目标解析失败（既非 03_segments.md 也非 SRT）：%s' % args.target)
+        sys.exit('目标解析失败（既非 s03_plan.md 也非 SRT）：%s' % args.target)
     prev_end = None
     for n, (idx, s, e, _) in enumerate(segs, 1):
         if s is None or e is None:

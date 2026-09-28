@@ -41,7 +41,10 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import collect_chunk_files, fmt, text_width
+from srt_reflow_common import (
+    collect_chunk_files, fmt, text_width,
+    SOFT_MIN as SOFT_MIN_UNIT, SOFT_MAX, HARD_MAX, MIN_UNIT as DEFAULT_MIN_UNIT,
+)
 from srt_reflow_presplit import split_zh, pack_candidates
 from srt_reflow_punct import build_profile, split_atomic
 from srt_reflow_build_r03 import split_en_by_weights
@@ -51,12 +54,6 @@ if PM not in sys.path:
     sys.path.insert(0, PM)
 from scripts.srt_reflow_core.allocate import _allocate_by_weight, cjk_reading_ms
 
-# 行宽阈值（与 reflow check-r03/check-width 一致：软 22 / 硬 26）
-SOFT_MAX = 22.0
-HARD_MAX = 26.0
-# 拆段时的目标区间下限与最小单元（与 presplit 默认一致：15 / 5）
-SOFT_MIN_UNIT = 15.0
-DEFAULT_MIN_UNIT = 5.0
 # 最小单元时长（< 此值 = 长句碎片，触发拆/并决策）
 MIN_FRAG_MS = 1000
 # 阅读速度（字/秒，allocate 同款）
@@ -65,6 +62,104 @@ SNAP_MS = 300
 
 MATCH_RE = re.compile(r"^\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*=\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*$")
 ET_RE = re.compile(r"^E(\d+)\t(.+?)\t.+?\t(.*)$")   # en_timeline 行：E<n>\t<start> --> <end>\tc..\t文本
+
+# ---- 跨块句衔接归位（2026-09-27 补上「步骤 3 校验 #4 衔接归位」从未落地的实现）----
+# 背景：块边界由 `--owned` cue 数等分，**常落在句子中间**（ASR 字幕 93% 的 cue 末尾无句末标点，
+# 且 cue 间常无缝 → 无句末可吸附）。于是补标点 agent 在两块各补全一次同一句，产生：
+#   ① 英文 E 句重复（两块时间完全相同 → 下游重叠）  ② 中文 Z 句被劈成两半（`输出则从` + `下面。`）
+# 归位 = 拆段前把边界两侧的同一句合并为一条（EN 去重 / ZH 互补拼接 / 时间与真实边界取并集）。
+CROSS_MARKS = ("【延伸句】", "【承接句】")
+# 中文句末标点（判 prev 中文句界是否已闭合——闭合时拼接可能需润色）
+ZH_EOS_RE = re.compile(r"[。！？…]\s*$")
+# 悬空成分（候选断点**前**的词：以此收尾 = 句子未完成）——与 task-punctuate 规则 7 判据 A 同源
+DANGLING = {
+    # 介词
+    "from", "to", "of", "in", "on", "at", "with", "for", "by", "into", "about",
+    "above", "below", "over", "under", "between", "through", "against", "without", "than", "as",
+    # 冠词 / 限定词
+    "the", "a", "an", "this", "that", "these", "those", "my", "your", "its", "their",
+    "our", "some", "any", "no", "each", "every",
+    # 助动词 / 情态
+    "is", "are", "was", "were", "be", "been", "being", "do", "does", "did",
+    "can", "could", "will", "would", "shall", "should", "may", "might", "must",
+    "has", "have", "had",
+    # 从属连词
+    "which", "who", "whom", "whose", "because", "if", "when", "while", "since",
+    "although", "unless", "until", "whether",
+    # 并列连词
+    "and", "but", "or", "nor", "yet", "so",
+    # 及物动词（宾语缺失）
+    "transfer", "pull", "push", "put", "take", "give", "send", "make", "place",
+    "detect", "use", "see", "know", "say", "tell", "show", "find", "get", "need",
+    "want", "support", "accept", "power", "activate",
+}
+
+
+def strip_cross_marks(s):
+    """剥离跨块句标记（合并成完整句后标记不再需要）。"""
+    for m in CROSS_MARKS:
+        s = s.replace(m, "")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def norm_en(s):
+    """EN 归一化（比较用）：剥标记、去空白、小写、去尾部标点。"""
+    return re.sub(r"\s+", "", strip_cross_marks(s)).lower().rstrip(".,?!;:")
+
+
+def _tail_word(s):
+    """末尾词（去标记后取最后一个字母词，小写）——悬空判定用。"""
+    words = re.findall(r"[A-Za-z']+", strip_cross_marks(s))
+    return words[-1].lower() if words else ""
+
+
+def merge_cross_chunk(cues, alerts):
+    """跨块句衔接归位：合并相邻块边界处被劈成两半的同一句。
+
+    触发判据（满足其一）：
+    1. **重复**：两侧 EN 归一化后相等 → 补标点 agent 在两侧都补全了同一句（新规则下两侧都补）
+    2. **悬空延续**：前块末句 EN 以悬空成分收尾（介词/冠词/连词/及物动词等）**且**后块首句明显是碎片
+       → 前句未完成、后句是其延续（旧补标点产物：`... an output from.` + `below.`）
+
+    合并：EN 去重（重复→取后块完整句；悬空→前句去尾标点拼后句）、ZH 互补拼接（相同则取一份）、
+    时间 [min(start), max(end)]、真实 cue 边界取并集。
+    """
+    out = []
+    for cu in cues:
+        if out and out[-1]["chunk"] != cu["chunk"]:
+            prev = out[-1]
+            a, b = norm_en(prev["en"]), norm_en(cu["en"])
+            same = bool(a) and a == b
+            cont = (not same) and (_tail_word(prev["en"]) in DANGLING) and b and len(b) <= max(12, len(a) // 2)
+            if same or cont:
+                zh_prev, zh_cur = prev["zh"], cu["zh"]
+                if norm_en(zh_prev) == norm_en(zh_cur):
+                    zh, zh_note = zh_prev, ""              # 两侧中文相同 → 去重
+                else:
+                    zh = zh_prev + zh_cur                   # 中文两半互补 → 拼接
+                    # prev 中文已闭合（r02 译者在块边界自行收尾）→ 拼接后可能粘连，提醒复核
+                    zh_note = "；⚠️ 中文句界已闭合（拼接后可能需润色 / 回 r02 调整）" \
+                              if ZH_EOS_RE.search(zh_prev) else ""
+                if same:
+                    en = strip_cross_marks(cu["en"])    # 两侧都完整 → 取后块（含全句正文）
+                else:
+                    en = re.sub(r"\s*[.?!]+\s*$", "", strip_cross_marks(prev["en"])) \
+                         + " " + strip_cross_marks(cu["en"])
+                out[-1] = {
+                    "chunk": cu["chunk"],
+                    "z": prev["z"] + cu["z"],
+                    "e": prev["e"] + cu["e"],
+                    "zh": zh,
+                    "en": en,
+                    "start": min(prev["start"], cu["start"]),
+                    "end": max(prev["end"], cu["end"]),
+                    "bounds": prev["bounds"] | cu["bounds"],
+                }
+                alerts.append(f"🔗 跨块句合并（块{prev['chunk']}→{cu['chunk']}，"
+                              f"{'重复' if same else '悬空延续'}）{fmt(out[-1]['start'])}: {zh[:34]}{zh_note}")
+                continue
+        out.append(cu)
+    return out
 
 
 def parse_align(text):
@@ -128,8 +223,10 @@ def main():
     ap.add_argument("align_dir", help="对齐目录：reflow2/align/（Z组=E组，task-match LLM 产物）")
     ap.add_argument("et_dir", help="E 固化时间目录：reflow2/en_timeline/")
     ap.add_argument("-o", "--out", required=True, help="输出 r04_draft.srt（单语中文）")
-    ap.add_argument("--bilingual", default=None, help="输出 r04_bilingual.srt（双语 en-zh；默认与 r04 同目录）")
+    ap.add_argument("--bilingual", default=None, help="输出 r04_bilingual.srt（双语，行序见 --order；默认与 r04 同目录）")
     ap.add_argument("--alert", default=None, help="输出 r04_alerts.md（默认与 r04 同目录）")
+    ap.add_argument("--order", choices=("en-zh", "zh-en"), default="zh-en",
+                    help="双语行语言顺序（默认 zh-en：中文行在前、英文行在后）")
     ap.add_argument("--snap-ms", type=int, default=SNAP_MS, help="吸附真实 cue 边界最大距离（默认 300ms）")
     ap.add_argument("--cjk-speed", type=float, default=CJK_SPEED, help="中文阅读速度 字/秒（默认 5）")
     # 标点角色表覆盖（srt_reflow_punct；不传 = 语言默认）
@@ -158,6 +255,7 @@ def main():
     alerts = []
     total_cue = 0
     problems = []
+    all_cues = []       # 全部块的 Z/E 组（累积后先做「跨块句衔接归位」、再统一拆段）
     for k in keys:
         with open(a_blocks[k], encoding="utf-8") as fh:
             aligns, ap = parse_align(fh.read())
@@ -167,8 +265,7 @@ def main():
             zmap = parse_zsent(fh.read())
         problems += [f"chunk_{k:03d}: {p}" for p in ap]
 
-        # 组内：Z 组 → 继承 E 组时间
-        block_cues = []   # (zh_text, en_text, start, end, sub_units[(zh,en,start,end)])
+        # 组内：Z 组 → 继承 E 组时间（**先累积，跨块归位后再统一拆段**）
         seen_z, seen_e = set(), set()
         for zg, eg in sorted(aligns, key=lambda x: min(x[0])):
             for z in zg:
@@ -188,72 +285,77 @@ def main():
             if not zh_full:
                 problems.append(f"chunk_{k:03d}: Z 组 {'+'.join(map(str,zg))} 无对应 Z 文本（zh_sentences 缺句？）")
                 continue
-            block_cues.append({"z": zg, "e": eg, "zh": zh_full, "en": en_full,
-                               "start": start, "end": end})
+            # 真实 cue 边界（E 组内各 E 的 start/end）——预先存入，跨块合并后仍需可用
+            bounds = set()
+            for e in eg:
+                bounds.add(et[e][0])
+                bounds.add(et[e][1])
+            all_cues.append({"chunk": k, "z": zg, "e": eg, "zh": zh_full, "en": en_full,
+                             "start": start, "end": end, "bounds": bounds})
         # 漏 Z / 漏 E（对齐不完整）
         for z in sorted(set(zmap) - seen_z):
             problems.append(f"chunk_{k:03d}: Z{z} 未对齐（align 漏句？）—— {zmap[z][:30]}")
         for e in sorted(set(et) - seen_e):
             problems.append(f"chunk_{k:03d}: E{e} 未对齐（align 漏句？）")
 
-        # 拆子段决策：**句末标点（。！？…）为显示段硬边界**——一行内不夹句号（用户裁定 2026-09-16）；
-        # 句内超宽才按句内标点拆候选段 + 宽度拼合；整句 ≤ 软 22 宽 → 单 cue
-        for cu in block_cues:
-            zh, start, end = cu["zh"], cu["start"], cu["end"]
-            en_full = cu["en"]
-            span = end - start
-            sents = split_zh(zh, zh_prof)
-            if len(sents) <= 1 and text_width(zh) <= SOFT_MAX:
-                # 单 cue；时长碎片（<1s 但语义自足）→ 告警提示（对齐 reflow 独立短句可接受）
-                if span < MIN_FRAG_MS:
-                    alerts.append(f"⏱️ 独立短句 {fmt(start)}-{fmt(end)}（{span}ms <1s）: {zh[:30]}")
+    # —— 跨块句衔接归位（拆段前：合并被块边界劈成两半的同一句）——
+    all_cues = merge_cross_chunk(all_cues, alerts)
+
+    # 拆子段决策：**句末标点（。！？…）为显示段硬边界**——一行内不夹句号（用户裁定 2026-09-16）；
+    # 句内超宽才按句内标点拆候选段 + 宽度拼合；整句 ≤ 软 22 宽 → 单 cue
+    for cu in all_cues:
+        zh, start, end = cu["zh"], cu["start"], cu["end"]
+        en_full = cu["en"]
+        span = end - start
+        sents = split_zh(zh, zh_prof)
+        if len(sents) <= 1 and text_width(zh) <= SOFT_MAX:
+            # 单 cue；时长碎片（<1s 但语义自足）→ 告警提示（对齐 reflow 独立短句可接受）
+            if span < MIN_FRAG_MS:
+                alerts.append(f"⏱️ 独立短句 {fmt(start)}-{fmt(end)}（{span}ms <1s）: {zh[:30]}")
+            total_cue += 1
+            srt_blocks.append({"idx": total_cue, "start": start, "end": end,
+                               "zh": zh, "en": en_full, "z": cu["z"]})
+        else:
+            # 拆段：时间 = 组区间内按阅读比例分配
+            # （吸附真实 cue 边界 ≤ snap；无则 100ms 取整预测点——阅读舒适优先，允许必要预测点）
+            # 真实 cue 边界 = E 组内各 E 的 start/end 集合（合并后的组已取并集）
+            real_bounds = cu["bounds"]
+            # 候选段按阅读时长权重分配区间
+            # 句界硬边界：逐句独立成段（禁止跨句拼合）；句内超软限则按**断点强度**
+            # （角色表 ：strong=冒号/分号 > clause=逗号 > list=顿号）做代价最小化拼合——
+            # 取代旧「贪心填满 hard_max」（会吞掉强断点：`…回答一下：第一，`+`怎么搭…？`）。
+            # 单段切不动仍超宽时保留（由告警暴露，需回 r02 改写）
+            units = []
+            for st in sents:
+                if text_width(st) <= SOFT_MAX:
+                    units.append((st, text_width(st)))
+                else:
+                    units.extend(pack_candidates(
+                        split_atomic(st, zh_prof), HARD_MAX, DEFAULT_MIN_UNIT,
+                        SOFT_MIN_UNIT, SOFT_MAX, zh_prof))
+            if not units:
+                units = [(zh, text_width(zh))]
+            weights = [max(1, cjk_reading_ms(u, args.cjk_speed)) for u, _w in units]
+            # 子段 EN = 整句 EN 按子段宽度比例机械切（互斥拼接==整句 EN；语义近似）
+            en_subs = split_en_by_weights(en_full, [text_width(u) for u, _w in units])
+            # 复用 _allocate_by_weight：按权重比例在 [start,end] 内分界 + 吸附
+            # units 元素取 u[0](key)/u[2](zh)，u[1] 作 en 占位；此处 zh 子段即显示文本
+            segs = _allocate_by_weight([(f"u{i}", en_subs[i] if i < len(en_subs) else "", u)
+                                        for i, (u, w) in enumerate(units)],
+                                       weights, start, end, real_bounds, args.snap_ms)
+            n_pred = 0
+            for i, (uk, s, e2, zhtxt, enfrag, p1, p2) in enumerate(segs):
                 total_cue += 1
-                srt_blocks.append({"idx": total_cue, "start": start, "end": end,
-                                   "zh": zh, "en": en_full, "z": cu["z"]})
-            else:
-                # 拆段：时间 = 组区间内按阅读比例分配
-                # （吸附真实 cue 边界 ≤ snap；无则 100ms 取整预测点——阅读舒适优先，允许必要预测点）
-                # 真实 cue 边界 = E 组内各 E 的 start/end 集合
-                real_bounds = set()
-                for e in cu["e"]:
-                    real_bounds.add(et[e][0])
-                    real_bounds.add(et[e][1])
-                # 候选段按阅读时长权重分配区间
-                # 句界硬边界：逐句独立成段（禁止跨句拼合）；句内超软限则按**断点强度**
-                # （角色表 ：strong=冒号/分号 > clause=逗号 > list=顿号）做代价最小化拼合——
-                # 取代旧「贪心填满 hard_max」（会吞掉强断点：`…回答一下：第一，`+`怎么搭…？`）。
-                # 单段切不动仍超宽时保留（由告警暴露，需回 r02 改写）
-                units = []
-                for st in sents:
-                    if text_width(st) <= SOFT_MAX:
-                        units.append((st, text_width(st)))
-                    else:
-                        units.extend(pack_candidates(
-                            split_atomic(st, zh_prof), HARD_MAX, DEFAULT_MIN_UNIT,
-                            SOFT_MIN_UNIT, SOFT_MAX, zh_prof))
-                if not units:
-                    units = [(zh, text_width(zh))]
-                weights = [max(1, cjk_reading_ms(u, args.cjk_speed)) for u, _w in units]
-                # 子段 EN = 整句 EN 按子段宽度比例机械切（互斥拼接==整句 EN；语义近似）
-                en_subs = split_en_by_weights(en_full, [text_width(u) for u, _w in units])
-                # 复用 _allocate_by_weight：按权重比例在 [start,end] 内分界 + 吸附
-                # units 元素取 u[0](key)/u[2](zh)，u[1] 作 en 占位；此处 zh 子段即显示文本
-                segs = _allocate_by_weight([(f"u{i}", en_subs[i] if i < len(en_subs) else "", u)
-                                            for i, (u, w) in enumerate(units)],
-                                           weights, start, end, real_bounds, args.snap_ms)
-                n_pred = 0
-                for i, (uk, s, e2, zhtxt, enfrag, p1, p2) in enumerate(segs):
-                    total_cue += 1
-                    srt_blocks.append({"idx": total_cue, "start": s, "end": e2,
-                                       "zh": zhtxt, "en": enfrag, "z": cu["z"]})
-                    if p1 or p2:
-                        n_pred += 1
-                # 长句碎片检测
-                for (uk, s, e2, zhtxt, _en, _p1, _p2) in segs:
-                    if e2 - s < MIN_FRAG_MS:
-                        alerts.append(f"🔪 长句碎片 {fmt(s)}-{fmt(e2)}（{e2-s}ms <1s）: {zhtxt[:30]}——合并/调整切分点")
-                if n_pred:
-                    alerts.append(f"🎯 预测点 {cu['z']}: 拆 {len(units)} 段含 {n_pred} 个 100ms 预测点（无真实 cue 边界可吸附）")
+                srt_blocks.append({"idx": total_cue, "start": s, "end": e2,
+                                   "zh": zhtxt, "en": enfrag, "z": cu["z"]})
+                if p1 or p2:
+                    n_pred += 1
+            # 长句碎片检测
+            for (uk, s, e2, zhtxt, _en, _p1, _p2) in segs:
+                if e2 - s < MIN_FRAG_MS:
+                    alerts.append(f"🔪 长句碎片 {fmt(s)}-{fmt(e2)}（{e2-s}ms <1s）: {zhtxt[:30]}——合并/调整切分点")
+            if n_pred:
+                alerts.append(f"🎯 预测点 {cu['z']}: 拆 {len(units)} 段含 {n_pred} 个 100ms 预测点（无真实 cue 边界可吸附）")
 
     # 全局时间重叠防御（生产健壮性）：相邻显示单元 start < 前单元 end → 后单元顺延到前 end。
     # 正常 reflow2 中 E 固化时间已含共享 cue 切分、align 基于同一 en_timeline 生成 → 天然零重叠；
@@ -281,15 +383,17 @@ def main():
     with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
         for cu in srt_blocks:
             fh.write(f"{cu['idx']}\n{fmt(cu['start'])} --> {fmt(cu['end'])}\n{cu['zh']}\n\n")
-    # 落盘 r04_bilingual.srt（双语 en-zh：英文行 = EN 片段，中文行 = 对应译文）
+    # 落盘 r04_bilingual.srt（双语：默认 zh-en，中文行在前；--order en-zh 可切回英文行在前）
     bilingual_path = args.bilingual or os.path.join(out_dir, "r04_bilingual.srt")
     with open(bilingual_path, "w", encoding="utf-8", newline="\n") as fh:
         for cu in srt_blocks:
-            fh.write(f"{cu['idx']}\n{fmt(cu['start'])} --> {fmt(cu['end'])}\n{cu['en']}\n{cu['zh']}\n\n")
+            lines = [cu["en"], cu["zh"]] if args.order == "en-zh" else [cu["zh"], cu["en"]]
+            fh.write(f"{cu['idx']}\n{fmt(cu['start'])} --> {fmt(cu['end'])}\n" + "\n".join(lines) + "\n\n")
     # 落盘 r04_alerts.md
     with open(alert_path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write("# r04_alerts（新 reflow2）— 回填告警\n\n")
         fh.write(f"- 总显示单元: {total_cue}\n")
+        fh.write(f"- 跨块句合并: {sum(1 for a in alerts if a.startswith('🔗'))}\n")
         fh.write(f"- 超宽拆段整句: {sum(1 for a in alerts if a.startswith('🎯'))}\n")
         fh.write(f"- 长句碎片: {sum(1 for a in alerts if a.startswith('🔪'))}\n")
         fh.write(f"- 时间重叠顺延: {sum(1 for a in alerts if a.startswith('🔀'))}\n")

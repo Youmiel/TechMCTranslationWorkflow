@@ -160,7 +160,7 @@
 
 1. **预分句 + ZH 机械化断句（脚本，方案 4——断句基线机械化）**：`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/ --zh-list-out reflow/r03_zslim`
   - EN 按句末标点 `.?!`（`r01_results/`，衔接归位后）预分句标号 `E1..En` → `reflow/r03_normalized_1/chunk_<k>.txt`
-  - ZH 按句号 `。！？`（`r02_results/` 译文原稿，脚本读取不受行宽限制）预分句标号 `Z1..Zm` + **句内按标点切候选段 + 贪心拼合 [15,22]（硬 ≤26）** → `reflow/r03_normalized_2/chunk_<k>.txt`（**r03 模板骨架**：每 Z 句一组 `## S?_Z<n>`，ZH 整句原文 + 子句段预填、关系预填 1:1/1:n、EN 待填——分句 agent 填空后即 r03_results）
+  - ZH 按句号 `。！？`（`r02_results/` 译文原稿，脚本读取不受行宽限制）预分句标号 `Z1..Zm` + **句内按标点切候选段 + 代价最小化拼合 [15,22]（硬 ≤27）** → `reflow/r03_normalized_2/chunk_<k>.txt`（**r03 模板骨架**：每 Z 句一组 `## S?_Z<n>`，ZH 整句原文 + 子句段预填、关系预填 1:1/1:n、EN 待填——分句 agent 填空后即 r03_results）
   - **`--zh-list-out reflow/r03_zslim`（独立产物路径，5-2 task-match 输入）**：额外生成整句级 Z 精简列表 `reflow/r03_zslim/chunk_<k>.txt`（每行 `Z<n> <整句文本>`，省 ~80% 脚手架）
     - **只供 5-2 句子匹配读**（task-match 只需整句级 Z 文本，不需子句段 / 占位 / 注释）
     - 5-1 task-split 不用此文件（仍读模板骨架 r03_normalized_2 填空）
@@ -177,7 +177,7 @@
 1. **派发**：每块派一个 subagent，**完整 prompt 由渲染脚本生成**（见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)），派发时按「派发引用 prompt」只给引用路径
   - 渲染命令：`python scripts/render_subagent_prompt.py task-split --video <工作目录> [--chunk <k> | --all] [--prior-file <块边界情况>]`（先验知识自动注入**空隙断句标记**——分句不产出译名、只做骨架确认与填空，**不注入术语表**；每块边界情况/空隙归属等主会话复核结论用 `--prior-file` 追加）
   - **输入（材料配对——分句语义对应是需全貌的跨切面决策）**：每块输入 = `r03_normalized_1/chunk_<k>.txt`（EN E 号预分句）+ `r03_normalized_2/chunk_<k>.txt`（ZH r03 模板骨架，见「归一化」）对照 + 前后块 CONTEXT（**数据文件引用**，渲染脚本注入 `## 本块数据`）
-  - **分句/语义对应规则**：整句骨架（预分句 E 号确认）/ 模板填空（S 号·EN·关系·子单元 EN）/ 1:1·1:n·n:1 对应 / 忠实转写铁律 / 拆合标注 / 游离停顿词——见 `task-split.md`；r03 产物结构（`## S<n>` / EN·ZH·关系 / 子单元）见 [PRODUCT_FORMATS#r03_plan.md](../../../docs/PRODUCT_FORMATS.md)
+  - **分句/语义对应规则**：整句骨架（预分句 E 号确认）/ 模板填空（S 号·EN·关系·子单元 EN）/ 1:1·1:n·n:1 对应 / 忠实转写铁律 / 拆合标注 / 游离停顿词——见 `task-split.md`；r03 产物结构（`## S<n>` / EN·ZH·关系 / 子单元）见 [PRODUCT_FORMATS_REFLOW#r03_plan.md](../../../docs/PRODUCT_FORMATS_REFLOW.md)
   - **产物**：`r03_results/chunk_<k>.txt`（**S 号块内从 1 连续编号**，见 task-split 规则 6）→ **`r03_results/` 即回填输入**（步骤 6 目录直读，脚本自动全局重编号，**无需拼接**）；`r03_plan.md` 仅审核/审计时 `join-r03` 按需生成
   - **漏句留空**：处理不了的 Z 句（无法对应/超宽段切不动）在产物写 `> ⚠️ 未匹配 Z<n>：<文本>` 标记，**不静默丢弃**（check-r03 ④ ZH 忠实会抓缺句，配合留空标记精确定位）
 2. **注意事项**：每块内保持整句/单元的语义完整性（不跨块拆句；空隙为硬边界，整句不跨空隙块）
@@ -192,7 +192,7 @@
    - **本校验即分句 subagent「不手算、不重抄」的执行兜底**：task-split 规则 2/4/7 只要求凭目测切分、直接写盘，行宽 ③ / 拼接互斥 ② / ZH 忠实 ④ 全在此统一裁决
   - ① **整句锚定唯一性**（缩到块内 cue 区间）
   - ② **拆句子单元互斥拼接 == 整句（EN）**
-  - ③ **译文单元行宽 ≤26**（软 22 / 硬 26）
+  - ③ **译文单元行宽 ≤27**（软 22 / 硬 27）
   - ④ **ZH 忠实性（两层）**：r03 整句 ZH 与 r02 定稿字符多集一致（净增删字即违规，允许口语词重排）+ 拆句子单元 ZH 拼接 == 整句 ZH（拦截译文改写，含整句/子单元两层）
   - ⑤ **碎片预检（预警，不阻断）**：1:n 整句按阅读速度粗估子单元时长，<1s 的提示 Agent 在 r03 合并/调整切分点（长句不碎）
   - ⑥ **中英失配预估（预警，不阻断）**：1:n 整句按单元级 cue 锚定 + 共享 cue 切分预估各单元实际时长，文本量大的中文单元只拿到很短英文 cue（倒装/中英时长差、读不完）时提示 Agent 调整切分点或依赖回填阅读插值
@@ -223,7 +223,7 @@
 
 1. **句子匹配（每块派一个 subagent）**：`python scripts/render_subagent_prompt.py task-match --video <工作目录> [--chunk <k> | --all]`（派发引用 prompt，见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）
   - **输入**：`r03_normalized_1/chunk_<k>.txt`（EN E 号预分句）+ `r03_zslim/chunk_<k>.txt`（ZH **整句级精简列表**——独立产物路径，非模板骨架）对照（**数据文件引用**，渲染脚本注入 `## 本块数据`；r03_zslim 与 r03_normalized_2 的 Z 号一一对应）
-  - LLM **只输出匹配文件** `reflow/r03_matches/chunk_<k>.txt`（每行 `Z组 = E组`，如 `Z5+Z6+Z7+Z8 = E5`；**覆盖全部 Z/E 号各恰好一次**）——**不抄文本、不断句、不写 r03**（规则见 `task-match.md`；`r03_matches` 格式见 [PRODUCT_FORMATS#r03_matches](../../../docs/PRODUCT_FORMATS.md)）
+  - LLM **只输出匹配文件** `reflow/r03_matches/chunk_<k>.txt`（每行 `Z组 = E组`，如 `Z5+Z6+Z7+Z8 = E5`；**覆盖全部 Z/E 号各恰好一次**）——**不抄文本、不断句、不写 r03**（规则见 `task-match.md`；`r03_matches` 格式见 [PRODUCT_FORMATS_REFLOW#r03_matches](../../../docs/PRODUCT_FORMATS_REFLOW.md)）
   - **覆盖完整性是第一要务**：漏任何 Z/E 句都会在 r03 产物留空标记（脚本断句允许不完整，缺处人工核对或升级 5-1）
 2. **机械断句填回（脚本，一次性全目录）**：`python scripts/srt_reflow_build_r03.py reflow/r03_matches/ reflow/r03_normalized_1/ reflow/r03_normalized_2/ -o reflow/r03_results/`
   - 子单元 = **复用模板骨架子句段**（presplit 机械断句结果，忠实/宽度由结构保证）；EN 整句 = 匹配 E 组按号拼接；子单元 EN = 按 ZH 子单元宽度比例机械切分（**互斥拼接 == 整句**，check-r03 ② 可过）
@@ -264,7 +264,7 @@
   - 单元内 gap > 5s、剪辑跳转 > 10s、预测点清单、行宽 > 22
 2. **动作规则**：
   - 碎片 cue 合并容纳完整单元
-  - 行宽 > 26 必切（软 22 预警；"标点+有 cue"处，无 cue 则预测点）
+  - 行宽 > 27 必切（软 22 预警；"标点+有 cue"处，无 cue 则预测点）
   - 时长超限不单独触发
   - [Music] 等非语音 cue 跳过
   - n:1 合句超长找"语义分割 + 有 cue"处切
@@ -286,7 +286,7 @@
 
 ##### 校验（行宽 + 输出门禁）
 
-1. **行宽校验**：`srt_check_width.py <输出> --order en-zh`（残留超限仅预警）
+1. **行宽校验**：`srt_check_width.py <输出> --order zh-en`（残留超限仅预警）
 2. **输出门禁**：**仅阶段二½ 用户确认后**输出到 `_output/<文件名>.reflow.srt`——`_output/` 是正式交付目录，未确认前禁止写入
 3. **双语观感差** → 默认改 `zh-only`
 

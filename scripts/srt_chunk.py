@@ -32,8 +32,8 @@ ap.add_argument('srt', help='输入 SRT 路径')
 ap.add_argument('--out', required=True, help='输出目录（不存在则创建）')
 ap.add_argument('--owned', type=int, default=100, help='每块负责的 cue 数 N（默认 100）')
 ap.add_argument('--ctx', type=int, default=6, help='块前后只读上下文 cue 数 M（默认 6）')
-ap.add_argument('--order', choices=('en-zh', 'zh-en'), default='en-zh',
-                help='双语行语言顺序（仅影响输出标注）：en-zh=英文前中文后（默认）；zh-en=中文前英文后')
+ap.add_argument('--order', choices=('en-zh', 'zh-en'), default='zh-en',
+                help='双语行语言顺序（仅影响输出标注）：zh-en=中文前英文后（默认）；en-zh=英文前中文后')
 args = ap.parse_args()
 
 if args.owned < 1:

@@ -20,6 +20,7 @@ import difflib
 import os
 import re
 import sys
+from collections import Counter
 
 sys.stdout.reconfigure(encoding="utf-8")
 
@@ -86,6 +87,48 @@ def diff_describe(entry):
     return f"r01 独有 r01[{j1}:{j2}]={{{' '.join(b)}}}（01 缺 {len(b)} 词）"
 
 
+def _multi_diff(a, b):
+    """a 相对 b 多出的元素（保序、计重复次数）。"""
+    cb = Counter(b)
+    out = []
+    for w in a:
+        if cb[w] > 0:
+            cb[w] -= 1
+        else:
+            out.append(w)
+    return out
+
+
+def cross_chunk_note(k, cache):
+    """块 k 与相邻块的词差异是否恰好互补（= 跨块句衔接归位的正常结果）。
+
+    背景（2026-09-27 新增，配合 `srt_reflow2_stitch.py`）：块边界常落句中，跨块句由补标点 agent
+    在两侧各补全一次；**衔接归位**把该句整体留给前块（后块整句删除）→ 前块比自己的 cue 区间
+    **多**出该句的部分词、后块**少**同样这些词。此处判定「多出的词 == 邻块缺失的词」即放行。
+    返回人类可读说明或 None（非互补 = 真分歧）。
+    """
+    if k not in cache:
+        return None
+    st, rt = cache[k]
+    extra = _multi_diff(rt, st)      # 本块相对 01 多出的词
+    missing = _multi_diff(st, rt)    # 本块相对 01 缺失的词
+    if len(extra) > 40 or len(missing) > 40:
+        return None                  # 差异过大 = 非归位所致
+    if extra and not missing:
+        nxt = cache.get(k + 1)
+        if nxt and _multi_diff(nxt[0], nxt[1]) == extra:
+            return f"本块多出 {len(extra)} 词，恰为块{k+1}所缺（前块保留完整句）"
+    if missing and not extra:
+        prv = cache.get(k - 1)
+        if prv and _multi_diff(prv[1], prv[0]) == missing:
+            return f"本块缺 {len(missing)} 词，恰为块{k-1}多出（后块删除重复句）"
+    if extra and missing:
+        nxt, prv = cache.get(k + 1), cache.get(k - 1)
+        if nxt and prv and _multi_diff(nxt[0], nxt[1]) == extra and _multi_diff(prv[1], prv[0]) == missing:
+            return f"前接块{k-1}、后送块{k+1}（双向归位边界）"
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser(description="r01 措辞校验：词序列与 01 一致（不得改动措辞）；块级模式（--chunks 必填）")
     ap.add_argument("srt", help="01_subtitle_asr_fixed.srt")
@@ -117,6 +160,22 @@ def main():
             print(f"   ✅ 已就地折行 {n_wrapped} 个块文件（显示性换行非语义分行，继续校验）")
         n_err = 0
         n_ok = 0
+        # 预收集每块 (01 词, r01 词)——跨块句归位互补判定需相邻块数据
+        terms_cache = {}
+        for _k in sorted(chunks):
+            _rng = parse_owned_cue_range(chunks[_k])
+            if _rng is None:
+                continue
+            _st = []
+            for _i in range(_rng[0], _rng[1] + 1):
+                _b = cue_map.get(_i, "")
+                if _b:
+                    _st.extend(re.findall(r"[a-z0-9']+", _b.lower()))
+            _rp = os.path.join(args.r01, "chunk_%03d.txt" % _k)
+            if not os.path.exists(_rp):
+                continue
+            _raw = open(_rp, encoding="utf-8").read()
+            terms_cache[_k] = (_st, re.findall(r"[a-z0-9']+", strip_stitch_marks(_raw).lower()))
         if args.chunk is not None and args.chunk not in chunks:
             sys.exit(f"❌ --chunk {args.chunk}: chunks 目录无该块（可用块: {sorted(chunks)}）")
         to_check = [args.chunk] if args.chunk is not None else sorted(chunks)
@@ -126,13 +185,7 @@ def main():
                 print(f"⚠️ chunk_{k:03d}: 无 OWNED cue，跳过")
                 continue
             cmin, cmax = rng
-            # 01 对应 cue 段的词（剔除标记）
-            srt_terms = []
-            for i in range(cmin, cmax + 1):
-                body = cue_map.get(i, "")
-                if body:
-                    srt_terms.extend(re.findall(r"[a-z0-9']+", body.lower()))
-            # 块结果文件（剥离跨块句标记【承接句】/【延伸句】后再提词——标记内容为邻块补全，非本块 OWNED cue）
+            # 块结果文件（剥跨块句标记【承接句】/【延伸句】后提词——标记内容为邻块补全，非本块 OWNED cue）
             res_path = os.path.join(args.r01, "chunk_%03d.txt" % k)
             if not os.path.exists(res_path):
                 print(f"❌ chunk_{k:03d}: 无结果文件")
@@ -140,7 +193,8 @@ def main():
                 continue
             raw = open(res_path, encoding="utf-8").read()
             has_stitch = ("【承接句】" in raw) or ("【延伸句】" in raw)
-            r01_terms = re.findall(r"[a-z0-9']+", strip_stitch_marks(raw).lower())
+            srt_terms, r01_terms = terms_cache.get(k, ([], []))
+            xnote = cross_chunk_note(k, terms_cache)
             if srt_terms == r01_terms:
                 n_ok += 1
                 if args.verbose:
@@ -150,6 +204,9 @@ def main():
                 if args.verbose:
                     print(f"✅ chunk_{k:03d} (c{cmin}-c{cmax}): 缺 {len(srt_terms) - len(r01_terms)} 词——"
                           f"跨块句标记【承接句】/【延伸句】内含本块部分，归位时确认")
+            elif xnote:
+                n_ok += 1
+                print(f"✅ chunk_{k:03d} (c{cmin}-c{cmax}): 跨块句归位互补——{xnote}")
             else:
                 n_err += 1
                 entries = word_diff_entries(srt_terms, r01_terms)

@@ -40,7 +40,7 @@ description: 句子匹配任务（reflow2）——对照 en_timeline（E 句+固
 
 > **渲染步骤**（agent / 脚本通用）：最终 prompt = 任务文件内容（含任务特有规则）按下列顺序拼接——
 > 1. `纪律母版` = subagent-dispatch 纪律母版（`_discipline.md` 整体追加）
-> 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS.md` 的 `align/chunk_<k>.txt` 节（对齐文件格式；subagent 唯一允许的外部读取）
+> 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS_REFLOW2.md` 的 `align/chunk_<k>.txt` 节（对齐文件格式；subagent 唯一允许的外部读取）
 > 3. `## 先验知识` = 无；主会话复核结论可用 `--prior-file` 追加
 > 4. `## 本块数据` = 数据文件引用：`reflow2/en_timeline/chunk_<k>.txt` + `reflow2/zh_sentences/chunk_<k>.txt`（本块输入）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `reflow2/align/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`

@@ -31,7 +31,7 @@ description: 翻译任务（translate）——英文断句方案（_merge_result
 
 > **渲染步骤**（agent / 脚本通用）：最终 prompt = 任务文件内容（含任务特有规则）按下列顺序拼接——
 > 1. `纪律母版` = subagent-dispatch 纪律母版（`_discipline.md` 整体追加）
-> 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS.md` 的 `_trans_results/chunk_<k>.txt（翻译块）` 节（subagent 唯一允许的外部读取）
+> 2. `产物格式约定` = 格式查找路径：`docs/PRODUCT_FORMATS_TRANSLATE.md` 的 `_trans_results/chunk_<k>.txt（翻译块）` 节（subagent 唯一允许的外部读取）
 > 3. `## 先验知识` = humanizer 注入版（`humanizer-inject.md`，紧贴任务规则 4）+ 02_terms.md 术语表（**先 humanizer 后术语**）；勿注入 humanizer-zh 全量版
 > 4. `## 本块数据` = 数据文件引用：`_merge_results/chunk_<k>.txt`（本块输入）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `_trans_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`
