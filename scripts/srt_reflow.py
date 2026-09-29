@@ -46,6 +46,7 @@ from scripts.srt_reflow_core.reflow import reflow
 from scripts.srt_reflow_core.attach import attach_en
 from scripts.srt_reflow_core.plan import check_r03, check_r03_blocks, join_r03
 from scripts.srt_reflow_core.alerts import check_duration
+from scripts.shared.srt_common import CJK_SPEED, MIN_FRAG_MS, READING_MIN_GAP_MS, SNAP_MS
 
 
 def main():
@@ -58,8 +59,8 @@ def main():
     p1.add_argument("-o", dest="out", default=None, help="输出 r04（默认 r03 同目录 r04_draft.srt）")
     p1.add_argument("--alert", dest="alert", default=None, help="告警清单（默认 r03 同目录 r04_alerts.md）")
     p1.add_argument("--anchored", dest="anchored", default=None, help="锚定明细 JSONL（默认 r03 同目录 r03_anchored.jsonl，每行一整句）")
-    p1.add_argument("--snap-ms", type=int, default=300, help="分割点吸附真实 cue 边界的最大距离（默认 300ms）")
-    p1.add_argument("--cjk-speed", type=float, default=5.0,
+    p1.add_argument("--snap-ms", type=int, default=SNAP_MS, help="分割点吸附真实 cue 边界的最大距离（默认 300ms）")
+    p1.add_argument("--cjk-speed", type=float, default=CJK_SPEED,
                     help="中文阅读速度（字/秒），用于阅读失配检测与插值；0=禁用（默认 5.0）")
 
     p2 = sub.add_parser("attach-en")
@@ -74,7 +75,7 @@ def main():
     p3.add_argument("srt", help="01_subtitle_asr_fixed.srt（cue 时间戳）")
     p3.add_argument("r02", help="r02_results 目录（块级基准；整段 r02_translation_zh.txt 兼容历史）")
     p3.add_argument("--chunks", default=None, help="块级模式必填：chunks 骨架目录（解析块↔cue区间；单块亦适用）")
-    p3.add_argument("--cjk-speed", type=float, default=5.0,
+    p3.add_argument("--cjk-speed", type=float, default=CJK_SPEED,
                     help="中文阅读速度（字/秒），用于碎片预检与中英失配预估；0=禁用两者（默认 5.0）")
     p3.add_argument("--no-frag", action="store_true", help="禁用碎片预检（存疑预警）")
     p3.add_argument("--no-mismatch", action="store_true", help="禁用中英失配预估（存疑预警）")
@@ -86,9 +87,9 @@ def main():
     p4 = sub.add_parser("check-duration", help="回填后时长复核（长句碎片/独立短句/阅读失配），长句碎片退出码 1")
     p4.add_argument("r04", help="r04_draft.srt（回填后时间轴）")
     p4.add_argument("r03", help="r03（回填方案）：r03_results/ 目录或 r03_plan.md")
-    p4.add_argument("--min-ms", type=int, default=1000, help="长句碎片阈值（默认 1000ms）")
-    p4.add_argument("--cjk-speed", type=float, default=5.0, help="中文阅读速度（字/秒），0=禁用（默认 5.0）")
-    p4.add_argument("--min-gap-ms", type=int, default=300, help="显著阅读失配最小毫秒数（默认 300ms）")
+    p4.add_argument("--min-ms", type=int, default=MIN_FRAG_MS, help="长句碎片阈值（默认 1000ms）")
+    p4.add_argument("--cjk-speed", type=float, default=CJK_SPEED, help="中文阅读速度（字/秒），0=禁用（默认 5.0）")
+    p4.add_argument("--min-gap-ms", type=int, default=READING_MIN_GAP_MS, help="显著阅读失配最小毫秒数（默认 300ms）")
 
     p5 = sub.add_parser("join-r03", help="r03_results → r03_plan.md：按块序拼接 + 结构校验（缺块/重复 S<n>/可解析），供人工审核/审计；回填非必需")
     p5.add_argument("r03_dir", help="r03_results 目录（块级）")

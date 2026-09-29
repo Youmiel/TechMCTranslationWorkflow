@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""检查 SRT 各段中文行视觉宽度（CJK=1, latin≈0.4, digit≈0.5, space≈0.4；单一事实源 = srt_reflow_common.text_width，阈值同源于其 SOFT_MAX/HARD_MAX）。
+"""检查 SRT 各段中文行视觉宽度（CJK=1, latin≈0.4, digit≈0.5, space≈0.4；单一事实源 = shared.srt_common.text_width，阈值同源于其 SOFT_MAX/HARD_MAX）。
 
 用法: python srt_check_width.py <draft.srt> [--warn 22] [--hard 27] [--order en-zh|zh-en] [--expand]
 --warn: 软告警阈值（默认 22，>warn 且 ≤hard 提示，软告警）；--hard: 硬限制阈值（默认 27，>hard 必切）。
@@ -10,7 +10,7 @@
 import argparse, os, re, sys
 sys.stdout.reconfigure(encoding='utf-8')
 
-from srt_reflow_common import SOFT_MAX as _DEFAULT_WARN, HARD_MAX as _DEFAULT_HARD
+from shared.srt_common import SOFT_MAX as _DEFAULT_WARN, HARD_MAX as _DEFAULT_HARD
 
 ap = argparse.ArgumentParser(description='检查 SRT 中文行视觉宽度')
 ap.add_argument('srt', help='目标 SRT 路径（如 _work/<视频>/s04_draft.srt）')
@@ -22,12 +22,12 @@ ap.add_argument('--expand', action='store_true',
                 help='展开每处超限段的「文件:行号 + 内容」（默认只给超限段数+提示）')
 args = ap.parse_args()
 
-# 视觉宽度复用 srt_reflow_common.text_width（**单一事实源**）。
+# 视觉宽度复用 shared.srt_common.text_width（**单一事实源**）。
 # 2026-09-27 修：本脚本原有独立 width() 副本（拉丁/空格 0.5），与生成侧（pack_by_strength /
 # srt_reflow2_backfill）用的 text_width 口径脱节——改一处不改另一处会出**假 ERROR**
 # （实测 `所以这次我和同为红石玩家、YouTuber 的 mattbatwings 一样，`：
 # 生成侧按拉丁/空格 0.4 算 26.2，本脚本副本按 0.5 报 28.5）。
-from srt_reflow_common import text_width as width
+from shared.srt_common import text_width as width
 
 with open(args.srt, encoding='utf-8-sig') as fh:
     lines_all = fh.read().split('\n')

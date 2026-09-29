@@ -31,7 +31,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import collect_chunk_files, parse_owned_cue_range, BRACKET_RE, fmt
+from shared.srt_common import collect_chunk_files, parse_owned_cue_range, BRACKET_RE, fmt
 from srt_reflow_presplit import split_en
 
 PM = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

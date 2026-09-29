@@ -4,9 +4,9 @@
 回填工作流（reflow-redstone）两类归一化共用本脚本：
 - **chunks 模式（步骤 3）**：`chunks/`（cue 结构）→ `r01_normalized/`——把每块 `## BEFORE/OWNED/AFTER`
   分区内 cue 文本预先合并成连续文本（subagent 无需自行拼接），供补标点 subagent 输入
-- **纯文本模式（步骤 5）**：~~`r02_results/`（整段译文）→ `r02_normalized/`~~ **已停用（2026-08-18）**——
+- **纯文本模式（停用）**：~~`r02_results/`（整段译文）→ `r02_normalized/`~~ **已停用**——
   r02 折行副本由预分句标号取代（`srt_reflow_presplit.py` → `r03_normalized_2/`：脚本直读 r02_results 原稿，
-  预分句输出已逐句折行，折行副本不再需要）；本模式保留作通用工具，reflow 流程不再调用
+  预分句输出已逐句折行）；本模式保留作通用工具，reflow 流程不调用
 
 自动检测：块文件首行 `# CHUNK` → chunks 模式（解析分区、合并 cue、保留分区结构）；
 无块头 → 纯文本模式（整段 wrap_text 折行，内容不变仅限制单行长度）。
@@ -29,7 +29,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import wrap_text, collect_chunk_files, is_pure_marker, MAX_LINE
+from shared.srt_common import wrap_text, collect_chunk_files, is_pure_marker, MAX_LINE
 
 CHUNK_HEAD_RE = re.compile(r"^# CHUNK (\d+)/(\d+)\s+(.+)$")
 SECTION_RE = re.compile(r"^## (BEFORE|OWNED|AFTER)\s*$")

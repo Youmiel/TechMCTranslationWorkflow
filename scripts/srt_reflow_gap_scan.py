@@ -6,7 +6,7 @@
 非语音标记 cue（[Music]/[Applause] 等方括号标记单独成 cue，去括号后无可见字符）动态识别、
 不参与空隙判定（空隙在相邻真实语音 cue 间计算、跨标记），并单独列出供 r01 对齐参考。
 
-**2026-09-21 新增：疑似源切分缺陷识别（疑点探测，只报告不改行为）**
+**疑似源切分缺陷识别（疑点探测，只报告不改行为）**
 
 判据（**两条强信号同时成立**，高置信、不扰民——用户 2026-09-21 定调）：
   1. 前 cue 末尾**无句末标点**（`.?!。！？…`）
@@ -37,10 +37,10 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import is_pure_marker, parse_time, fmt, BRACKET_RE as MARKER_RE
-
-LONG_GAP_MS = 5000      # 长停顿阈值（与步骤 2/5 一致）
-JUMP_GAP_MS = 10000     # 剪辑跳转阈值
+from shared.srt_common import (
+    is_pure_marker, parse_time, fmt, LONG_GAP_MS, JUMP_GAP_MS,
+    BRACKET_RE as MARKER_RE,
+)
 
 # 句末标点（判「前 cue 是否已收句」用；中英全角半角都收，因 01 可能混排）
 EOS_CHARS = ".?!。！？…"

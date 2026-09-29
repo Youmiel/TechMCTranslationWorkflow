@@ -11,10 +11,11 @@ from .allocate import (
     READING_MISMATCH_RATIO,
     MIN_FRAG_MS,
 )
+from shared.srt_common import CJK_SPEED
 from .alerts import build_alerts, write_outputs, write_anchored_json
 
 
-def reflow(r03_path, srt_path, out_path, alert_path, anchored_path, snap_ms, cjk_speed=5.0):
+def reflow(r03_path, srt_path, out_path, alert_path, anchored_path, snap_ms, cjk_speed=CJK_SPEED):
     sentences = parse_r03_any(r03_path)
     cues = parse_srt(srt_path)
     full, mapping, cue_offsets = build_full(cues)

@@ -6,8 +6,8 @@ from collections import Counter
 from pathlib import Path
 
 from .io import norm, text_width, parse_srt, build_full
-from ..srt_reflow_common import (
-    auto_wrap_file, collect_chunk_files, parse_owned_cue_range,
+from shared.srt_common import (
+    auto_wrap_file, collect_chunk_files, parse_owned_cue_range, CJK_SPEED,
     SOFT_MAX as WIDTH_SOFT_MAX, HARD_MAX as WIDTH_HARD_MAX,
 )
 from .allocate import (
@@ -290,14 +290,14 @@ def join_r03(r03_dir, out_path, chunks_dir=None):
     return 0
 
 
-def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True, check_mismatch=True,
+def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag=True, check_mismatch=True,
               cue_range=None, r02_text=None, full_warnings=False, expand=False):
     """r03 写时即合规预检（步骤 4 产出后、步骤 5 回填前必跑）：
 
     - 锚定唯一性：每个整句 EN 在 01 唯一命中（未命中 / 重复命中均报告）
       ——块级（cue_range=(cmin,cmax)）时锚定缩到块内 cue 区间，避免跨块重复误报
     - 拆句互斥性：1:n 拆句子单元 EN 拼接 == 整句 EN
-    - 行宽：每个译文单元中文视觉宽度 ≤ 硬限（超软限仅告警；口径与 srt_check_width 同源于 srt_reflow_common）
+    - 行宽：每个译文单元中文视觉宽度 ≤ 硬限（超软限仅告警；口径与 srt_check_width 同源于 shared.srt_common）
     - ZH 忠实性（需 r02）：r03 整句 ZH 拼接（去标点空白）== r02 定稿（块级时缩到该块 r02 段）——断句只允许插断点标点，不得改写译文
     - 碎片预检（预警，不阻断；--no-frag 可关）：1:n 整句按中文阅读速度（--cjk-speed）粗估子单元时长，
       <1s 的提示 Agent 在 r03 阶段就合并/调整切分点（长句不碎，避免回填后返工）
@@ -479,7 +479,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=5.0, check_frag=True,
     return 1
 
 
-def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=5.0,
+def check_r03_blocks(r03_dir, srt_path, chunks_dir, r02_dir, cjk_speed=CJK_SPEED,
                      check_frag=True, check_mismatch=True, full_warnings=False,
                      chunk_only=None, expand=False):
     """块级 check-r03：逐块校验（r03_results/ + chunks/ 骨架 + r02_results/）。

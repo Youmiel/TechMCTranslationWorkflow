@@ -24,7 +24,7 @@ from collections import Counter
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import auto_wrap_file, collect_chunk_files, ctx_snippet, is_pure_marker, parse_owned_cue_range, strip_stitch_marks, MAX_LINE
+from shared.srt_common import auto_wrap_file, collect_chunk_files, ctx_snippet, is_pure_marker, parse_owned_cue_range, strip_stitch_marks, MAX_LINE
 
 
 def srt_words(path):
@@ -102,7 +102,7 @@ def _multi_diff(a, b):
 def cross_chunk_note(k, cache):
     """块 k 与相邻块的词差异是否恰好互补（= 跨块句衔接归位的正常结果）。
 
-    背景（2026-09-27 新增，配合 `srt_reflow2_stitch.py`）：块边界常落句中，跨块句由补标点 agent
+    背景（配合 `srt_reflow2_stitch.py`）：块边界常落句中，跨块句由补标点 agent
     在两侧各补全一次；**衔接归位**把该句整体留给前块（后块整句删除）→ 前块比自己的 cue 区间
     **多**出该句的部分词、后块**少**同样这些词。此处判定「多出的词 == 邻块缺失的词」即放行。
     返回人类可读说明或 None（非互补 = 真分歧）。

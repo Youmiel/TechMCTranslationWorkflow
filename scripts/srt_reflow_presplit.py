@@ -18,7 +18,7 @@ ZH 按句末标点 。！？… 预分句标号 Z1..Zm，并按标点切候选�
 - **忠实铁律由结构保证**：子句段只在标点处切（标点保留段尾）、不增删改字符——段拼接 == Z 原文 == r02；
   模板 ZH 行 agent 不得改动，断点标点归属前段
 - **多语言通用**：切分标点（--punct-levels 有序层级）、句末标点、句长区间（--soft-min/--soft-max/
-  --hard-max/--min-unit）全 CLI 参数化，默认 CJK；宽度复用 srt_reflow_common.text_width（Unicode 块通用）
+  --hard-max/--min-unit）全 CLI 参数化，默认 CJK；宽度复用 shared.srt_common.text_width（Unicode 块通用）
 - 每块独立处理、互不影响；对整个输入目录一次跑完（命令只运行一次）
 - 产物契约 r03（`## S<n>` 格式）不变；本脚本只生成**分句 subagent 输入**，非校验基准
 
@@ -39,27 +39,26 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import (
+from shared.srt_common import (
     wrap_text, collect_chunk_files, strip_stitch_prefix, MAX_LINE, text_width,
     SOFT_MIN as DEFAULT_SOFT_MIN, SOFT_MAX as DEFAULT_SOFT_MAX,
     HARD_MAX as DEFAULT_HARD_MAX, MIN_UNIT as DEFAULT_MIN_UNIT,
 )
-from srt_reflow_punct import (
+from srt_reflow_core.punct import (
     build_profile,
     pack_by_strength,
     split_atomic,
     split_sentences,
 )
 
-# 机械化断句默认参数来自 srt_reflow_common 单一事实源（CJK；可 CLI 覆盖——多语言适配改标点角色表 + 这里）
-# 注：旧「有序层级切分标点」常量已删除（2026-09-22 自查）——断点强度由 srt_reflow_punct 的
-# 角色表表达；旧 `--punct-levels` 仍接受，但按**字符归属**映射（见 make_profile）。
+# 机械化断句默认参数来自 shared.srt_common 单一事实源（CJK；可 CLI 覆盖——多语言适配改标点角色表 + 这里）
+# 断点强度由 srt_reflow_core.punct 的角色表表达；`--punct-levels` 仍接受，但按**字符归属**映射（见 make_profile）。
 
 
 def make_profile(lang="zh", punct_levels=None, **kw):
     """构造标点角色 profile。
 
-    `punct_levels=None`（**推荐/默认**）→ 直接用 `srt_reflow_punct` 的角色表默认。
+    `punct_levels=None`（**推荐/默认**）→ 直接用 `srt_reflow_core.punct` 的角色表默认。
     `punct_levels` 给出（旧 CLI `--punct-levels`）→ 按**字符归属**把层级映射为角色字符集：
     旧默认层级 `["，；：", "—", "、"]` 中，L1 同时含强断点（`；：`）与句内断点（`，`）——
     按层级位置整体套用会把逗号误升为 strong、破折号误降为 clause（与角色表默认冲突，
@@ -89,7 +88,7 @@ def make_profile(lang="zh", punct_levels=None, **kw):
 def split_en(text, profile=None):
     """英文整段按句末标点 .?! 分句（先合并显示折行、剥跨块句标记前缀）→ [句文本]。
 
-    委托 `srt_reflow_punct.split_sentences`（角色表 + 例外模式 guards：缩写/小数点/省略号/
+    委托 `srt_reflow_core.punct.split_sentences`（角色表 + 例外模式 guards：缩写/小数点/省略号/
     括号配平/续小写粘连）——取代旧 `is_en_sentence_end` + `EN_ABBR_RE` 的本模块硬编码。
     """
     text = re.sub(r"\s+", " ", text.strip())
@@ -133,7 +132,7 @@ def _collapse_ws(text):
 def split_zh(text, profile=None):
     """中文整段按句末标点 。！？… 分句（折行合并保留中英/数字空格、括号配平保护；剥跨块句标记前缀）→ [句文本]。
 
-    委托 `srt_reflow_punct.split_sentences`（角色表 + 例外模式 guards）——取代旧本模块
+    委托 `srt_reflow_core.punct.split_sentences`（角色表 + 例外模式 guards）
     硬编码 `ZH_EOS_RE` + depth 循环。
     """
     text = strip_stitch_prefix(text)
@@ -157,7 +156,7 @@ def pack_candidates(segs, hard_max, min_unit, soft_min=None, soft_max=None, prof
     """拼合候选段 → 显示单元 [(文本, 宽度)]。
 
     **兼容包装**：接受旧式 `[段文本]` 或新式 `[(段文本, 段尾角色)]`；
-    内部委托 `srt_reflow_punct.pack_by_strength`（**代价最小化** DP，取代旧的贪心填满）。
+    内部委托 `srt_reflow_core.punct.pack_by_strength`（**代价最小化** DP，取代旧的贪心填满）。
 
     旧贪心会吞掉强断点、保留弱断点（实例：`…回答一下：第一，`(17) + `怎么搭…？`(12)，
     断点落在逗号而非冒号）；DP 版本让断点强度参与决策（结果 `…回答一下：`(14) + `第一，…？`(15)）。
@@ -185,7 +184,7 @@ def plan_sentence(text, punct_levels, hard_max, min_unit, soft_min=None, soft_ma
                   lang="zh", profile=None):
     """整句机械化断句 → (状态, 子单元列表 [(段文本, 宽度)], 备注)。
 
-    **算法（2026-09-21 起）**：标点角色表切原子段（`srt_reflow_punct.split_atomic`，
+    **算法（2026-09-21 起）**：标点角色表切原子段（`srt_reflow_core.punct.split_atomic`，
     含小数点/序号/缩写/省略号/括号配平等例外模式）→ **代价最小化拼合**
     （`pack_by_strength`：断点强度 + 段宽偏离 + 碎片罚）。
     取代旧的「有序层级递归切分 + 贪心填满 hard_max」——后者会吞掉强断点
@@ -287,10 +286,10 @@ def main():
     ap.add_argument("--min-unit", type=float, default=DEFAULT_MIN_UNIT, help=f"最小单元宽度/防碎片（默认 {DEFAULT_MIN_UNIT:g}，≈1s@5字/秒）")
     ap.add_argument("--punct-levels", action="append", default=None,
                     help="【兼容保留·不推荐】旧式有序层级切分标点（可多次指定，先高后低）。"
-                         "**不给则用角色表默认**（推荐，见 srt_reflow_punct）；"
+                         "**不给则用角色表默认**（推荐，见 srt_reflow_core.punct）；"
                          "给了则按各字符在旧默认层级中的归属映射到 strong/clause/list"
                          "（旧 L1 `，；：` 中：`；：` 为 strong、`，` 为 clause）")
-    # 标点角色表细粒度覆盖（srt_reflow_punct；不传 = 语言默认，保持既有行为）
+    # 标点角色表细粒度覆盖（srt_reflow_core.punct；不传 = 语言默认，保持既有行为）
     ap.add_argument("--punct-terminators", default=None,
                     help="句界字符集（默认 zh 。！？… / en .?!）——扩它会改变 Z 句数、使 align/ 失效，谨慎")
     ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认 zh ；：— / en ;:—）")

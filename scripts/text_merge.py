@@ -28,7 +28,7 @@ from collections import OrderedDict
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import wrap_text, collect_chunk_files
+from shared.srt_common import wrap_text, collect_chunk_files
 
 CHUNK_HEAD = re.compile(r"^# CHUNK (\d+)/(\d+)\s+SRC: (.+?)\s+TYPE: (srt|text)\s+UNIT: (.+?)\s+OWN: (.+?)\s+CTX: (.+?)$")
 SECTION_LINE = re.compile(r"^## (BEFORE|OWNED|AFTER)")

@@ -34,7 +34,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from request_identity import user_agent  # noqa: E402
+from shared.request_identity import user_agent  # noqa: E402
 
 API_URL = "https://zh.minecraft.wiki/api.php"
 WIKI_BASE = "https://zh.minecraft.wiki"
@@ -44,7 +44,7 @@ TIMEOUT = 30
 BATCH_SIZE = 10  # MediaWiki API 建议 titles 参数不超过 50
 DEFAULT_INTERVAL = 2.0  # 请求间隔（秒）——抓取纪律：429/403 指数退避 2s → 4s → 8s
 TITLE_RE = re.compile(r"^title:\s*(.+?)\s*$", re.M)
-# 请求身份（含联系方式）：见 scripts/request_identity.py——联系方式由使用者配置，
+# 请求身份（含联系方式）：见 scripts/shared/request_identity.py——联系方式由使用者配置，
 # 不内置作者信息（避免 clone/fork 后以原作者名义发请求）
 UA = user_agent()
 

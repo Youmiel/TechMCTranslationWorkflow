@@ -35,7 +35,7 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
      - **L1 始终全量加载**（体量小，文件分类与 yaml 是另一套命名）
      - L1.5（Mojang，再一套命名）需显式 `--levels L1,L1.5,L2`
 
-> **语义联想为主，机械查找补漏**（2026-08-03 用户定调）：ASR 误识别修正、术语语义/语境理解、相关性判断靠 **Agent 自身的语义联想/推理**（注入领域术语集作上下文），**不用字符串相似度等算法**；"联想"=Agent 自己的语言理解，**非调用外部 LLM/API**。机械查找（`scan`）仅作**补充**——字面精确匹配把"已登记词确实出现"找全，治"已收录却漏翻"，不做任何理解/判定。
+> **语义联想为主，机械查找补漏**（用户定调）：ASR 误识别修正、术语语义/语境理解、相关性判断靠 **Agent 自身的语义联想/推理**（注入领域术语集作上下文），**不用字符串相似度等算法**；"联想"=Agent 自己的语言理解，**非调用外部 LLM/API**。机械查找（`scan`）仅作**补充**——字面精确匹配把"已登记词确实出现"找全，治"已收录却漏翻"，不做任何理解/判定。
 
 ## 四级查找（位置与执行）
 
@@ -43,7 +43,7 @@ description: 项目术语表（Mojang/TechMC/项目自有）的使用规范、�
 |----|------|----------|------|
 | **L1** | 热数据 | `knowledge/01_terminology/*.csv`、`.cache/mojang/redstone.csv` | `glossary_lookup.py` 自动 |
 | **L1.5** | Mojang 非红石 | `.cache/mojang/*.csv` | `glossary_lookup.py` 自动；grep 兜底 |
-| **L2** | 温数据 | `.cache/glossary/*.csv`（techmc 社区拆分译名）、`_repos/storage-archive/dictionary/`（存储科技术语词典，2026-08-28 新增源） | `glossary_lookup.py`、`dictionary_lookup.py` |
+| **L2** | 温数据 | `.cache/glossary/*.csv`（techmc 社区拆分译名）、`_repos/storage-archive/dictionary/`（存储科技术语词典） | `glossary_lookup.py`、`dictionary_lookup.py` |
 | **L3** | 未命中 | — | 入"待查列表" → translate-redstone §1.2 集中补齐 |
 
 - **执行建议**：首选 `python scripts/glossary_lookup.py <term> [<term>...]`（只读，自动按 L1→L1.5→L2 批量查询，命中输出来源）；**L2 存储科技术语词典（`_repos/storage-archive`）另用 `python scripts/dictionary_lookup.py query/scan` 查（含完整定义/缩写）**；工具不覆盖时用**全文搜索工具**按上表位置兜底

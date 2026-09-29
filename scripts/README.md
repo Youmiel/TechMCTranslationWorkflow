@@ -2,6 +2,12 @@
 
 按用途分组，文件名前缀标识类别（`glossary_` 术语词表、`srt_` 字幕工具（两工作流共用 + 通用）、`text_` 通用文本分块/合并（长视频机制）、`srt_reflow_` 回填工作流专用）；独立工具保留原名。
 
+**目录约定**：本目录只放**可运行的工具**（有 CLI 入口）；不含 CLI 的**共享模块放语义文件夹**——
+`shared/`（跨工具共享：`srt_common.py` 字幕公共层、`request_identity.py` 请求身份）、
+`srt_reflow_core/`（reflow 实现包，含断句引擎 `punct.py`）、`mojang_glossary/`（Mojang 词表实现包）。
+导入方式：工具内 `from shared.srt_common import ...`（**绝对导入**——包存在顶层/包内两种导入路径，
+相对导入 `..shared` 在顶层路径下会越界；`scripts/__init__.py` 已把 `scripts/` 追加进 `sys.path` 兜底）。
+
 ## 术语词汇表工具（`glossary_*`）
 
 | 脚本 | 用途 | 用法 |
@@ -43,8 +49,7 @@
 | `srt_reflow_check_breaks.py` | r01 硬性断句校验：逐生效空隙点查句末标点 `.?!`；违规退出码 1（打回信号，受控例外 Agent 裁决）；块级模式（`--chunks <chunks目录> --gaps r00_gaps_active.tsv`，`excluded` 项自动跳过；N=1 为单块骨架）；**传旧 `r00_gaps.md` 亦兼容**（自动找同目录 tsv）；命中未排除的疑似源缺陷时提示「改 tsv」而非要求强制断句；默认只给问题数，`--expand` 展开每处违规详情，`--chunk <k>` 只查涉及该块的空隙点 | `python scripts/srt_reflow_check_breaks.py <01> <r01_results/> --chunks <chunks/> --gaps r00_gaps_active.tsv [--expand] [--chunk k]` |
 | `srt_reflow_check_words.py` | r01 措辞校验：词序列与 01 一致（不得改动措辞）；块级模式（`--chunks <chunks目录>`，逐块对比块↔cue 区间词序列；N=1 为单块骨架）；**跨块互补判定**（前块多出的词 == 邻块缺失的词 → 衔接归位的正常结果，放行）；difflib 一次列出全部分歧（错词/缺词/多词，不再只报第一处）；默认只给问题数，`--expand` 展开每处上下文/行号/cue 定位，`--chunk <k>` 只查单块 | `python scripts/srt_reflow_check_words.py <01> <r01_results/> --chunks <chunks/> [--expand] [--chunk k]` |
 | `srt_reflow_normalize.py` | 块目录归一化（两种输入形态自动检测）：chunks 模式（步骤 3，`## 分区` cue 文本合并 + 折行 → `r01_normalized/`）、纯文本模式（r02 折行副本 **已停用**——由预分句 `srt_reflow_presplit.py` → `r03_normalized_2/` 取代）；折行 ≤1000 字符/行（英文不拆词、中文按字符），一次跑完整个目录，命令只运行一次 | `python scripts/srt_reflow_normalize.py <chunks/> -o reflow/r01_normalized/` |
-| `srt_reflow_punct.py` | **标点功能角色层（断句/拼句单一事实源，2026-09-21）**：角色表（强度降序 `terminator` 句界 / `rparen` 右括号后 / `strong` 强断点 `；：—` / `clause` `，` / `list` `、`——2026-09-27 起顿号代价提到 18.0 作「最后手段」：优先保并列成分完整、超硬限时仍可断）+ 例外模式 guards（小数点/英文缩写/省略号/无歧义序号 `1.)`/括号软优先）+ `split_sentences`（句界切句）/`split_atomic`（句内切原子段）/`pack_by_strength`（**代价最小化拼合**，取代贪心填满）/`split_units`（一步到位）；中英只是同一角色的不同字符映射，字符集与代价全可配 | 模块：`from srt_reflow_punct import build_profile, split_units` |
-| `srt_reflow_presplit.py` | 预分句 + ZH 机械化断句（方案 4，步骤 5 分句输入）：EN 按句末标点 `.?!`（`r01_results/`）→ `r03_normalized_1/`（E1..En）；ZH 按句号 `。！？`（`r02_results/` 直读原稿）→ `r03_normalized_2/`（**r03 模板骨架**：Z 句 + 句内切分段预填 [15,22] 硬 ≤27）；**断句/切分委托 `srt_reflow_punct`**（角色表 + guards：缩写/小数点/省略号/括号配平/序号）；折行合并保留中英/数字空格（`Carpet 的 fillUpdates`、`139 147 11`）；**拼合 = 代价最小化**（断点强度 + 段宽偏离 + 碎片罚）；参数化 `--soft-min/--soft-max/--hard-max/--min-unit` + 角色表 `--punct-terminators/--punct-strong/--punct-clause/--punct-list`（旧 `--punct-levels` 仍接受但按字符归属映射、不推荐）；忠实铁律由结构保证（段只在标点处切、不增删改）；**`--zh-list-out <目录>`（可选）**：额外生成整句级 Z 精简列表（`r03_zslim/`，供 5-2 task-match） | `python scripts/srt_reflow_presplit.py <r01_results/> <r02_results/> -o reflow/ [--zh-list-out reflow/r03_zslim]` |
+| `srt_reflow_presplit.py` | 预分句 + ZH 机械化断句（方案 4，步骤 5 分句输入）：EN 按句末标点 `.?!`（`r01_results/`）→ `r03_normalized_1/`（E1..En）；ZH 按句号 `。！？`（`r02_results/` 直读原稿）→ `r03_normalized_2/`（**r03 模板骨架**：Z 句 + 句内切分段预填目标区间、硬限引 `shared.srt_common`）；**断句/切分委托 `srt_reflow_core.punct`**（角色表 + guards：缩写/小数点/省略号/括号配平/序号）；折行合并保留中英/数字空格（`Carpet 的 fillUpdates`、`139 147 11`）；**拼合 = 代价最小化**（断点强度 + 段宽偏离 + 碎片罚）；参数化 `--soft-min/--soft-max/--hard-max/--min-unit` + 角色表 `--punct-terminators/--punct-strong/--punct-clause/--punct-list`（旧 `--punct-levels` 仍接受但按字符归属映射、不推荐）；忠实铁律由结构保证（段只在标点处切、不增删改）；**`--zh-list-out <目录>`（可选）**：额外生成整句级 Z 精简列表（`r03_zslim/`，供 5-2 task-match） | `python scripts/srt_reflow_presplit.py <r01_results/> <r02_results/> -o reflow/ [--zh-list-out reflow/r03_zslim]` |
 | `srt_reflow_build_r03.py` | 脚本断句填回（步骤 5 路径 A 脚本断句，2026-08-21）：由「匹配文件 `r03_matches/`（LLM 句子匹配）+ EN 预分句 `r03_normalized_1/` + ZH 模板骨架 `r03_normalized_2/`」机械生成 `r03_results/`——子单元复用模板子句段（机械断句）、EN 整句按匹配 E 组拼接、子单元 EN 按宽度比例机械切分（互斥拼接 == 整句）；**漏句留空**（匹配未覆盖的 Z/E 句产物写 `> ⚠️ 脚本断句·未匹配` 标记，不静默消失）；退出码 1 = 匹配解析问题 | `python scripts/srt_reflow_build_r03.py <r03_matches/> <r03_normalized_1/> <r03_normalized_2/> -o r03_results/` |
 | `srt_reflow2_etimeline.py` | **时间轴源头固化（reflow2 步骤 4）**：每块 r01（衔接归位后）按 `.?!` 切 E 句（复用 `split_en`），每 E 句在块内 OWNED cue 区间锚定（与消费端 `io.build_full` 同构：norm 去空格、无缝拼接；相邻 E 句共享 cue 按字符占比切分）→ `en_timeline/`（`E<n>\t<start> --> <end>\t<c<cues>>\t<文本>`，只读真值锚）；内嵌方括号标记剥离后锚；退出码 1 = 有 E 句锚定失败（MISS） | `python scripts/srt_reflow2_etimeline.py <chunks/> <r01_results/> --srt <01> -o reflow2/en_timeline/` |
 | `srt_reflow2_zsent.py` | **切 Z 句（reflow2 步骤 6 前半）**：每块 r02 按 `。！？…` 切 Z 句（复用 `split_zh`）→ `zh_sentences/`（每行 `Z<n> <整句>`，Z 每次从 r02 重算） | `python scripts/srt_reflow2_zsent.py <r02_results/> -o reflow2/zh_sentences/` |
@@ -53,7 +58,9 @@
 | `srt_reflow_check_sentence_len.py` | r01 补标点质量校验（步骤 3）：按 `.?!` 分句检测补标点质量——**分级告警**：硬（打回）单句逗号 >10（实测 11 逗号 E5/E22 为堆砌）/ 单句 >600 字符 / 句均 >350（断句稀疏）；软（提示复核，不阻断）单句逗号 ≥8 且字符 ≥250（疑似可断句，如 E15 式）；默认只给问题数，`--expand` 展开每处文件:行号+上下文，`--chunk <k>` 只查单块；退出码 1 = 有硬命中 | `python scripts/srt_reflow_check_sentence_len.py <r01_results/> [--max-comma 10] [--max-sent 600] [--max-avg 350] [--soft-comma 8] [--soft-sent 250] [--expand] [--chunk k] [--verbose]` |
 | `srt_check_terms.py` | 译文术语全量核对（reflow r02 / translate 共用）：逐条遍历 02_terms.md——01 定位原文出现单元 → 该单元译文须含确认译名（变体容错/长术语覆盖）；支持三种产物形态：reflow 块级（`<r02_results/> --chunks`）、translate 块级（`<_trans_results/> --chunks`，剥离 CARRY 结转行）、translate 合并稿（`<s04_draft.srt> --plan <s03_plan.md>`，段→cue 区间映射）；默认只给问题数，`--expand` 展开每条 ⚠️/ℹ️ 明细（行号/上下文/01 原句），`--chunk <k>` 只核对单块（ℹ️ 原文未命中与单块无关，单块模式跳过）；退出码 1 = 有未命中（复核后才放行） | `python scripts/srt_check_terms.py <01> <02_terms.md> <译文目录或srt> --chunks <chunks/> 或 --plan <s03_plan.md> [--expand] [--chunk k] [--verbose]` |
 
-> `srt_reflow_core/` 是 `srt_reflow.py` 的实现包（io / plan / anchor / allocate / alerts / reflow / attach），**非独立工具，勿直接调用**；入口只有 `srt_reflow.py`。
+> `srt_reflow_core/` 是 `srt_reflow.py` 的实现包（io / plan / anchor / allocate / alerts / reflow / attach / **punct** 断句引擎），**非独立工具，勿直接调用**；入口只有 `srt_reflow.py`。
+
+> `shared/request_identity.py` — **请求身份（HTTP User-Agent 联系方式）统一解析**（Wikimedia 政策要求脚本 UA 含联系方式，本项目由使用者配置而非内置作者信息）：优先级 = 环境变量 `TCTW_CONTACT` → `configs/request_identity.yaml` → git remote 探测 → 占位符+告警；被 `fetch_wiki.py` / `mojang_glossary` 共用。查看当前解析结果：`python -c "import sys;sys.path.insert(0,'scripts');from shared.request_identity import user_agent;print(user_agent())"`。
 
 > **SRT 解析注意（空 cue 必须保留）**：SRT 中的空文本 cue（仅索引 + 时间行、无正文）**必须保留**——`parse_srt` 用 `len(lines) >= 2` 判定，cues 数组才能与 SRT 序号严格对齐；若退回 `len(lines) < 3` 跳过空 cue，数组即错位、按 `idx-1` 访问全错。`srt_reflow_check_breaks` / `srt_reflow_breaks` / `srt_reflow_gap_scan` / `text_chunk` / `srt_check_segments` 等已统一为 `>=2`，**勿回退**；个别脚本仍用 `<3`（`srt_reflow_check_words` / `srt_check_terms` / `srt_check_plan_words`）但以 `cue_map.get(i, "")` 兜底，跳过空 cue 不致错位。
 
@@ -62,16 +69,16 @@
 | 脚本 | 用途 | 用法 |
 |------|------|------|
 | `fetch_wiki.py` | **Wiki 页面获取与缓存刷新（官方 MediaWiki API 直连，不经 MCP）**。内容源：默认 `explaintext` → `fidelity: plain`（正文可读、表格剥离）；`--wikitext` → `fidelity: lossless`（ID 表/色值/历史全保留）。工作模式：默认 **抓取**（参数 = 页面名）；`--refresh` = **刷新现缓存**（页面名作筛选，省略 = 全部）——用于缓存过期时的主动刷新与批量维护，`--dry-run` 只探测。**保真度只升不降**：默认拒绝低保真覆盖已有高保真缓存（防 `plain` 覆盖 `lossless`），`--force` 绕过 | `python scripts/fetch_wiki.py <页面...> [--wikitext] [--force]` / `python scripts/fetch_wiki.py --refresh [<页面...>] [--dry-run] [--interval N]` |
-| `request_identity.py` | **请求身份（HTTP User-Agent 联系方式）统一解析**——Wikimedia 政策要求脚本 UA 含联系方式，本项目由使用者配置而非内置作者信息。优先级：环境变量 `TCTW_CONTACT` → `configs/request_identity.yaml` → git remote 探测 → 占位符+告警；被 `fetch_wiki.py` / `mojang_glossary` 共用 | `python scripts/request_identity.py`（查看当前解析结果） |
 | `render_subagent_prompt.py` | **reflow/reflow2/translate 阶段二执行型块级任务 prompt 渲染（会话外落盘 `prompts/`）**：接入 `task-punctuate`/`task-translate`/`task-split`/`task-match`（reflow，**reflow2 同名任务 `--skill reflow2` 取 reflow2 版**：task-punctuate/translate/match 产物在 `reflow2/`）+ `task-merge`/`task-translate`/`task-humanize`（translate，**同名任务 `--skill translate-redstone` 选 translate 版**）；读模板 + 纪律母版 `_discipline.md` + 产物格式约定 + 先验知识（术语/humanizer 注入）→ `prompts/<task>-chunk_<k>.txt`；完整 prompt 不进主会话历史 | `python scripts/render_subagent_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--chunks-dir <chunks目录>] [--skill <skill>] [--prior-file <文件>]` |
 | `render_preprocess_prompt.py` | **preprocess 阶段一执行型块级任务 prompt 渲染（会话外落盘 `prompts/`）**：接入 `task-term-recognition`（scan 命中项按 OWNED cue 过滤 + 领域术语集 + ASR 修正映射）/ `task-en-preprocess`（asr_fixes 全局+局部 + 领域术语集）；独立于 `render_subagent_prompt.py`（reflow/translate 阶段二渲染）。**§1.2 查证（`task-term-resolve`）不走本脚本**——研究型单次任务，任务文件即 prompt，派发双引用 | `python scripts/render_preprocess_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--scan <scan_terms.txt>] [--glossary <csv...>] [--asr-fixes <局部文件>]` |
 | `refresh_cache.py` | 统一入口：检查三类缓存；Mojang/TechMC 自动刷新；Wiki 只告警不自动抓取（Agent 按 wiki-tools 降级链按需刷新）。**`--check-page <页面...>`** = 单页过期判定（读缓存后必做）：按 front matter `fetched`（缺失回退 mtime）与 TTL 判 `未过期`/`过期`/`未缓存`，退出码 1 = 有需处理项 | `python scripts/refresh_cache.py [--force\|--dry-run\|--ttl N] [--check-page <页面...>]` |
 | `check_index_stale.py` | 对比 submodule 当前 commit 与索引记录 commit，报告哪些索引需更新 | `python scripts/check_index_stale.py [--only <repo>]` |
+| `check_param_sync.py` | **参数同步校验（零副本）**：文档里的参数值 vs `shared.srt_common` 常量——`VALUE_CHECKS` 只登记「文件 + 正则 + 期望常量引用」，**期望值运行时读取**（不在脚本里重复数值）。同时查：旧模块名残留（改名后静默生效的隐患）、未使用的值占位符（死代码）。**改参数后必跑** | `python scripts/check_param_sync.py [--list] [--file <子串>] [--expand]` |
 | `setup_editors.py` | 编辑器适配初始化（跨平台，创建 Claude Code 等所需的 symlink） | `python scripts/setup_editors.py [--force]` |
 
 ## 验证脚本统一反馈约定
 
-所有校验闸门脚本（`srt_check_width` / `srt_check_segments` / `srt_check_plan_words` / `srt_check_terms` / `srt_reflow_check_*` / `check-r03`）统一反馈策略，控制上下文占用：
+所有校验闸门脚本（`srt_check_width` / `srt_check_segments` / `srt_check_plan_words` / `srt_check_terms` / `srt_reflow_check_*` / `check-r03` / `check_param_sync`）统一反馈策略，控制上下文占用：
 
 - **默认（不带展开参数）**：只输出「问题数目 + 提示」——各问题定位一行统计（块/段/空隙点 + 数量），**不输出错误内容、不输出上下文**（行号/片段/原文）。
 - **`--expand`**：展开每处问题的详细内容 + 上下文（文件:行号 + 片段，供 Agent 直接定位编辑；主会话收集 task-fix 错误清单时用）。
@@ -80,6 +87,28 @@
 - 退出码语义不变（0=通过；1=打回/有未命中）。
 
 每个脚本的详细说明见 `python <script>.py --help`。
+
+## 修改参数 / 阈值时的同步清单
+
+数值**不是**只存一处就能自动一致——代码要能执行、文档要能说明，所以存在一个天然下限：**每类读者各 1 处**（详见下表）。改参数时按此逐项核对，**勿凭记忆填写数值**。
+
+| 读者 | 能否解析常量名 | 占位符能否注入 | 该读者侧存值下限 |
+|------|----------------|----------------|------------------|
+| 主 agent（读 SKILL 主文） | 能（有全局视野 + 工具） | 不适用 | 1 处**权威段**；**其余内联处保留自包含值**（见下「为何不全部改成指向」） |
+| subagent（被注入任务模板 / 纪律母版） | **不能**（无主 agent 上下文） | **能**（渲染脚本） | **0 处**——模板写占位符，由 `render_subagent_prompt.py` 填真实值 |
+| subagent（自行 read `docs/PRODUCT_FORMATS*.md`） | **不能** | **不能**（不经渲染） | 保留值，但须标注**形态描述、非判据**（防与判据冲突时误信） |
+
+> **为何不全部改成「指向权威段」**：多个 Skill 明确**运行时不加载** `segment-subtitles`（见 `reflow-redstone/SKILL.md` 权威表「规则已内联语义回填文件，**不加载**」）。在这些位置写「见权威段」会使 agent 要么额外加载（违背省上下文）、要么拿不到值。**这是「省上下文」与「单一事实源」的真实取舍** —— 取舍结论 = 内联保留值 + 权威段登记消费方清单 + **校验脚本兜底同步**（`check_param_sync.py`）。
+
+**改动步骤**：
+
+1. 改**共享层常量**（`shared/srt_common.py` 等；每个常量旁标注了「权威说明位置」注释，只含路径、不含值）。
+2. 打开该注释指向的**权威文档段**（如 `segment-subtitles`「行宽规则」），同步语义描述 + 上下界约束 + **该段的「内联消费方」表**（改一处即可看全需同步的文件）。
+3. **跑 `python scripts/check_param_sync.py`** —— 零副本校验：期望值运行时从代码常量读取，直接列出所有滞后文档位置（含行号）。按报错逐项改。
+4. 若模板新增了值占位符，在 `render_subagent_prompt.py` 的 `VALUE_PLACEHOLDERS` 登记（渲染时校验无残留并告警）。
+5. 跑对应校验脚本确认行为未变（对比 `--help` 默认值 + 既有 `_work/` 产物重跑比对）。
+
+> ⚠️ **别把「无脚本兜底」的数值写成「由脚本判定」**——subagent/agent 会误信而不再自查，比留着旧值更危险。约束类型（硬闸门 / 脚本判定 / 实践建议）须在权威段显式标注。
 
 ## 安全规则
 

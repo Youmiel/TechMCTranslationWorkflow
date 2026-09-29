@@ -11,14 +11,14 @@ Z 句（中文）通过对齐（align，Z组=E组）**继承** E 固化时间—
 2. **拆子段**：Z 句文本超宽（>hard_max）或时长碎片（<min_ms）时按中文阅读速度/宽度比例在
    E 组区间内细分（复用 allocate._allocate_by_weight 逻辑：吸附真实 cue 边界 ≤snap_ms，
    无则 100ms 取整预测点）——阅读舒适优先（≤22 字），不因「尊重原轴」保留超长句。
-   拆段标点分级 = **标点功能角色表**（`srt_reflow_punct`）——句末标点（`。！？…`，terminator）
+   拆段标点分级 = **标点功能角色表**（`srt_reflow_core.punct`）——句末标点（`。！？…`，terminator）
    为显示段硬边界（逐句独立成段）；句内按断点**强度**做代价最小化拼合：
    `strong`（`；：—`）> `clause`（`，`）> `list`（`、`）。
-   **拼合 = 代价最小化**（取代旧「贪心填满 hard_max」与「分号硬断」）：贪心会吞掉强断点
+   **拼合 = 代价最小化**（而非「贪心填满 hard_max」）：贪心会吞掉强断点
    （实例 `…回答一下：第一，`(17) + `怎么搭…？`(12)，断点落在逗号而非冒号；
    代价最小化给出 `…回答一下：`(14) + `第一，怎么搭…？`(15)）。
-   分号自 2026-09-21 起**降为 strong 强优先**（可被宽度否决），不再硬断——
-   旧裁定「并列项不挤在同一屏段」改由断点代价表达（`strong` 2.0 ≪ `clause` 5.0）。
+   分号 = `strong` 强优先（可被宽度否决）、不硬断——
+   断点代价表达「并列项不挤在同一屏段」（`strong` 2.0 ≪ `clause` 5.0）。
    由标点切不动仍超宽的单句保留原样并计入告警（此类需回 r02 改写句子）
 
 产物：
@@ -41,24 +41,18 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import (
-    collect_chunk_files, fmt, text_width,
+from shared.srt_common import (
+    collect_chunk_files, fmt, text_width, CJK_SPEED, MIN_FRAG_MS, SNAP_MS,
     SOFT_MIN as SOFT_MIN_UNIT, SOFT_MAX, HARD_MAX, MIN_UNIT as DEFAULT_MIN_UNIT,
 )
 from srt_reflow_presplit import split_zh, pack_candidates
-from srt_reflow_punct import build_profile, split_atomic
+from srt_reflow_core.punct import build_profile, split_atomic
 from srt_reflow_build_r03 import split_en_by_weights
 
 PM = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PM not in sys.path:
     sys.path.insert(0, PM)
 from scripts.srt_reflow_core.allocate import _allocate_by_weight, cjk_reading_ms
-
-# 最小单元时长（< 此值 = 长句碎片，触发拆/并决策）
-MIN_FRAG_MS = 1000
-# 阅读速度（字/秒，allocate 同款）
-CJK_SPEED = 5.0
-SNAP_MS = 300
 
 MATCH_RE = re.compile(r"^\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*=\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*$")
 ET_RE = re.compile(r"^E(\d+)\t(.+?)\t.+?\t(.*)$")   # en_timeline 行：E<n>\t<start> --> <end>\tc..\t文本
@@ -229,7 +223,7 @@ def main():
                     help="双语行语言顺序（默认 zh-en：中文行在前、英文行在后）")
     ap.add_argument("--snap-ms", type=int, default=SNAP_MS, help="吸附真实 cue 边界最大距离（默认 300ms）")
     ap.add_argument("--cjk-speed", type=float, default=CJK_SPEED, help="中文阅读速度 字/秒（默认 5）")
-    # 标点角色表覆盖（srt_reflow_punct；不传 = 语言默认）
+    # 标点角色表覆盖（srt_reflow_core.punct；不传 = 语言默认）
     ap.add_argument("--punct-terminators", default=None, help="句界字符集（默认 。！？…；扩它会改变 Z 句数、使 align/ 失效）")
     ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认 ；：—）")
     ap.add_argument("--punct-clause", default=None, help="句内断点字符集（默认 ，）")
@@ -323,7 +317,7 @@ def main():
             # 候选段按阅读时长权重分配区间
             # 句界硬边界：逐句独立成段（禁止跨句拼合）；句内超软限则按**断点强度**
             # （角色表 ：strong=冒号/分号 > clause=逗号 > list=顿号）做代价最小化拼合——
-            # 取代旧「贪心填满 hard_max」（会吞掉强断点：`…回答一下：第一，`+`怎么搭…？`）。
+            # 不用「贪心填满 hard_max」（会吞掉强断点：`…回答一下：第一，`+`怎么搭…？`）。
             # 单段切不动仍超宽时保留（由告警暴露，需回 r02 改写）
             units = []
             for st in sents:

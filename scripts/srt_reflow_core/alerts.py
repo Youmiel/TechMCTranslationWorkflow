@@ -4,7 +4,14 @@ import json
 from pathlib import Path
 
 from .io import fmt, text_width, parse_srt
-from ..srt_reflow_common import SOFT_MAX as WIDTH_SOFT_MAX
+from shared.srt_common import (
+    SOFT_MAX as WIDTH_SOFT_MAX,
+    CJK_SPEED,
+    JUMP_GAP_MS,
+    LONG_GAP_MS,
+    LONG_UNIT_MS,
+    ULTRA_SHORT_MS,
+)
 from .plan import parse_r03_any
 from .allocate import cjk_reading_ms, MIN_FRAG_MS, READING_MISMATCH_RATIO, READING_MIN_GAP_MS
 
@@ -30,7 +37,7 @@ def build_alerts(alerts, timeline, anchored, cues):
     durs = sorted(t[2] - t[1] for t in timeline)
     median = durs[len(durs) // 2] if durs else 0
     alerts.append(f"单元数: {len(timeline)}  时长中位: {median}ms")
-    long_th = max(15000, 2 * median)
+    long_th = max(LONG_UNIT_MS, 2 * median)
     sent_count, sent_key = _unit_span_index(anchored)
     unit_loc = {u[0]: (a["s"].src, a["s"].unit_lines.get(u[0], a["s"].line)) for a in anchored
                 for u in (a["s"].units or [(a["s"].key, a["s"].en, a["s"].zh)])}
@@ -41,7 +48,7 @@ def build_alerts(alerts, timeline, anchored, cues):
         loc_s = f"{loc[0]}:行{loc[1]}" if loc[0] else ""
         if d > long_th:
             alerts.append(f"⏱️ 超长单元 {t[0]} {d}ms（>{long_th}ms, r03 {loc_s}）: {t[3]}")
-        elif d < 300:
+        elif d < ULTRA_SHORT_MS:
             alerts.append(f"⏱️ 极短单元 {t[0]} {d}ms（r03 {loc_s}）: {t[3]}")
         elif d < MIN_FRAG_MS:
             n = sent_count.get(t[0], 1)
@@ -54,22 +61,22 @@ def build_alerts(alerts, timeline, anchored, cues):
             else:
                 alerts.append(f"⏱️ 短句单元 {t[0]} {d}ms（r03 {loc_s}）: {t[3]}（独立短句，人工复核可接受性）")
 
-    # 单元内 gap > 5s（锚定 cue 范围内相邻 cue 间隔）
+    # 单元内 gap > LONG_GAP_MS（锚定 cue 范围内相邻 cue 间隔）
     for a in anchored:
         s, si, ei = a["s"], a["si"], a["ei"]
         if si is None or ei is None:
             continue
         for k in range(si, ei):
             gap = cues[k + 1]["start"] - cues[k]["end"]
-            if gap > 5000:
+            if gap > LONG_GAP_MS:
                 alerts.append(
                     f"⏱️ 整句 {s.key} 内部空隙 {gap}ms（c{cues[k]['idx']}→c{cues[k+1]['idx']}）: {cues[k]['text'][:30]}... / {cues[k+1]['text'][:30]}..."
                 )
 
-    # 相邻单元边界间隔 > 10s（剪辑跳转）
+    # 相邻单元边界间隔 > JUMP_GAP_MS（剪辑跳转）
     for i in range(1, len(timeline)):
         gap = timeline[i][1] - timeline[i - 1][2]
-        if gap > 10000:
+        if gap > JUMP_GAP_MS:
             alerts.append(
                 f"✂️ 剪辑跳转点 {fmt(timeline[i-1][2])}→{fmt(timeline[i][1])}（间隔 {gap}ms）：{timeline[i-1][0]} → {timeline[i][0]}"
             )
@@ -77,9 +84,9 @@ def build_alerts(alerts, timeline, anchored, cues):
     # 预测点清单（去重）+ 汇总
     preds = sorted({t[1] for t in timeline if t[5]} | {t[2] for t in timeline if t[6]})
     alerts.append(f"预测点（100ms 取整、未吸附）: {len(preds)} 处 -> " + ", ".join(fmt(p) for p in preds))
-    alerts.append(f"剪辑跳转点: {sum(1 for i in range(1, len(timeline)) if timeline[i][1] - timeline[i-1][2] > 10000)} 处")
-    alerts.append(f"超长单元: {sum(1 for t in timeline if t[2]-t[1] > max(15000, 2*median))} 处")
-    alerts.append(f"极短单元(<300ms): {sum(1 for t in timeline if t[2]-t[1] < 300)} 处")
+    alerts.append(f"剪辑跳转点: {sum(1 for i in range(1, len(timeline)) if timeline[i][1] - timeline[i-1][2] > JUMP_GAP_MS)} 处")
+    alerts.append(f"超长单元: {sum(1 for t in timeline if t[2]-t[1] > max(LONG_UNIT_MS, 2*median))} 处")
+    alerts.append(f"极短单元(<{ULTRA_SHORT_MS}ms): {sum(1 for t in timeline if t[2]-t[1] < ULTRA_SHORT_MS)} 处")
     alerts.append(f"长句碎片(<{MIN_FRAG_MS}ms): {n_frag} 处")
 
     # 行宽预警（超软限告警；超硬限为硬违规、已由 check-r03 拦截）
@@ -114,7 +121,7 @@ def write_anchored_json(detail, path):
     print(f"已写入 {path}（{len(detail)} 整句锚定明细，JSONL 每行一句）")
 
 
-def check_duration(r04_path, r03_path, min_ms=MIN_FRAG_MS, cjk_speed=5.0,
+def check_duration(r04_path, r03_path, min_ms=MIN_FRAG_MS, cjk_speed=CJK_SPEED,
                    mismatch_ratio=READING_MISMATCH_RATIO, min_gap_ms=READING_MIN_GAP_MS):
     """回填后时长复核（Agent 智能判断辅助，不重算时间轴）：长句碎片 + 独立短句 + 阅读失配检测。
 

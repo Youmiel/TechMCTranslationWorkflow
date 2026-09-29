@@ -23,7 +23,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import collect_chunk_files
+from shared.srt_common import collect_chunk_files
 from srt_reflow_presplit import split_zh, render_zslim
 
 

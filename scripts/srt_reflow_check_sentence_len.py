@@ -22,15 +22,18 @@
 
 用法（命令根 = Project_Main/）：
   python scripts/srt_reflow_check_sentence_len.py reflow/r01_results/
-    [--max-comma 15] [--max-sent 600] [--max-avg 350] [--soft-comma 8] [--soft-sent 250] [--expand] [--chunk 3] [--verbose]
+    [--max-comma 10] [--max-sent 600] [--max-avg 350] [--soft-comma 8] [--soft-sent 250] [--expand] [--chunk 3] [--verbose]
 """
 import argparse
 import re
 import sys
 
+# 单一引用参数（仅本脚本使用，已便于维护）：句长五阈值 = 下方 main 内的 argparse 默认值。
+# 若今后被其它脚本复用，一并迁往 shared/srt_common.py（与宽度/时间阈值同处）。
+
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
-from srt_reflow_common import collect_chunk_files, ctx_snippet
+from shared.srt_common import collect_chunk_files, ctx_snippet
 from srt_reflow_presplit import split_en
 
 

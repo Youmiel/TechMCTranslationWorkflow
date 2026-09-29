@@ -23,9 +23,27 @@ import os
 import re
 import sys
 
+sys.stdout.reconfigure(encoding="utf-8")
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(PROJECT_ROOT, ".github", "skills")
 DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md")
+
+SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+if SCRIPTS_DIR not in sys.path:
+    sys.path.insert(0, SCRIPTS_DIR)
+from shared.srt_common import HARD_MAX, SOFT_MAX, MAX_LINE  # noqa: E402
+
+# 值占位符：模板里写占位符，渲染时从共享层常量填入真实值。
+# 为什么需要它（两条路都不能走）：
+#   - 模板里直接写数字 → 那是第 2 份副本，改常量后必然漂移（2026-09-27 行宽 26→27 即此因）；
+#   - 模板里写「见 HARD_MAX」→ **subagent 没有主 agent 上下文**，无法解析常量名，它必须拿到真实值
+#     （subagent 提示词禁止引用主 agent 的参数名；渲染脚本的占位符是唯一例外通道）。
+VALUE_PLACEHOLDERS = {
+    "<行宽硬限>": f"{HARD_MAX:g}",
+    "<行宽软限>": f"{SOFT_MAX:g}",
+    "<折行宽度>": f"{MAX_LINE:g}",
+}
 
 # 模板尾部「渲染步骤」说明区的起点（渲染时剥离——该区块给主会话/维护者看：
 # 声明本任务按什么顺序、用哪些内容拼接，不是 subagent 执行内容）。含前置分隔线，一并剥离避免残留孤立 `---`；
@@ -327,6 +345,16 @@ def collect_data(cfg, video_dir, chunk, chunks_dir):
     return "\n".join(lines)
 
 
+def apply_value_placeholders(text, src_label):
+    """注入值占位符（subagent 无法解析常量名，必须给真实值）；返回替换后文本并告警残留。"""
+    for ph, val in VALUE_PLACEHOLDERS.items():
+        text = text.replace(ph, val)
+    left = [ph for ph in VALUE_PLACEHOLDERS if ph in text]
+    if left:
+        print(f"⚠️ {src_label} 存在未替换的值占位符: {', '.join(left)}", file=sys.stderr)
+    return text
+
+
 def render(task, video_dir, chunk, prior_files, chunks_dir, skill=None):
     cfg = resolve_cfg(task, skill)
     video_name = os.path.basename(os.path.normpath(video_dir))
@@ -342,12 +370,15 @@ def render(task, video_dir, chunk, prior_files, chunks_dir, skill=None):
     text = text.replace("<视频名>", video_name)
     text = text.replace("chunk_<k>", f"chunk_{chunk:03d}")
     text = text.replace("<k>", f"{chunk:03d}")
+    # 2b. 值占位符（注入共享层常量的真实值）
+    text = apply_value_placeholders(text, f"模板 {template_path}")
 
     # 3. 纪律母版（单一权威 _discipline.md，TASK_ROLE 按任务替换）
     #    剥离维护性头部（文件标题 + 说明行，到首个 "## " section 标题之前）——那部分给脚本维护者看，
     #    不注入 subagent 提示词；正文 5 类纪律 + 结果格式契约说明原样注入。
     discipline = read(DISCIPLINE_PATH)
     discipline = discipline[discipline.find("## "):].replace("{TASK_ROLE}", cfg["role"])
+    discipline = apply_value_placeholders(discipline, "纪律母版 _discipline.md")
 
     # 4. 产物格式约定（subagent 唯一允许的外部读取）
     fmt_section = cfg["format_section"].replace("<k>", f"{chunk:03d}")

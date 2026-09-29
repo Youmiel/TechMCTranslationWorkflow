@@ -29,18 +29,22 @@
    - `bracket_balance` 括号配平（配对区间内不切 = 保护区间）
 
 用法（模块）：
-    from srt_reflow_punct import build_profile, split_atomic, pack_by_strength, split_sentences
+    from srt_reflow_core.punct import build_profile, split_atomic, pack_by_strength, split_sentences
     prof = build_profile("zh")
-    units = split_units(text, lang="zh", hard_max=27, min_unit=5, soft_min=15, soft_max=22)
+    units = split_units(text, lang="zh")   # 宽度阈值默认引 shared.srt_common（硬限/最小单元/目标区间）
     sents = split_sentences(text, prof)          # 按句界切句
 
 命令根 = Project_Main/；本模块被 srt_reflow_presplit / srt_reflow2_backfill / srt_reflow2_zsent 复用。
 """
 import re
 
-from srt_reflow_common import text_width
+from shared.srt_common import (
+    text_width, SOFT_MIN, SOFT_MAX, HARD_MAX, MIN_UNIT,
+)
 
 # ---- 角色常量（强度降序；断句/拼句两侧共用同一套角色）----
+# 单一引用参数（仅本模块定义、本模块消费，已便于维护）：若今后被 punct 以外复用，
+# 连同下列角色表/代价/权重一并迁往 shared/srt_common.py（与宽度阈值同处）。
 TERMINATOR = "terminator"   # 句界（显示段硬边界；Z/E 句界）
 RPAREN = "rparen"           # 右括号后（括注插入语后可断）
 STRONG = "strong"           # 强断点（并列/引出/插入）
@@ -50,7 +54,7 @@ LIST = "list"               # 并列内部（最后手段）
 ROLE_ORDER = (TERMINATOR, RPAREN, STRONG, CLAUSE, LIST)   # 强度降序
 
 # 断开代价（越小越优先在此断开；terminator=0 因句界本身是硬边界、不构成「代价」）
-# LIST（顿号）2026-09-27 由 8.0 提到 18.0（用户裁定「顿号处不断」）：
+# LIST（顿号）代价取 18.0（用户裁定「顿号处不断」）：
 #   上限约束：< FRAG_PENALTY(20.0) → 宁可顿号断开，也不制造碎片；
 #   下限依据：让「合并超软上限」胜过「在顿号断开」——实测案例
 #   `…同为红石玩家、YouTuber 的 mattbatwings 一样，`：
@@ -66,7 +70,7 @@ DEFAULT_BREAK_COST = {
 }
 
 # 默认角色字符集（terminator 保持现状以保 Z 句不变式）
-# 2026-09-27 用户裁定「顿号处不断」：顿号保留为断点角色（list），但代价提到 18.0（见 DEFAULT_BREAK_COST）——
+# 顿号保留为断点角色（list），但代价取 18.0（见 DEFAULT_BREAK_COST）：
 # 语义 = 「最后手段」：顿号连接并列成分，断开会使语义断裂
 # （实例 `所以这次我和同为红石玩家、| YouTuber 的 mattbatwings 一样，`），
 # 故 DP 应优先选其他断点；但**不得完全禁止**——并列项长句只能在此断，禁止会切不动、直接超硬限（实测 4 个项目出现 12 段超限）。
@@ -270,7 +274,7 @@ def split_atomic(text, profile):
         role = profile.role_of(ch)
         if role is not None and not is_protected(text, i):
             # 断点 = **整个连续标点序列**（不分角色）：`》。` / `》，` / `?!` / `——` 属同一断点，
-            # 不得拆开。旧实现只并入「连续同类标点」，于是 `…重制版》`(rparen) 处切一刀后，
+            # 不得拆开。若只并入「连续同类标点」，则 `…重制版》`(rparen) 处切一刀后，
             # 紧跟的 `，` 成了新段首 → 打包产出 `，这个系列会教你红石是怎么运作的，`
             # （用户 2026-09-27 指出；5 个项目共 6 处）。
             # 段尾角色取序列中**最强**者（break_cost 最小）——`）`+`。` 取 terminator，
@@ -388,8 +392,11 @@ def pack_by_strength(segs, hard_max, min_unit, soft_min=None, soft_max=None,
     return [("".join(texts[i:j]), sum(widths[i:j])) for i, j in cuts]
 
 
-def split_units(text, lang="zh", hard_max=27.0, min_unit=5.0, soft_min=15.0, soft_max=22.0,
-                profile=None):
-    """一步到位：切原子段 + 代价最小化拼合 → [(文本, 宽度)]（供拆显示段直接调用）。"""
+def split_units(text, lang="zh", hard_max=HARD_MAX, min_unit=MIN_UNIT,
+                soft_min=SOFT_MIN, soft_max=SOFT_MAX, profile=None):
+    """一步到位：切原子段 + 代价最小化拼合 → [(文本, 宽度)]（供拆显示段直接调用）。
+
+    宽度阈值默认引 shared.srt_common 单一事实源（硬限/最小单元/目标区间）；调用方仍可显式覆盖。
+    """
     prof = profile or build_profile(lang)
     return pack_by_strength(split_atomic(text, prof), hard_max, min_unit, soft_min, soft_max, prof)

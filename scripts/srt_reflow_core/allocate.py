@@ -12,13 +12,15 @@
 中文阅读速度默认 5 字/秒（--cjk-speed 可调，0=禁用阅读校验）。
 """
 from .io import norm, fmt, text_width
+from shared.srt_common import (
+    CJK_SPEED,
+    MIN_FRAG_MS,
+    READING_MISMATCH_RATIO,
+    READING_MIN_GAP_MS,
+)
 
-READING_MISMATCH_RATIO = 0.7  # 分配时长 < 阅读所需×该值 → 触发阅读感知插值（倒装/中英时长差）
-READING_MIN_GAP_MS = 300      # 显著失配最小毫秒数（避免轻微差异过度触发插值、偏离 cue 锚定）
-MIN_FRAG_MS = 1000            # 长句碎片阈值：单条时长 <1s 须回报 Agent 裁决（与 SKILL「单句时长≥1s」一致）
 
-
-def cjk_reading_ms(text, speed=5.0):
+def cjk_reading_ms(text, speed=CJK_SPEED):
     """中文阅读所需时长估算：视觉宽度 / 阅读速度（字/秒）→ ms。
 
     默认 5 字/秒（字幕阅读含理解停顿，保守取值）；speed<=0 返回 0（禁用阅读校验）。
@@ -158,7 +160,7 @@ def allocate_by_ratio(units, start, end, real_bounds, snap_ms):
     return _allocate_by_weight(units, [len(u[2]) for u in units], start, end, real_bounds, snap_ms)
 
 
-def allocate_by_reading(units, start, end, real_bounds, snap_ms, speed=5.0):
+def allocate_by_reading(units, start, end, real_bounds, snap_ms, speed=CJK_SPEED):
     """句内分配·阅读感知插值：按各单元中文阅读所需时长（cjk_reading_ms）比例分配整句区间
     → 就近吸附真实 cue 边界（≤ snap_ms，不吞空隙）→ 无则 100ms 取整预测点。
 

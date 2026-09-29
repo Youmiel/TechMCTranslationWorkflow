@@ -6,16 +6,42 @@
 - 非语音标记：is_pure_marker（[Music]/[Applause] 等方括号标记动态识别）
 - 块：collect_chunk_files（chunk_<k>.txt 收集）/ parse_owned_cue_range（OWNED cue 区间）
 
-归属约定：多个独立脚本 + srt_reflow_core 包共用的**通用函数**放本模块；
+归属约定：多个独立工具 + srt_reflow_core 包共用的**通用函数**与**跨模块阈值常量**放本模块；
 reflow 特有逻辑（锚定/分配/校验等）留在 srt_reflow_core/。
 
+单一引用参数（仅本模块定义、无副本，已便于维护）不迁移；若需被他处复用，连同定义一并迁到本模块。
+
+跨模块阈值常量按**语义分组**归并（非按数值）：同值不同义者各自独立定义。
+
 导入方式：
-- 独立脚本（`python scripts/srt_xxx.py` 运行，sys.path[0]=scripts/）：`from srt_reflow_common import ...`
-- srt_reflow_core 包内：`from ..srt_reflow_common import ...`
+- 独立工具（`python scripts/srt_xxx.py` 运行，sys.path[0]=scripts/）：`from shared.srt_common import ...`
+- `srt_reflow_core` 包内：`from shared.srt_common import ...`（绝对导入——包存在顶层/包内两种导入路径，
+  相对导入 `..shared` 在顶层路径下会越界）
 """
 import re
 
 MAX_LINE = 1000      # 单行字符上限（与折行宽度一致；超限 read_file 不可读，就地折行重排）
+
+# ---- 时间与阅读速度阈值（单一事实源；改这里即全链生效）----
+# 为什么在此：这些值被 reflow 主流程 / 回填 / 告警 / 分块 / 空隙探测多处消费，
+# 分散定义时各副本易脱节——集中于此消除该风险。
+# 归并原则：**按语义分组，不按数值**——同值不同义者各自独立定义（如 READING_MIN_GAP_MS 与 ULTRA_SHORT_MS 同为 300）。
+# 微调须知：改值后跑 `python scripts/check_param_sync.py` 校验文档同步（零副本：期望值运行时读取本模块）。
+LONG_GAP_MS = 5000            # 长停顿阈值：相邻语音 cue 间隔 > 此值 = 空隙点
+#   权威说明：`.github/skills/redstone-conventions/SKILL.md`「空隙点」节（5s/10s 语义与用途）
+JUMP_GAP_MS = 10000           # 剪辑跳转阈值：相邻单元边界间隔 > 此值 = 剪辑跳转
+#   权威说明：同上
+MIN_FRAG_MS = 1000            # 长句碎片阈值：单元时长 < 此值 = 碎片，须回报 Agent 裁决
+#   权威说明：`.github/skills/segment-subtitles/SKILL.md`「阅读时长」节（单条时长通常 ≥1s）
+SNAP_MS = 300                 # 切分点吸附真实 cue 边界的最大距离（无则 100ms 取整预测点）
+#   权威说明：`.github/skills/reflow-redstone/semantic-reflow.md`（吸附与 100ms 预测点）
+READING_MISMATCH_RATIO = 0.7  # 分配时长 < 阅读所需 × 此值 → 触发阅读感知插值
+#   权威说明：`.github/skills/segment-subtitles/SKILL.md`「阅读时长」节（显著失配判据）
+READING_MIN_GAP_MS = 300      # 显著阅读失配最小毫秒数（避免轻微差异过度触发插值）
+CJK_SPEED = 5.0               # 中文阅读速度（字/秒）；0 = 禁用阅读校验
+#   权威说明：`.github/skills/segment-subtitles/SKILL.md`「阅读时长（5 字/秒）」节
+ULTRA_SHORT_MS = 300          # 极短单元告警阈值（回填告警分类用，与上者同值不同义）
+LONG_UNIT_MS = 15000          # 超长单元基准阈值：实际阈值 = max(此值, 2 × 时长中位）
 
 BRACKET_RE = re.compile(r"\[[^\]]*\]")   # 方括号非语音标记（[Music]/[Applause] 等）
 TS_RE = re.compile(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})")
@@ -179,10 +205,10 @@ def loc_of(path):
     return os.path.basename(path)
 
 
-# ---- 视觉宽度（通用工具；2026-08-20 自 srt_reflow_core/io.py 上移，供独立脚本与 reflow 核心复用）----
+# ---- 视觉宽度（通用工具；供独立脚本与 reflow 核心复用）----
 # ---- 行宽阈值（单一事实源；改这里即全链生效）----
 # 为什么在此：生成侧（presplit 机械化断句 / backfill 拆子段）与校验侧（check-r03 / check-width / alerts）
-# 必须同一口径——否则生成侧算 26 放行、校验侧算 27 报错（2026-09-27 曾因副本脱节出假 ERROR）。
+# 必须同一口径——否则生成侧与校验侧算法脱节会出**假 ERROR**（生成侧放行、校验侧报错）。
 # 语义：目标区间 [SOFT_MIN, SOFT_MAX]，超 SOFT_MAX = 软告警、超 HARD_MAX = 硬违规（必切/打回）。
 # 仅作**默认值**——各脚本仍可 CLI 覆盖（`--soft-max` / `--hard` / `--warn`），用于单视频调试。
 SOFT_MIN = 15.0
@@ -197,14 +223,10 @@ DIGIT_RE = re.compile(r"[0-9]")
 
 
 def text_width(s):
-    """视觉宽度：全角=1.0 / 拉丁=0.4 / 数字=0.5 / 空格=0.4。
+    """视觉宽度：全角=1.0 / 拉丁=0.4 / 数字=0.5 / 空格=0.4（用户实测播放器口径）。
 
-    修正史（每次改动都会平移各脚本阈值语义，须同步各引用处）：
-    - 2026-08-11：拉丁/数字由 1.5/1.0 改为 0.5（此前虚高把带英文行推成长句）。
-    - 2026-09-27：拉丁/空格由 0.5 降为 0.4——用户实测「所以这次我和同为红石玩家、YouTuber 的
-      mattbatwings 一样，」在播放器里显示 26.5，旧口径（拉丁/空格 0.5）算成 28.5、偏大 2.0
-      （= 20 拉丁 × 0.1）。比例字体下拉丁与空格平均宽度约为全角的 0.4。数字保持 0.5
-      （多为等宽数字、未实测偏差）。行宽硬限随本次由 26 调至 27。
+    系数含义：比例字体下拉丁与空格平均宽度约为全角的 0.4；数字取 0.5（多为等宽数字）。
+    每次改动都会平移各脚本阈值语义——改系数须同步全部阈值消费方（跑 `check_param_sync.py`）。
 
     已按 Unicode 块通用化（含假名/谚文/扩展表意），不再只认 CJK——将来加书写系统
     只需扩展 FULLWIDTH_RE 等判定，权重不改。被 check-r03 / reflow 行宽告警 / presplit 机械化断句复用。

@@ -2,15 +2,15 @@
 """srt_reflow 基础 I/O 与语言无关工具：时间解析/格式化/归一化/01 解析/全文拼接。
 
 多语言扩展（短期已落地）：norm 按拉丁语系归一化（NFKD 去重音 é→e + 小写 + 去非字母数字撇号，
-覆盖 en/fr/de/es 等）；**text_width（视觉宽度）已上移至 srt_reflow_common**（Unicode 块通用，
-全角=1.0 / 拉丁=0.5 / 数字=0.5 / 空格=0.5，含假名/谚文/扩展表意），本模块 re-export 供
+覆盖 en/fr/de/es 等）；**text_width（视觉宽度）已上移至 shared/srt_common.py**（Unicode 块通用，
+全角=1.0 / 拉丁=0.4 / 数字=0.5 / 空格=0.4，含假名/谚文/扩展表意），本模块 re-export 供
 check-r03 / reflow / presplit 机械化断句复用。中期/长期扩展见 srt_reflow.py 顶部 docstring「多语言扩展」。
 """
 import re
 import unicodedata
 from pathlib import Path
 
-from ..srt_reflow_common import parse_time, fmt, BRACKET_RE, text_width
+from shared.srt_common import parse_time, fmt, BRACKET_RE, text_width
 
 LATIN_KEEP_RE = re.compile(r"[^a-z0-9']")
 

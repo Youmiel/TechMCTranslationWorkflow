@@ -35,7 +35,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import collect_chunk_files, parse_owned_cue_range, strip_stitch_marks
+from shared.srt_common import collect_chunk_files, parse_owned_cue_range, strip_stitch_marks
 
 FORM_SEP = re.compile(r"[\/／;；]")        # 原文词形分隔（/ ／ ; ；）
 TRAN_SEP = re.compile(r"[\/／、;；]")      # 译名变体分隔（/ ／ 、 ; ；）

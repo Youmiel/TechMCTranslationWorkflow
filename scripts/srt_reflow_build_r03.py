@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""脚本断句填回（机械断句路径，2026-08-21）：由「匹配文件 + EN 预分句 + ZH 模板骨架」机械生成 r03_results。
+"""脚本断句填回（机械断句路径）：由「匹配文件 + EN 预分句 + ZH 模板骨架」机械生成 r03_results。
 
 reflow 工作流（reflow-redstone）步骤 5 的「脚本断句」平行路径（LLM 只做句子匹配，断句/填回全机械）：
 - **匹配文件**：`reflow/r03_matches/chunk_<k>.txt`（LLM 句子匹配 subagent 产物）——每行一个整句，
@@ -30,7 +30,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import collect_chunk_files, text_width
+from shared.srt_common import collect_chunk_files, text_width
 
 # 匹配文件每行格式：`Z5+Z6+Z7+Z8 = E5+E6+E7+E8`（左 Z 组 / 右 E 组，组内 `+` 连接、每组元素带 Z/E 前缀）
 MATCH_RE = re.compile(r"^\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*=\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*$")

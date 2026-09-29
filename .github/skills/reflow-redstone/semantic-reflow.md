@@ -57,7 +57,7 @@
 1. **定容量**：`python scripts/context_estimate.py <01>`
   - 参数默认读 `configs/context_window.json`、CLI 可覆盖
   - 输出：估算 token / 单块容量上限（min 统一、已含放大）/ 每 cue 平均字符 / `--owned` 建议值（= 单块容量上限 × 1.5 ÷ 每 cue 平均字符）
-  - **实践建议**（补丁，机制设计不变）：`--owned` 取值按 **≤200 cue** 封顶——实践发现单块 >200 cue 时分句 subagent 处理不了（no-think 输出超限中断，只能拆半重派）；封顶只在取值时做，`context_estimate.py` 反推公式与分块机制不变
+  - **实践建议**（补丁，机制设计不变）：`--owned` 取值按 **≤300 cue** 封顶——实践得出；⚠️ 若单块 >200 cue 时分句 subagent 出现 no-think 输出超限中断（只能拆半重派），**该视频降回 ≤200**；封顶只在取值时做，`context_estimate.py` 反推公式与分块机制不变
 2. **分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps-file reflow/r00_gaps_active.tsv --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`
   - 块 = 「空隙组-片」，
   - `--owned` 填上一步建议值
@@ -122,7 +122,7 @@
 
 ##### 归一化
 
-1. 翻译前将英文输入归一化成每 1000 字符左右一行、按词断开的文本——由 `scripts/srt_reflow_common.py` 的 `auto_wrap_file`（MAX_LINE=1000：英文词边界不拆词、中文按字符，显示性换行非语义分行）就地折行；超长单行在校验脚本（`check_words` 等）中自动触发，亦可 `text_merge --wrap 1000` 主动归一化
+1. 翻译前将英文输入归一化成每 1000 字符左右一行、按词断开的文本——由 `scripts/shared/srt_common.py` 的 `auto_wrap_file`（MAX_LINE=1000：英文词边界不拆词、中文按字符，显示性换行非语义分行）就地折行；超长单行在校验脚本（`check_words` 等）中自动触发，亦可 `text_merge --wrap 1000` 主动归一化
 
 ##### 处理
 
@@ -169,8 +169,8 @@
   - **不形成中英对照**：EN / ZH 各自编号（`S?_Z<n>` 默认按序提示对应 `E<n>`，启发式须核对）
     - **忠实铁律由结构保证**：段只在标点处切、不增删改（段拼接 == Z 原文 == r02）
     - **长短 / 宽度 / 断句类型机械化**，agent 不再自行判长短
-  - **多语言通用**：断点强度由**标点角色表**表达（`srt_reflow_punct`：句界/strong `；：—`/clause `，`/list `、`，CLI `--punct-*` 可配）、句长区间（`--soft-min/--soft-max/--hard-max/--min-unit`）全参数化，默认 CJK；宽度复用 `srt_reflow_common.text_width`（Unicode 块通用）
-  - 一次性全目录跑完（r02 折行副本不再需要——预分句输出已逐句折行，脚本直读 r02_results 原稿）
+172:  - **多语言通用**：断点强度由**标点角色表**表达（`srt_reflow_core.punct`：句界/strong `；：—`/clause `，`/list `、`，CLI `--punct-*` 可配）、句长区间（`--soft-min/--soft-max/--hard-max/--min-unit`）全参数化，默认 CJK；宽度复用 `shared.srt_common.text_width`（Unicode 块通用）
+  - 一次性全目录跑完（脚本直读 r02_results 原稿，无需折行副本）
 
 ###### 处理
 

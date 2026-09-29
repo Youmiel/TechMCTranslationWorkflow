@@ -44,7 +44,7 @@ python scripts/setup_editors.py
 
 ### 怎么配置
 
-**通常无需配置**——脚本按以下优先级自动取值（实现见 `scripts/request_identity.py`）：
+**通常无需配置**——脚本按以下优先级自动取值（实现见 `scripts/shared/request_identity.py`）：
 
 1. 环境变量 `TCTW_CONTACT`（临时覆盖，如 CI）
 2. `configs/request_identity.yaml` 的 `contact`
@@ -67,9 +67,8 @@ contact: "you@example.com"
 ### 验证
 
 ```powershell
-python scripts/request_identity.py
-# contact  = https://github.com/<your-name>/<your-repo>
-# UA       = TechMCTranslationWorkflow/1.0 (https://github.com/<your-name>/<your-repo>)
+python -c "import sys;sys.path.insert(0,'scripts');from shared.request_identity import user_agent;print(user_agent())"
+# TechMCTranslationWorkflow/1.0 (https://github.com/<your-name>/<your-repo>)
 ```
 
 UA 由 `scripts/fetch_wiki.py`、`scripts/mojang_glossary/` 共用；未配置且无 git remote 时会打印告警并暂用占位符。

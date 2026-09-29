@@ -34,6 +34,8 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+from shared.srt_common import LONG_GAP_MS
+
 TS_RE = re.compile(r"(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})")
 SENT_ZH = re.compile(r"([^。？！]*[。？！])")          # 中文按 。？！ 切句
 
@@ -58,7 +60,6 @@ def parse_srt(path):
 
 
 BRACKET_RE = re.compile(r"\[[^\]]*\]")
-LONG_GAP_MS = 5000  # 长停顿阈值（与 srt_reflow_gap_scan/breaks/check_breaks 一致）
 
 
 def _ts_ms(ts):

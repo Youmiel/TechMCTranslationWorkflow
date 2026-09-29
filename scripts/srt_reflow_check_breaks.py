@@ -29,7 +29,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import (
+from shared.srt_common import (
     auto_wrap_file,
     collect_chunk_files,
     ctx_snippet,
@@ -37,11 +37,11 @@ from srt_reflow_common import (
     parse_owned_cue_range,
     parse_time,
     strip_stitch_marks,
+    LONG_GAP_MS,
     MAX_LINE,
     BRACKET_RE,
 )
 
-LONG_GAP_MS = 5000      # 长停顿阈值（与 srt_gap_scan.py 一致）
 NORM_RE = re.compile(r"[^a-z0-9']")
 SENT_END_RE = re.compile(r"[.?!]")
 
@@ -120,8 +120,7 @@ def load_breaks(gaps_path):
     """读空隙点清单 → [(ia, ib, gap_ms), ...]。**只收生效项**（`excluded` 跳过）。
 
     优先按 tsv 解析（`r00_gaps_active.tsv`，权威）；若给的是旧 `r00_gaps.md`，
-    先尝试同目录同名 tsv（`r00_gaps_active.tsv`）——实现「排除某空隙改 tsv 即可」，
-    取代旧做法「把 md 标题改成脚本不可解析」（该 hack 已随本次改造废弃）。
+    先尝试同目录同名 tsv（`r00_gaps_active.tsv`）——实现「排除某空隙改 tsv 即可」。
 
     回退：tsv 不存在时按旧 md 正则 `### N. c<ia> → c<ib>（<gap>s）` 解析（兼容历史产物）。
     """

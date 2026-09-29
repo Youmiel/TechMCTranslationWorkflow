@@ -13,7 +13,7 @@ Wikimedia 政策要求脚本 UA 必须含**联系方式**（邮箱 / 网站 / �
 4. 占位符 `<PROJECT_URL>` 作最后兜底，并大声提醒填写
 
 用法：
-    from request_identity import user_agent
+    from shared.request_identity import user_agent
     headers = {"User-Agent": user_agent()}          # "TechMCTranslationWorkflow/1.0 (…)"
     req = urllib.request.Request(url, headers={"User-Agent": user_agent()})
 """

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""跨块句衔接归位（reflow2 步骤 3 校验 #4 —— 文档早有设计、此前无实现）
+"""跨块句衔接归位（reflow2 步骤 3 校验 #4）
 
 ## 文档设计（phase2.md 步骤 3 校验 #4）
 
@@ -32,9 +32,9 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import auto_wrap_file, collect_chunk_files
+from shared.srt_common import auto_wrap_file, collect_chunk_files
 
-# 标记与「标记 + 其句」：与 srt_reflow_common.STITCH_RE 同构（此处独立声明，避免隐式耦合）
+# 标记与「标记 + 其句」：与 shared.srt_common.STITCH_RE 同构（此处独立声明，避免隐式耦合）
 EXT_RE = re.compile(r"【延伸句】")
 JOIN_RE = re.compile(r"【承接句】.*?(?:[.?!。]|$)", re.DOTALL)
 

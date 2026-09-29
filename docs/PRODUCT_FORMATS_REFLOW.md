@@ -67,7 +67,7 @@ c43	c48	9200	jump	active	剪辑跳转
 | `excluded` | **人工确认排除** | 不分块 / 不断句 / 校验跳过 |
 
 - **裁决方式**：把该行 `status` 改为 `excluded`（排除）或 `active`（生效）——**重跑 `gap_scan` 不覆盖人工决定**（同 `(a_idx,b_idx)` 的 status/note 保留）
-- **替代的旧 hack**（已废弃）：① 分块去掉 `--gaps` 开关；② 把 `r00_gaps.md` 标题改成脚本不可解析格式以骗过 `check_breaks` 正则
+- **排除空隙仅靠改 tsv**（勿去掉 `--gaps` 开关，也不要改 `r00_gaps.md` 格式以骗过校验正则——那些做法已废弃）
 
 ## `r01_breaks.md`
 
@@ -99,6 +99,7 @@ c43	c48	9200	jump	active	剪辑跳转
 - 命名：`<工作目录>/reflow/r01_normalized/chunk_<k>.txt`
 - 生成：脚本 `srt_reflow_normalize.py`（`python scripts/srt_reflow_normalize.py reflow/chunks/ -o reflow/r01_normalized/`）——**一次性处理整个 chunks/ 目录**，每块独立合并、互不影响，命令只运行一次
 - 格式：**保留分区结构 + 合并连续文本**——每块与 `chunks/chunk_<k>.txt` 同构（块头 `# CHUNK` + `## BEFORE`/`## OWNED`/`## AFTER` 分区），但**各分区内 cue 文本已预先合并**为一段连续文字（剔除 `[Music]`/`[Applause]` 等纯标记 cue）、经 `wrap_text` 折行 ≤1000 字符/行（英文空格处折、不拆词；中文按字符折）
+  > ⚠️ **折行宽度为形态描述、非判据**：实际值由脚本 `MAX_LINE` 决定（`shared/srt_common.py`），改值以代码为准；本文件不重复取值范围定义。
 - 定位：补标点 subagent 输入（替代直接读 `chunks/` 的 cue 结构，subagent 无需再自行拼接 OWNED 文本）——**仅作补标点输入，非校验基准**（校验仍读 `chunks/` 的 cue 区间 + `r01_results/`）
 - 约束：折行为**显示性换行、非语义分行**——subagent 按整段解析、**忽略行尾换行**；纯标记块（无语音 cue）输出空块注释（`> 本块无语音 cue`），对应补标点产物为空块、校验跳过
 - 消费：步骤 3 补标点 subagent（`r01_results/` 对应块）
@@ -110,8 +111,7 @@ c43	c48	9200	jump	active	剪辑跳转
 - 格式：**整段文字**，每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**。
   - 块内加标点但**不按 cue 分行、不按句分行**（逐句 / cue 分行会孤立 ASR 残片导致误译）
   - **不带 `c<idx>\t时间码\t` 前缀**
-  - **折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（英文在空格处折、不拆词），属**显示性换行、非语义分行**（check_words 按整段解析）
-  - CONTEXT 仅作语境，**片边界跨块句允许补全**（见约束）
+  - **折行由脚本统一执行**（主会话产出后 `auto_wrap_file` 就地折行，subagent 输出不折行）——产物单行 ≤1000 字符（英文在空格处折、不拆词），属**显示性换行、非语义分行**（check_words 按整段解析）  - CONTEXT 仅作语境，**片边界跨块句允许补全**（见约束）
 - 约束：
   - 仅加标点、不改措辞
   - 空隙断句标记处按复核方式断句
@@ -152,7 +152,8 @@ c43	c48	9200	jump	active	剪辑跳转
   ```
   - ZH 按句末标点 `。！？…` 预分句（括号配平保护）标号 `Z1..Zm`
   - 句内按标点切候选段 + 代价最小化拼合 [15,22]（硬 ≤27）
-  - **直读 `r02_results/` 原稿**（脚本读取不受行宽限制，不再需要 r02 折行副本）
+  > ⚠️ **宽度区间为脚本行为描述、非本文件判据**：由 `srt_reflow_presplit.py` 执行（阈值源自 `shared/srt_common.py`）；subagent **不折行、不自行断段**，无需据此计算。
+    - **直读 `r02_results/` 原稿**（脚本读取不受行宽限制，无需折行副本）
 - 格式：**r03 模板骨架**（r03 整句分组格式的 ZH 预填版），每 Z 句一组 `## S?_Z<n>（默认 E<n>）`：
   - `- ZH:` 整句原文预填
   - `- 关系:` 预填 1:1 / 1:n

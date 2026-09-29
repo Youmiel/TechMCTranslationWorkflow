@@ -9,10 +9,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent  # config.py → mojang_glossary/ → scripts/ → project root
 
 # === 请求身份 ===
-# 统一 UA（含联系方式，由 scripts/request_identity.py 解析）——
+# 统一 UA（含联系方式，由 scripts/shared/request_identity.py 解析）——
 # 联系方式由使用者自行配置，不内置作者信息
 _sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
-from request_identity import user_agent  # noqa: E402
+from shared.request_identity import user_agent  # noqa: E402
 
 REQUEST_HEADERS = {"User-Agent": user_agent()}
 

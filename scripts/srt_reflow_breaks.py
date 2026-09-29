@@ -21,8 +21,10 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from srt_reflow_common import is_pure_marker, parse_time, fmt, BRACKET_RE
-from srt_reflow_gap_scan import load_breaks_tsv, LONG_GAP_MS, JUMP_GAP_MS
+from shared.srt_common import (
+    is_pure_marker, parse_time, fmt, BRACKET_RE, LONG_GAP_MS, JUMP_GAP_MS,
+)
+from srt_reflow_gap_scan import load_breaks_tsv
 
 # 说话人标签（转写字幕的 `Name:` 开头，如 `jazziRed:` / `CraftyMasterman:`）
 SPEAKER_RE = re.compile(r"^\s*[A-Za-z][A-Za-z0-9_.\-]*\s*:\s")
@@ -100,7 +102,7 @@ def main():
     lines.append("  归一化会抹平 cue 边界，不注入则补标点无从判断话轮切换（edkkLsir9M8 实证）。")
     lines.append("")
     lines.append("> **生效空隙点集的裁决入口 = `r00_gaps_active.tsv`**（`status` 列）——"
-                 "排除某空隙请改 tsv，勿再改本文件格式（旧做法「把标题改成脚本不可解析」已废弃）。")
+                 "排除某空隙请改 tsv，勿改本文件格式。")
     lines.append("")
     lines.append("## 断句点清单")
     lines.append("")
