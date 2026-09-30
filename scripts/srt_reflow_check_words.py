@@ -99,6 +99,32 @@ def _multi_diff(a, b):
     return out
 
 
+def _shift_parts(st, rt):
+    """位置感知差异片段：(extra, missing)，各为「单一连续词段」（空 list 表示无）。
+
+    返回 None = 非单一连续差异（多处不连续 / 含替换），即非衔接归位所致。
+    extra = rt 相对 st 多出的词（本块多写）；missing = st 相对 rt 多出的词（本块少写）。
+
+    与 `_multi_diff`（多重集差、位置无关）的区别：多重集差在跨块句含高频词（is/the/you 等）
+    时会被邻段同名词**错位吸收**，导致「前块多出」与「后块缺失」判为不等（假阳性打回）；
+    此处按序列位置对齐，归位的「前块尾部多出 / 后块头部缺失」必然落在同一连续段上。
+    """
+    sm = difflib.SequenceMatcher(None, st, rt, autojunk=False)
+    extra, missing = [], []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            continue
+        if tag == "insert":
+            extra.append(rt[j1:j2])
+        elif tag == "delete":
+            missing.append(st[i1:i2])
+        else:                        # replace：出现替换 = 真措辞分歧
+            return None
+    if len(extra) > 1 or len(missing) > 1:
+        return None                  # 多处不连续差异 = 非归位所致
+    return (extra[0] if extra else [], missing[0] if missing else [])
+
+
 def cross_chunk_note(k, cache):
     """块 k 与相邻块的词差异是否恰好互补（= 跨块句衔接归位的正常结果）。
 
@@ -110,6 +136,24 @@ def cross_chunk_note(k, cache):
     if k not in cache:
         return None
     st, rt = cache[k]
+    # ① 位置感知判定（首选）：单一连续词段——归位后「前块尾部多出 == 后块头部缺失」或反向
+    parts = _shift_parts(st, rt)
+    if parts is not None:
+        extra_p, missing_p = parts
+        if len(extra_p) <= 40 and len(missing_p) <= 40:
+            if extra_p and not missing_p:
+                nxt = cache.get(k + 1)
+                if nxt:
+                    np = _shift_parts(nxt[0], nxt[1])
+                    if np is not None and not np[0] and np[1] == extra_p:
+                        return f"本块多出 {len(extra_p)} 词，恰为块{k+1}所缺（前块保留完整句）"
+            if missing_p and not extra_p:
+                prv = cache.get(k - 1)
+                if prv:
+                    pp = _shift_parts(prv[0], prv[1])
+                    if pp is not None and not pp[1] and pp[0] == missing_p:
+                        return f"本块缺 {len(missing_p)} 词，恰为块{k-1}多出（后块删除重复句）"
+    # ② 兜底：多重集差（保留原行为；跨块句含高频词时可能错位，故仅作后备）
     extra = _multi_diff(rt, st)      # 本块相对 01 多出的词
     missing = _multi_diff(st, rt)    # 本块相对 01 缺失的词
     if len(extra) > 40 or len(missing) > 40:

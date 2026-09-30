@@ -25,3 +25,6 @@ smart dropper,,检测到内部有物品即激活、持续投掷直至清空的�
 SS2 filter,,信号强度 2 的物品分类器（Impulse SV 推广，分类槽需 41 个物品才排空）,四级查找未命中；对照 knowledge/01_terminology/storage.csv Impulse Style Item Filter=经典物品分类器,SS2 分类器,
 SS3 filter,,信号强度 3 的物品分类器（在 SS2 基础上多一颗红石粉）,四级查找未命中；视频自释,SS3 分类器,
 item alignment,,存储科技中使物品实体排列到确定位置的技巧,来源：用户裁定；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:10:30,物品实体对齐,
+container measurement,,比较器读取容器各槽位填充度并转为信号强度的机制,来源：wiki 装载量节；[推断] 用户确认；视频 LyU6a4PuDjo,容器填充度检测,
+item container,,可存放物品的容器方块（箱子、桶、潜影盒等）,来源：视频上下文 [推断] 用户确认；视频 LyU6a4PuDjo,物品容器,
+full container detection,,利用满信号（15 级）覆盖容器读取的特性检测容器是否装满,来源：视频上下文 [推断] 用户确认；视频 LyU6a4PuDjo,满容器检测,

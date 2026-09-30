@@ -34,7 +34,7 @@
 
 | 正确词 | 变体（ASR） | 说明 |
 |--------|------------|------|
-| falling block(s) | following / volume blocks / volume docs / funding blocks / phoning blocks / form block / fine suns / following sand | 落沙系列，最高频误听 |
+| falling block(s) | following / volume blocks / volume docs / funding blocks / phoning blocks / form block / fine suns / following sand / fallen block | 落沙系列，最高频误听 |
 | falling sand | fine suns / following sand | 落沙 |
 | falling block setup | one dog setup | 落沙方案 |
 | falling portal frame | following form | 落沙传送门框架 |
@@ -56,7 +56,7 @@
 | cart yeeting | part eating | 烧车（存储科技 Cart Yeet 技术） |
 | latest snapshot | layer snapshot | 最新快照 |
 | caustic | costic | 难缠的（形容物品集） |
-| redstone | resto | 红石（装置） |
+| redstone | resto / western / wetstone | 红石（装置） |
 | Louvain | levane | 鲁汶（图聚类算法） |
 | calculate | caclulate | 计算（拼写错误变体） |
 | overworld | overlay / overwatch | 主世界（音近） |
@@ -118,6 +118,20 @@
 | async chunk | ac chunk / 18 chunk | 异步区块（重载） |
 | cluster chunk | cluster change / cluster shank / plus a chunk / few hundred plus / a few hundred plus the chance | 集群区块 |
 | main thread | mainframe | 主线程 |
+| log(s) | lock / locks / octry locks | 原木（1.12.2 大树语境高频；oak lock = oak log） |
+| log out | lock out / locked out | 退出存档 |
+| log into | lock into | 进入存档 |
+| tile tick(s) | titic / titics / as titics / it titics | 计划刻 |
+| instant tile tick | instantic / inant / instant title switch | 瞬时计划刻 |
+| async line | asing line / asyncing line / as line / as / clan | 异步链 |
+| async client | acing client | 异步客户端 |
+| lag spike | lex back / leg spike | 卡顿峰值 |
+| seed | seat | 种子 |
+| tree | threat | 树 |
+| flag | flex | 标志位 |
+| observer | observe | 侦测器 |
+| sand patches | send patches | 沙砾簇 |
+| player heads and bedrock | play ahead and bedwalk | 玩家头颅与基岩 |
 | threads | three frets / first running at once | 线程 |
 | contraption | a contraction / the contract will be shot / where contraption whenever | 机器/装置 |
 | water in the nether | water in another / water in the ladder | 下界水 |

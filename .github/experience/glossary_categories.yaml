@@ -39,13 +39,13 @@ categories:
     keywords: [update suppression, suppressor, CCE, OOM, block swap]
   coding:
     label: "命令方块、数据包编程"
-    keywords: [command block, data pack, give, execute, tp]
+    keywords: [command block, data pack, give, execute, tp, algorithm, data structure]
   worldgen:
     label: "世界生成、区块、噪声算法"
     keywords: [world generation, terrain generation, Perlin noise, octave, biome, chunk, RNG, seed, noise map, bilinear interpolation, cave, ore]
   "1.12.2_magic":
     label: "1.12.2 版本特有机制"
-    keywords: [async observer, chunk manipulation, chunk swap, falling swap, cluster]
+    keywords: [async observer, chunk manipulation, chunk swap, falling swap, instant falling, instant tile tick, word tear, crossworld, cluster]
 
 # 始终加载的默认分类
 always_load:
