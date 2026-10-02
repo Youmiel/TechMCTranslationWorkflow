@@ -9,6 +9,7 @@ from .io import norm, text_width, parse_srt, build_full
 from shared.srt_common import (
     auto_wrap_file, collect_chunk_files, parse_owned_cue_range, CJK_SPEED,
     SOFT_MAX as WIDTH_SOFT_MAX, HARD_MAX as WIDTH_HARD_MAX,
+    PUNCT_BRACKETS, QUOTE_PAIRS,
 )
 from .allocate import (
     cjk_reading_ms,
@@ -29,8 +30,8 @@ WARN_PRINT_MAX = 5
 KIND_NAMES = {"🔪": "碎片", "📖": "中英失配", "🧩": "括号/引号", "\U0001f3f7": "占位标记"}
 # r03 格式标记残留（uVOFckoMdIU chunk_002 S94 事故修复）：
 # - 跨块句标记【承接句】/【延伸句】= r01 阶段格式标记，衔接归位/翻译/预分句应已消除——残留即上游漏处理，回填会原样写进交付 SRT → 硬违规
-# - ASR 残词占位【待审核】= r01 兜底占位，应在翻译/分句时按 01 修正定稿——残留提示回 r02 定稿或人工确认 → 存疑预警
-STITCH_RESIDUAL_RE = re.compile(r"【(?:承接句|延伸句)】")
+# - ASR 残词占位[待审核]= r01 兜底占位，应在翻译/分句时按 01 修正定稿——残留提示回 r02 定稿或人工确认 → 存疑预警
+STITCH_RESIDUAL_RE = re.compile(r"[(?:承接句|延伸句)]")
 PLACEHOLDER_RESIDUAL_RE = re.compile(r"\[待审核[^\]]*\]")
 
 
@@ -241,7 +242,7 @@ def join_r03(r03_dir, out_path, chunks_dir=None):
     """r03_results → r03_plan.md：按块序拼接 + S 号全局重编号 + 结构校验（缺块/重复 S<n>/可解析），供人工审核/审计。
 
     纯文本拼接（确定性），不消耗 LLM 上下文；回填（reflow/attach-en/check-duration）可直接吃
-    r03_results 目录，本命令**非回填必需**，仅在需要人读完整方案（阶段二½ 审核/审计）时按需生成。
+    r03_results 目录，本命令**非回填必需**，仅在需要人读完整方案（阶段五 审核/审计）时按需生成。
     异常（缺块/重复/解析失败）返回 1 并打印清单，主会话只读报告。
     """
     chunk_files = collect_chunk_files(r03_dir)
@@ -292,7 +293,7 @@ def join_r03(r03_dir, out_path, chunks_dir=None):
 
 def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag=True, check_mismatch=True,
               cue_range=None, r02_text=None, full_warnings=False, expand=False):
-    """r03 写时即合规预检（步骤 4 产出后、步骤 5 回填前必跑）：
+    """r03 写时即合规预检（分句产出后、回填前必跑）：
 
     - 锚定唯一性：每个整句 EN 在 01 唯一命中（未命中 / 重复命中均报告）
       ——块级（cue_range=(cmin,cmax)）时锚定缩到块内 cue 区间，避免跨块重复误报
@@ -306,7 +307,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag
       调整切分点或依赖回填阅读插值
 
     有硬违规输出清单并返回 1（打回 r03 改写），仅存疑预警则通过并打印提示（Agent 智能判断）。全部通过返回 0。
-    统一反馈：默认只输出「问题数 + 分类 + 提示」；expand=True 逐条输出每处问题/预警明细。
+    统一反馈：默认只输出“问题数 + 分类 + 提示”；expand=True 逐条输出每处问题/预警明细。
     """
     sentences = parse_r03(r03_path)
     base = Path(r03_path).name   # 告警定位：r03 文件 + 整句标题行号（## S<n> 所在行）
@@ -349,7 +350,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag
             if w > WIDTH_HARD_MAX:
                 problems.append(f"📏 行宽 {w:.1f}（>{WIDTH_HARD_MAX:g} 硬）{u[0]}（{base}:行{ul}）: {_clip(u[2])}")
 
-    # 格式标记残留硬校验：r01 跨块句标记【承接句】/【延伸句】、ASR 残词占位【待审核】是 r01 阶段临时标记，
+    # 格式标记残留硬校验：r01 跨块句标记【承接句】/【延伸句】、ASR 残词占位[待审核]是 r01 阶段临时标记，
     # 分句产物 r03 不得残留（衔接归位/翻译/预分句应已消除）——残留 = 上游漏处理，回填会把标记原样写进交付 SRT
     # 扫描层：整句（s.en/s.zh）+ 各子单元；1:1 无子单元时整句即单元，只查一次不重复报
     for s in sentences:
@@ -359,9 +360,9 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag
             layers.extend([(u[0], ul, u[1]), (u[0], ul, u[2])])
         for key, ln, field in layers:
             for m in STITCH_RESIDUAL_RE.finditer(field):
-                problems.append(f"❌ 格式标记残留 {key}（{base}:行{ln}）: 含「{m.group(0)}」——跨块句标记应在衔接归位/翻译/预分句时消除，回填将原样写入 SRT")
+                problems.append(f"❌ 格式标记残留 {key}（{base}:行{ln}）: 含“{m.group(0)}”——跨块句标记应在衔接归位/翻译/预分句时消除，回填将原样写入 SRT")
             for pm in PLACEHOLDER_RESIDUAL_RE.finditer(field):
-                warnings.append(f"\U0001f3f7 占位标记残留 {key}（{base}:行{ln}）: 含「{pm.group(0)}」——ASR 残词占位应在翻译/分句时按 01 修正定稿，残留将写入交付（回 r02 改或人工确认）")
+                warnings.append(f"\U0001f3f7 占位标记残留 {key}（{base}:行{ln}）: 含“{pm.group(0)}”——ASR 残词占位应在翻译/分句时按 01 修正定稿，残留将写入交付（回 r02 改或人工确认）")
 
     # 括号/引号配对预警（存疑，不阻断）：单元内不成对 = 括号被拆 / 引号归属漂移（S24/S61e/S70c 类）
     for s in sentences:
@@ -369,12 +370,14 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag
         for u in units:
             zh = u[2]
             ul = s.unit_lines.get(u[0], s.line)
-            for o, c in (("（", "）"), ("(", ")")):
+            for o, c in PUNCT_BRACKETS:
                 if zh.count(o) != zh.count(c):
-                    warnings.append(f"🧩 括号不配对 {u[0]}（{base}:行{ul}）: 「{_clip(zh)}」含 {o}×{zh.count(o)}/{c}×{zh.count(c)}——括号整体应归同一单元（可能被切在括号中间）")
+                    warnings.append(f"🧩 括号不配对 {u[0]}（{base}:行{ul}）: “{_clip(zh)}”含 {o}×{zh.count(o)}/{c}×{zh.count(c)}——括号整体应归同一单元（可能被切在括号中间）")
                     break
-            if zh.count('"') % 2 == 1 or zh.count("“") != zh.count("”"):
-                warnings.append(f"🧩 引号不配对 {u[0]}（{base}:行{ul}）: 「{_clip(zh)}」引号不成对——引号归属可能漂移（整句中间的引号随其后中文文本归属，不得丢失/错位）")
+            for o, c in QUOTE_PAIRS:
+                if zh.count(o) != zh.count(c):
+                    warnings.append(f"🧩 引号不配对 {u[0]}（{base}:行{ul}）: “{_clip(zh)}”含 {o}×{zh.count(o)}/{c}×{zh.count(c)}——引号归属可能漂移（整句中间的引号随其后中文文本归属，不得丢失/错位）")
+                    break
 
     # 跨整句共享 cue 切分（预估贴近回填：相邻整句共享 cue 时末单元被裁到共享切分点，S6/S7 实证）
     resolve_shared_cues([a for a in anchors if a is not None], cues, cue_offsets, [])
@@ -414,7 +417,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag
                         if need > 0 and d < need * READING_MISMATCH_RATIO \
                                 and (need * READING_MISMATCH_RATIO - d) >= READING_MIN_GAP_MS:
                             warnings.append(
-                                f"📖 中英失配预估 {u[0]}（{base}:行{ul}）: 中文「{_clip(u[2])}」阅读需 {need}ms，英文 cue 预估仅 {d}ms"
+                                f"📖 中英失配预估 {u[0]}（{base}:行{ul}）: 中文“{_clip(u[2])}”阅读需 {need}ms，英文 cue 预估仅 {d}ms"
                                 f"（<阅读所需×{READING_MISMATCH_RATIO}，失配 {int(need * READING_MISMATCH_RATIO - d)}ms）"
                                 f"——倒装/时长不均，整句 {s.key}：可调整 r03 切分点或依赖回填阅读插值"
                             )
@@ -426,7 +429,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag
             if joined != whole:
                 problems.append(
                     f"❌ 拆句 {s.key}（{base}:行{s.line}）子单元 ZH 拼接 ≠ 整句 ZH（断句不得改写译文）"
-                    f"——子单元「{_clip(joined)}」vs 整句「{_clip(whole)}」"
+                    f"——子单元“{_clip(joined)}”vs 整句“{_clip(whole)}”"
                 )
     # ZH 忠实性：r03 整句 ZH（s.zh）与 r02 定稿做字符多集比较
     # ——断句只允许插标点/重排口语词归属，不得增删或改写任何字（净增删即违规）
@@ -451,7 +454,7 @@ def check_r03(r03_path, srt_path, r02_path=None, cjk_speed=CJK_SPEED, check_frag
             else:
                 problems.append(
                     f"❌ 译文忠实性：r03 译文单元 ZH ≠ r02 定稿（断句不得增删/改写字，仅可插标点）"
-                    f"；r03 多出「{added}」/ r02 有而 r03 缺「{removed}」"
+                    f"；r03 多出“{added}”/ r02 有而 r03 缺“{removed}”"
                 )
     if warnings:
         show_all = full_warnings or expand

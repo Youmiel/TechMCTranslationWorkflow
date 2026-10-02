@@ -15,7 +15,7 @@ description: 将已确认的英文术语→中文译名登记到 knowledge/01_te
 
 ## 触发条件
 
-- **翻译工作流**（最常见）：`translate-redstone` Skill 阶段一确认术语清单后，自动将已确认术语入库
+- **翻译工作流**（最常见）：`redstone-preprocess` Skill [术语确认](../redstone-preprocess/SKILL.md#23-术语确认)后，自动将已确认术语入库
 - 文中明确给出 `英文术语 → 中文译名` 映射
 - 用户要求登记
 
@@ -26,13 +26,13 @@ description: 将已确认的英文术语→中文译名登记到 knowledge/01_te
 3. **读表头**：读 `knowledge/01_terminology/_example.csv` 获取表头
 4. **缓存命中拦截（不入库）**：若该词在四级查找中已由 **L1.5（`.cache/mojang/`）或 L2（`.cache/glossary/`）命中**——直接就地用缓存译名，**不写入 `knowledge/`**。缓存是"借来用"的；重复入库会让 L1 遮蔽刷新后的缓存、制造漂移，也污染项目库。只有两种情况允许入 `_uncategorized.csv`：
    - **新词**：四级查找全部未命中（含 `scan` 未覆盖的新机制/专有名词）
-   - **差异化译名**：用户确认的、与上游不同的项目标准（如 `main storage→全物品仓库`，上游原译 `全物品/全物品分类仓库`）——此时 `notes` 必须写明「覆盖上游术语表译名：`_repos/techmc-glossary/`（〈分类〉类）原译=…」
+   - **差异化译名**：用户确认的、与上游不同的项目标准（如 `main storage→全物品仓库`，上游原译 `全物品/全物品分类仓库`）——此时 `notes` 必须写明“覆盖上游术语表译名：`_repos/techmc-glossary/`（<分类>类）原译=…”
 5. **查重**：读 `knowledge/01_terminology/_uncategorized.csv`，检查 `term_en` 是否已存在
 6. **追加**：不存在则用 Python `csv.DictWriter` 追加新行（`term_en`、`term_zh`、`definition` 从映射表获取，其余字段留空或填来源注释）；存在则跳过、不覆盖
-   - **来源格式**（权威规范见 `maintain-knowledge`「来源规范」）：
-     - **可移植**：只写**原始资料源**（`zh wiki〈页面〉页`、`Mojang 官方用语`、视频）或**仓库内引用**（`_repos/<仓库>/`、`knowledge/<分类>.csv`）——**禁止**指向 `.cache/`（脚本生成的缓存）与 `_work/`（工作产物）：两类指针换环境即失效；引用上游术语表时须能定位到具体词条（如 `_repos/techmc-glossary/`（storage 类）`Unloader`=拆包机），不写笼统的 "TechMC Glossary"
-     - **视频必带唯一 ID**：来源是视频时写 `〈视频标题〉（<视频 ID>）`，**至少** `<视频 ID>`（YouTube ID / B站 BV 号）——只写标题或只写作者不合格；位置定位（`c<块号>` / `HH:MM:SS`）附末尾；无法确定 ID 时标 `[ID 待补]`
-7. **索引**：`_uncategorized.csv` 词条变动**不更新** `indexes/knowledge/` 的具体词条（该条目只保留静态占位描述）；仅当新增**非 `_uncategorized`** 的稳定条目或类别描述实质变化时才更新索引，并同步更新索引文件的「最近更新/生成时间」时间戳（刷新判断依据，见 `indexing-rules`「索引时间戳与更新策略」）
+   - **来源格式**（权威规范见 `maintain-knowledge`“来源规范”）：
+     - **可移植**：只写**原始资料源**（`zh wiki<页面>页`、`Mojang 官方用语`、视频）或**仓库内引用**（`_repos/<仓库>/`、`knowledge/<分类>.csv`）——**禁止**指向 `.cache/`（脚本生成的缓存）与 `_work/`（工作产物）：两类指针换环境即失效；引用上游术语表时须能定位到具体词条（如 `_repos/techmc-glossary/`（storage 类）`Unloader`=拆包机），不写笼统的 "TechMC Glossary"
+     - **视频必带唯一 ID**：来源是视频时写 `<视频标题>（<视频 ID>）`，**至少** `<视频 ID>`（YouTube ID / B站 BV 号）——只写标题或只写作者不合格；位置定位（`c<块号>` / `HH:MM:SS`）附末尾；无法确定 ID 时标 `[ID 待补]`
+7. **索引**：`_uncategorized.csv` 词条变动**不更新** `indexes/knowledge/` 的具体词条（该条目只保留静态占位描述）；仅当新增**非 `_uncategorized`** 的稳定条目或类别描述实质变化时才更新索引，并同步更新索引文件的“最近更新/生成时间”时间戳（刷新判断依据，见 「indexing-rules#索引时间戳与更新策略」）
 
 ## 通用标准译名判定
 
@@ -54,7 +54,7 @@ description: 将已确认的英文术语→中文译名登记到 knowledge/01_te
 | quicksort 快速排序 | `[通用词]` | 通用算法，公认译名 |
 | Perlin noise Perlin 噪声 | `[通用词]` | 通用噪声算法，公认译名 |
 
-### 反面（必须照常入库）
+### 反面
 
 以下**不**属于通用标准译名，照常写入 `_uncategorized.csv`：
 
@@ -65,16 +65,16 @@ description: 将已确认的英文术语→中文译名登记到 knowledge/01_te
 ### 边界处理
 
 - **判定核心 = 是否属于本项目领域知识**：明确是通用学科公认词 → 标 `[通用词]` 不入库；拿不准是否红石/游戏专属 → 照常入库（宁多勿漏，人工分拣把关）
-- `[通用词]` 标记落点 = §1.3 确认清单/`02_terms.md` 来源列（也可由入库时判定后补标）；**无论如何不写入 `_uncategorized.csv`**
+- `[通用词]` 标记落点 = [术语确认](../redstone-preprocess/SKILL.md#23-术语确认) 清单/`02_terms.md` 来源列（也可由入库时判定后补标）；**无论如何不写入 `_uncategorized.csv`**
 - **⚠️ 与版本标注区分**：`[通用词]` 仅作确认清单/`02_terms.md` 来源列的**决策标记**（= 通用标准译名、不入库）；与 `indexing-rules` 的版本标注 `[通用]`（跨版本稳定）**不同义**——被标记词不入库、不会进入 CSV `notes` 列，两个语境不交汇，阅读时按所在位置辨义即可
 
-## ASR 映射登记（翻译工作流专用）
+## ASR 映射登记
 
 用户确认的 `[ASR 推测]` 条目，按归属**分两层**登记（去重后）：
-- **跨视频通用**（音近规律、高频词变体）→ 追加到 `.github/experience/asr_fixes.md`「已验证映射」表，按正确词聚合（`正确词: 变体1 / 变体2`），设 ~100 条规模上限
+- **跨视频通用**（音近规律、高频词变体）→ 追加到 「asr_fixes.md#已验证映射」表，按正确词聚合（`正确词: 变体1 / 变体2`），设 ~100 条规模上限
 - **视频专属**（人名、服务器、一次性语境）→ 追加到 `_work/<视频名>/asr_fixes.md`，不进全局表
 
 ## 相关规范
 
 - CSV 编码/解析/写入细节见 `csv-rules` Skill
-- 表头列含义见 `csv-rules` Skill「表头列含义」（唯一权威）
+- 表头列含义见 「csv-rules#表头列含义」（唯一权威）

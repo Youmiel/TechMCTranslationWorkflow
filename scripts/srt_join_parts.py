@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""SRT 片段拼接脚本（preprocess §1.1 第一次遍历合并链路）。
+"""SRT 片段拼接脚本（preprocess 术语扫描的第一次遍历 合并链路）。
 
-把「英文预整理 subagent」各块输出的 SRT 片段（`_en_results/chunk_<k>.srt`，保留原时间码、
+把“英文预整理 subagent”各块输出的 SRT 片段（`_en_results/chunk_<k>.srt`，保留原时间码、
 不增删 cue）按块序拼接成完整 01 字幕，全局段号重排。
 
 与 text_merge.py（srt 模式）的区别：text_merge 的 srt 模式面向 translate 断句合并
@@ -9,7 +9,7 @@
 保留时间码），需保留逐 cue 时间码 —— 故用本脚本直接拼裸 SRT 片段。
 
 时间轴精确校验（cue 数一致 + 逐 cue 时间戳与原始完全一致）仍由 `srt_check_segments.py
---cue-exact` 承担（现成工具，见 redstone-preprocess §1.1）。
+--cue-exact` 承担（现成工具，见 redstone-preprocess 术语扫描）。
 
 用法（命令根 = Project_Main/）:
   python scripts/srt_join_parts.py <results_dir> --out <01.srt> [--chunks <chunks_dir>]

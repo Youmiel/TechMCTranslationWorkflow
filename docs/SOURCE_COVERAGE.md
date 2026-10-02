@@ -5,7 +5,7 @@
 >
 > 经验积累：每次翻译任务后，Agent 在阶段三向 `.github/experience/coverage_log.md` 追加流水，并向 `.github/experience/source_experience.md` 提炼可复用结论。
 
-## Mojang 官方词汇表（`.cache/mojang/redstone.csv`）
+## Mojang 官方词汇表
 
 > **来源**：Mojang 官方 API → `scripts/glossary_fetch_mojang.py` 自动下载。
 > **权威性**：最高——这是 Minecraft 中文版的官方译名，不可覆盖。
@@ -19,7 +19,7 @@
 - 若 Mojang 无译名（如社区术语 "BUD"）→ 查 TechMC Glossary 或 Wiki
 - 运行 `python scripts/glossary_fetch_mojang.py` 检查并获取最新版本
 
-## Wiki（MCP: `get_page` / `search_wiki`）
+## Wiki
 
 > **反爬注意**：本系统通过 MCP 代理访问 Wiki（非直连），单次翻译仅 5-15 次查询，
 > 请求间间隔 ≥2 秒，行为接近人类查阅资料。不进行大规模爬取。
@@ -28,7 +28,7 @@
 > **缓存时效**：命中的 `.cache/wiki/` 缓存同样可能过期——查得页面先跑
 > `python scripts/refresh_cache.py --check-page "<页面名>"` 判定（退出码 1 = 有需处理项），
 > 过期则用 `python scripts/fetch_wiki.py --refresh "<页面名>"` 按 wikitext/lossless 源主动刷新后重读，
-> **不得静默复用过期内容**（详见 `docs/WIKI_CACHE_FORMAT.md`「刷新策略」）。
+> **不得静默复用过期内容**（详见 「WIKI_CACHE_FORMAT.md#刷新策略」）。
 > 请求身份（UA 联系方式）属环境配置，见 [`docs/SETUP.md`](SETUP.md#请求身份)。
 
 Wiki 擅长（优先查询）：
@@ -47,7 +47,7 @@ Wiki 不擅长（优先查 `_repos/` 或 `knowledge/`）：
 - 模组机制（Carpet、Lithium 等）
 - 概率/效率测算数据
 
-## 社区网页 / 博客（+ wiki 网页 API，兜底用）
+## 社区网页 / 博客
 
 适用于：
 - Wiki 未覆盖的深度技术文章
@@ -55,13 +55,13 @@ Wiki 不擅长（优先查 `_repos/` 或 `knowledge/`）：
 - 特定版本的 Bug 分析
 
 使用方式：
-- **社区资料不通过网络抓取**：`_repos/` 外部知识仓库（git submodule，只读）即本地缓存，经 `indexes/repos/` 索引定位后直接读（见 `wiki-tools`「社区资料」）
+- **社区资料不通过网络抓取**：`_repos/` 外部知识仓库（git submodule，只读）即本地缓存，经 `indexes/repos/` 索引定位后直接读（见 「wiki-tools#社区资料」）
 - 优先确认授权状态；仅提取客观事实，用自己的语言重组
 - **`.cache/community/` 为社区博客网页预留**：当前尚无可靠数据源，暂不启用（不写入、不读取）
 - **启用 checklist（数据源可用时，以 wiki 为模板，三件套一起补）**：
   1. 写入通道：建立博客抓取脚本/降级链 → 落盘 `.cache/community/<规范名>.md`
   2. 缓存规范：命名 + front matter（可简化，无需 wiki 的 fidelity 多级，按来源站点命名）
-  3. 读取闭环：在 `wiki-tools` 与 `translate-redstone` §1.2 同步挂"先查 community 缓存 → 未命中才抓取"
+  3. 读取闭环：在 `wiki-tools` 与 `redstone-preprocess` [集中补齐](../.github/skills/redstone-preprocess/SKILL.md#22-集中补齐) 同步挂"先查 community 缓存 → 未命中才抓取"
 
 ## 决策流程
 
@@ -78,7 +78,7 @@ Wiki 不擅长（优先查 `_repos/` 或 `knowledge/`）：
 └─ 不确定？ → 先 Wiki 获取基础定义，再 _repos/ 获取深度分析
 ```
 
-## 视频原文（无法联网时、全新知识时）
+## 视频原文
 
 当所有外部数据源都失败，且术语属于玩家全新发现时，字幕对白本身即数据源：
 

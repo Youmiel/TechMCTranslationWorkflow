@@ -2,7 +2,7 @@
 
 > 本文档是 `Project_Main/`（核心工作流项目）的**目录用途与产物归属**权威说明。
 > Agent 在处理或产出文件时，按本文档确定文件该放在哪里。
-> 相关：脚本清单见 [`scripts/README.md`](../scripts/README.md)；翻译目录约定细节见 `translate-redstone` Skill；分步隔离见 [`PIPELINE_ISOLATION.md`](PIPELINE_ISOLATION.md)。
+> 相关：脚本清单见 [`scripts/README.md`](../scripts/README.md)；翻译目录约定细节见 `translate-redstone` Skill；分步隔离见 [`PIPELINE_ISOLATION.md`](PIPELINE_ISOLATION.md)；**文档/产物中的符号分工见 [`SYMBOLS.md`](SYMBOLS.md)**。
 
 ## 目录总览
 
@@ -26,23 +26,23 @@ Project_Main/
 └── AGENTS.md            # 项目级 Agent 指令
 ```
 
-## 翻译工作区（Git 忽略）
+## 翻译工作区
 
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
 | `_input/` | 待翻译字幕入口。用户放入，Agent 读取 | 待翻译的 SRT / transcript 文件 |
-| `_work/<视频名>/` | 翻译中间产物，断点续翻依据 | ASR 修正稿 `01_subtitle_asr_fixed.srt`、术语清单 `02_terms.md`、分段方案 `s03_plan.md`、翻译草稿 `s04_draft.srt`；**视频专属的一次性脚本**（如 `_verify_draft.py`） |
+| `_work/<视频名>/` | 翻译中间产物，断点续翻依据 | 干净时间轴 `00_subtitle_snapped.srt`、ASR 修正稿 `01_subtitle_asr_fixed.srt`、术语清单 `02_terms.md`、分段方案 `s03_plan.md`、翻译草稿 `s04_draft.srt`；**视频专属的一次性脚本**（如 `_verify_draft.py`） |
 | `_output/` | 翻译最终输出 | 定稿字幕（默认双语对照），文件名与输入一致 |
 | `ref_translations/` | 参考译例 | 供 Agent 模仿风格的优质译文样本 |
 
-## 缓存与数据（临时 / 只读）
+## 缓存与数据
 
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
 | `.cache/` | 脚本生成缓存，Git 忽略，可清理 | `glossary_split.py` 拆分的分类 CSV（`glossary/`）、Mojang 官方词汇表（`mojang/`）、Wiki 抓取页；`community/` 为社区博客网页预留（暂无数据源）；社区资料当前走 `_repos/` |
 | `_repos/` | 外部知识仓库 | git submodule（只读引用，不直接修改）。**storage-archive** = Storage-Catalog 存储科技术语词典（sparse 仅检出 `dictionary/`，查询用 `scripts/dictionary_lookup.py`，见 `indexes/repos/storage-archive.md`） |
 
-## 知识资产（Git 追踪）
+## 知识资产
 
 | 目录 | 用途 | 产物归属 |
 |------|------|----------|
@@ -60,14 +60,14 @@ Project_Main/
 | `.github/experience/` | Agent 运行经验 | `asr_fixes.md`、`coverage_log.md`、`source_experience.md`、`glossary_categories.yaml`、`trap_words.md` |
 | `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`dictionary_lookup.py`、`srt_*`、`srt_reflow_*`、`srt_reflow2_*`、`text_chunk.py`/`text_merge.py`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py` 等；不含 CLI 的共享模块在 `shared/`、`srt_reflow_core/`、`mojang_glossary/`）；一次性脚本不在此列 |
 | `configs/` | 配置 | 本地个性化配置（**全部 Git 忽略**，靠 `docs/examples/configs/` 模板分发）：`context_window.json` / `request_identity.yaml` / `subagent_model.yaml` |
-| `docs/` | 项目文档 | 本文档及 SETUP / EDITOR_COMPAT / PIPELINE_ISOLATION / PRODUCT_FORMATS（通用，含 PRODUCT_FORMATS_TRANSLATE / _REFLOW / _REFLOW2 工作流分文件）/ SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
+| `docs/` | 项目文档 | 本文档及 SETUP / EDITOR_COMPAT / PIPELINE_ISOLATION / **SYMBOLS（符号分工）** / PRODUCT_FORMATS（通用，含 PRODUCT_FORMATS_TRANSLATE / _REFLOW / _REFLOW2 工作流分文件）/ SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
 
 ## 产物归属速查
 
 | 产物类型 | 归属位置 |
 |----------|----------|
 | 待翻译字幕 | `_input/` |
-| ASR 修正稿 / 术语清单 / 分段方案 / 翻译草稿 | `_work/<视频名>/`（`01_`/`02_`/`s03_`/`s04_`） |
+| 干净时间轴 / ASR 修正稿 / 术语清单 / 分段方案 / 翻译草稿 | `_work/<视频名>/`（`00_`/`01_`/`02_`/`s03_`/`s04_`） |
 | 回填中间产物（空隙/合并/译文/回填方案/预览） | `_work/<视频名>/reflow/`（`r00_`–`r04_`） |
 | 源头固化中间产物（E 句时间轴 / Z 句列表 / 对齐文件 / 预览） | `_work/<视频名>/reflow2/`（`en_timeline`/`zh_sentences`/`align`/`r04_`） |
 | 翻译最终输出 | `_output/` |

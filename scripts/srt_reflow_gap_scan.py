@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """空隙探测（回填工作流前置）：扫描 01 的 cue 时间戳，生成 r00_gaps.md + r00_gaps_active.tsv
 
-供 reflow/reflow2 步骤 1 合并补标点前参考——大空隙 = 强制分割点提示（不跨空隙合句）。
+供 reflow/reflow2 空隙探测 合并补标点前参考——大空隙 = 强制分割点提示（不跨空隙合句）。
 阈值：长停顿 >5s；剪辑跳转 >10s。
 非语音标记 cue（[Music]/[Applause] 等方括号标记单独成 cue，去括号后无可见字符）动态识别、
 不参与空隙判定（空隙在相邻真实语音 cue 间计算、跨标记），并单独列出供 r01 对齐参考。
@@ -9,15 +9,15 @@
 **疑似源切分缺陷识别（疑点探测，只报告不改行为）**
 
 判据（**两条强信号同时成立**，高置信、不扰民——用户 2026-09-21 定调）：
-  1. 前 cue 末尾**无句末标点**（`.?!。！？…`）
+  1. 前 cue 末尾**无句末标点**（角色表 `terminator`）
   2. 后 cue **首字母小写**（正常字幕不会以小写开新 cue）
 
-典型成因：原字幕把**同一句**切成两条 cue、中间空出一段时长——被误判为「作者长停顿」后，
+典型成因：原字幕把**同一句**切成两条 cue、中间空出一段时长——被误判为“作者长停顿”后，
 一条缺陷会沿链条放大（空隙探测 → 强制断句 → 强制切块 → 补标点断句 → E 句被切开 → 旁注挂错句）。
 实例：mv3OAZGKfs4 c88→c89 空 5.2s（`...duplicates exactly once` / `over its lifetime.`）。
 
-**处置与生效通道（取代「改 md 标题骗过正则」的 hack）**：
-- `r00_gaps.md`：人读报告，按「疑似源切分缺陷」/「长停顿」分节，每处标 `[生效·待裁决]`/`[已排除]`
+**处置与生效通道（取代“改 md 标题骗过正则”的 hack）**：
+- `r00_gaps.md`：人读报告，按“疑似源切分缺陷”/“长停顿”分节，每处标 `[生效·待裁决]`/`[已排除]`
 - `r00_gaps_active.tsv`：**机器产物 + 人工可编辑的单一事实源**（下游统一读它，不再各自探测）
   列：`a_idx` `b_idx` `gap_ms` `kind` `status` `note`
   - `status = active`    真实空隙（生效：分块硬边界 + 断句点 + 校验）
@@ -39,11 +39,11 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 from shared.srt_common import (
     is_pure_marker, parse_time, fmt, LONG_GAP_MS, JUMP_GAP_MS,
-    BRACKET_RE as MARKER_RE,
+    BRACKET_RE as MARKER_RE, TERMINATOR_CLASS,
 )
 
-# 句末标点（判「前 cue 是否已收句」用；中英全角半角都收，因 01 可能混排）
-EOS_CHARS = ".?!。！？…"
+# 句末标点（判“前 cue 是否已收句”用；中英全角半角都收，因 01 可能混排）
+EOS_CHARS = TERMINATOR_CLASS
 # status 取值
 ST_ACTIVE = "active"        # 真实空隙（生效）
 ST_SUSPECT = "suspect"      # 疑似源切分缺陷（默认仍生效，待人工裁决）
@@ -237,11 +237,11 @@ def main():
     lines.append("")
     lines.append("## 使用说明")
     lines.append("")
-    lines.append("1. **步骤 1 合并补标点**：本清单为空隙位置提供时间依据——补标点时在**生效**空隙处强制断句"
+    lines.append("1. **空隙探测 合并补标点**：本清单为空隙位置提供时间依据——补标点时在**生效**空隙处强制断句"
                  "（不跨空隙合句），空隙两侧 cue 文本各自成句/成段。")
     lines.append("2. **疑似源缺陷的处置**：人工确认后改 `r00_gaps_active.tsv` 该行 status 为 `excluded`——"
                  "分块与校验随之不再把它当空隙（正文须跨它合并为一句）。")
-    lines.append("3. **步骤 3 分句对应**：游离停顿词 cue（单词级 so/okay/and）两侧若有大空隙，应独立成单元或归前句句尾，"
+    lines.append("3. **分句对应**：游离停顿词 cue（单词级 so/okay/and）两侧若有大空隙，应独立成单元或归前句句尾，"
                  "不与后句主体合并（避免跨空隙单元）。")
     lines.append("4. **复盘**：r04 回填告警（内部空隙/剪辑跳转/超长单元）应与本清单对照——"
                  "理论上 r04 不应出现本清单之外的新空隙。")

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""断句措辞一致性校验（translate 阶段二）：s03_plan.md 各段英文词序列 == 01 对应 cue 区间的词序列。
+"""断句措辞一致性校验（translate 阶段三）：s03_plan.md 各段英文词序列 == 01 对应 cue 区间的词序列。
 
 断句只合并/分割（不得改措辞）——ASR 修正已在组装期应用（02_terms.md 的 ASR 修正列），
 01 侧先应用**明确修正**（含 `→` 的映射）再对比，其余差异 = 断句违规（错词/缺词/多词）。
 
 difflib 一次列出每段全部分歧（沿用 `srt_reflow_check_words.py` 思路，不再只报第一处）；
-带段号 + plan 行号 + 01 cue 定位；默认只输出「问题数 + 提示」（各分歧段一行统计，不输出错误内容），--expand 展开每处上下文。
+带段号 + plan 行号 + 01 cue 定位；默认只输出“问题数 + 提示”（各分歧段一行统计，不输出错误内容），--expand 展开每处上下文。
 
 用法（命令根 = Project_Main/）：
   python scripts/srt_check_plan_words.py <01.srt> <s03_plan.md> [--asr-fixes <02_terms.md>] [--expand]
@@ -61,7 +61,7 @@ def parse_plan(path):
 
 
 def parse_asr_fixes(path):
-    """从 02_terms.md 的「ASR 修正」列解析修正映射 [(orig, fixed), ...]（仅含 `→` 的明确映射）。
+    """从 02_terms.md 的“ASR 修正”列解析修正映射 [(orig, fixed), ...]（仅含 `→` 的明确映射）。
 
     无箭头的条目（如 `Terra/Tara 等多处`）无方向信息、无法自动容错 → 跳过，交由 Agent 复核差异。
     """

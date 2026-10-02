@@ -18,7 +18,7 @@ description: 维护项目第一类知识（knowledge/）与索引（indexes/）�
 | `.github/experience/` | 经验（广义知识），Git 追踪 | 随翻译追加 + 日常维护（见「经验文件维护」） |
 | `scripts/` | 工具脚本 | 按需修改 |
 
-## 维护任务决策（用哪个 Skill）
+## 维护任务决策
 
 | 任务 | 用哪个 Skill |
 |------|-------------|
@@ -26,12 +26,12 @@ description: 维护项目第一类知识（knowledge/）与索引（indexes/）�
 | CSV 读写/表头列含义 | `csv-rules` |
 | 索引格式/版本/时间戳 | `indexing-rules` |
 | 外部仓库索引生成/更新判断 | `index-repos`（`scripts/check_index_stale.py`） |
-| 术语表加载/四级查找 | `use-glossary` |
+| 术语表加载/术语源优先级 | `use-glossary` |
 | Wiki 抓取/兜底 | `wiki-tools` |
 | 通用知识卡 | 本 Skill [#通用知识卡](#通用知识卡) 节 |
 | 经验/日志维护（ASR 分层、coverage 流水、经验提炼、超限整理） | 写入按 `term-registration` / `translate-redstone` 阶段三；超限整理按本 Skill「经验文件维护」 |
 
-## 术语体系（防混淆）
+## 术语体系
 
 三个"词汇表"的区分表见 `use-glossary` Skill 开头（项目术语库 / 拆分术语缓存 / 上游术语表），此处不重复。
 
@@ -64,15 +64,15 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 
 登记流程（触发条件、同步步骤、ASR 映射登记）统一按 `term-registration` Skill 执行。
 
-### 文件格式与规范（指针）
+### 文件格式与规范
 
 - 长篇机制说明：`knowledge/02_mechanic/<词条>.md`（含 YAML frontmatter）
 - 术语/人物/组织：CSV，共享 `_example.csv` 表头；Agent 新建术语只能写入 `_uncategorized.csv`
 - **CSV 表头列含义**：`csv-rules` Skill（唯一权威）
 - **CSV 读写规范**：`csv-rules` Skill（编码/解析/写入）
-- **来源规范**（2026-09-17；登记细则见 `term-registration`，模板见 `knowledge/_template_knowledge.md`）：知识记录（术语 CSV 的 `notes`、知识卡的 `source`/「来源」、索引「来源」行、`experience/` 条目）的来源须满足：
-  - **可移植**：只写**原始资料源**（`zh wiki〈页面〉页`、`Mojang 官方用语`）或**仓库内引用**（`_repos/…`、`knowledge/…`、`.github/…`）；**禁止**指向 `.cache/`（脚本生成的缓存）与 `_work/`（工作产物）——换环境即失效
-  - **视频必带唯一 ID**：合格形式为 `〈视频标题〉（<视频 ID>）`，**至少** `<视频 ID>`（如 `A Closer Look at Minecraft's Storage Blocks（ZXGpmaIcMMo）`、`uVOFckoMdIU 视频 00:26:48`）。ID（YouTube ID / B站 BV 号）是本项目视频主键（`_input/<ID>_*.srt` 同名），标题会被改、作者不唯一——**只写标题或只写作者（如「cubicmetre 视频」「（FX）」）不算合格来源**；只写 ID 时标题可从 `.github/experience/coverage_log.md`（视频流水表）反查；位置定位（`c<块号>` / `HH:MM:SS`）附末尾；确实无法确定 ID 时标 `[ID 待补]`
+- **来源规范**（2026-09-17；登记细则见 `term-registration`，模板见 `knowledge/_template_knowledge.md`）：知识记录（术语 CSV 的 `notes`、知识卡的 `source`/“来源”、索引“来源”行、`experience/` 条目）的来源须满足：
+  - **可移植**：只写**原始资料源**（`zh wiki<页面>页`、`Mojang 官方用语`）或**仓库内引用**（`_repos/…`、`knowledge/…`、`.github/…`）；**禁止**指向 `.cache/`（脚本生成的缓存）与 `_work/`（工作产物）——换环境即失效
+  - **视频必带唯一 ID**：合格形式为 `<视频标题>（<视频 ID>）`，**至少** `<视频 ID>`（如 `A Closer Look at Minecraft's Storage Blocks（ZXGpmaIcMMo）`、`uVOFckoMdIU 视频 00:26:48`）。ID（YouTube ID / B站 BV 号）是本项目视频主键（`_input/<ID>_*.srt` 同名），标题会被改、作者不唯一——**只写标题或只写作者（如“cubicmetre 视频”“（FX）”）不算合格来源**；只写 ID 时标题可从 `.github/experience/coverage_log.md`（视频流水表）反查；位置定位（`c<块号>` / `HH:MM:SS`）附末尾；确实无法确定 ID 时标 `[ID 待补]`
 - **版本标注**：`indexing-rules` Skill
 
 ## 通用知识卡
@@ -82,7 +82,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 ### 模板
 
 - 唯一权威模板：`knowledge/_template_knowledge.md`
-- 每词/每概念一卡，文件命名 `<英文术语>.md`，**统一放 `knowledge/02_mechanic/`**——该目录承载各类主题的知识卡，不按「术语 / 机制」分家
+- 每词/每概念一卡，文件命名 `<英文术语>.md`，**统一放 `knowledge/02_mechanic/`**——该目录承载各类主题的知识卡，不按“术语 / 机制”分家
 - 卡片结构：YAML frontmatter（`term`/`aliases`/`category`/`source`/`version`/`status`/`license`）+ 3 分区（`要点`/`翻译注意事项`/`备注`）
 
 ### 创建时机
@@ -106,7 +106,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 | 通用知识卡（本节） | 词汇/概念的知识要点、语境用法、翻译注意事项 | `<术语>.md` 知识卡 |
 | 陷阱词（`use-glossary`） | 防固有思维漏查的陷阱词（触发层，与词汇表正交） | `trap_words.md` |
 
-## 经验文件维护（.github/experience/，广义知识）
+## 经验文件维护
 
 `.github/experience/` 沉淀翻译经验（广义知识），维护如下。
 
@@ -120,15 +120,15 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 | `glossary_categories.yaml` | 术语表分类预判关键词 | 文件头注释（Agent 协助维护） |
 | `trap_words.md` | 防固有思维漏查的陷阱词（触发层，与词汇表正交） | `use-glossary`（随视频识破即追加） |
 
-### 写入规则（指针）
+### 写入规则
 
-- ASR 分层登记 → `term-registration`「ASR 映射登记」（跨视频通用→全局 / 视频专属→`_work/<视频名>/asr_fixes.md`）
+- ASR 分层登记 → 「term-registration#ASR 映射登记」（跨视频通用→全局 / 视频专属→`_work/<视频名>/asr_fixes.md`）
 - 阶段三流水 + 经验提炼 → `translate-redstone` 阶段三
 
-### 经验提炼规则（source_experience.md 写入门槛）
+### 经验提炼规则
 
 写之前逐条套"三问"（能力 / 盲区 / 下次去哪），**只有第 3 问的答案入库**。
-入库条目必须为 **IF-THEN 句式**：`当〈触发条件〉时 → 查〈数据源/动作〉，因为〈原因〉。（案例：〈一行内嵌〉）`
+入库条目必须为 **IF-THEN 句式**：`当<触发条件>时 → 查<数据源/动作>，因为<原因>。（案例：<一行内嵌>）`
 写完**自检四问**：
 1. 删掉日期/视频名/数字后还成立吗？——不成立 → 回 `coverage_log.md`
 2. 能否指导下一个视频的决策？——不能 → 回 `coverage_log.md`
@@ -136,7 +136,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 4. 与已有条目重复吗？——重复 → 只合并案例，不新开条
 若一次产出 >5 条"规律"→ 重新过一遍以上判据（规律是稀缺的，过多说明在罗列事实）。
 
-### 日常维护（第③层，不随翻译触发）
+### 日常维护
 
 - `asr_fixes.md` 超 ~100 条 → 将低价值/视频专属项移走归档到 `_work/<视频名>/asr_fixes.md`
 - `source_experience.md` 重复结论去重、存量日志/经验定期提炼
@@ -145,7 +145,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 ## 更新索引
 
 内容变更后，更新 `indexes/knowledge/` 下对应索引文件。条目格式与版本标注按 `indexing-rules` Skill 执行。
-- **时间戳**：索引文件的「生成时间/最近更新」是刷新判断依据，内容实质变更时同步更新；`_uncategorized.csv` 这类高频变动区只保留静态占位，其词条变动不触发索引更新、不更新时间戳（见 `indexing-rules`「索引时间戳与更新策略」）
+- **时间戳**：索引文件的“生成时间/最近更新”是刷新判断依据，内容实质变更时同步更新；`_uncategorized.csv` 这类高频变动区只保留静态占位，其词条变动不触发索引更新、不更新时间戳（见 「indexing-rules#索引时间戳与更新策略」）
 
 ## 运行脚本
 
@@ -156,7 +156,7 @@ Agent 只写入 `_uncategorized.csv`，不擅自归类。人工定期分拣到�
 | 同步 submodule | `git submodule update`（**同步第三方仓库纪律**；拉上游最新并重新锁定 → `git submodule update --remote`） |
 | 检查索引是否过期 | `python scripts/check_index_stale.py` |
 | 检查缓存新鲜度 | `python scripts/refresh_cache.py --dry-run`（Mojang/TechMC/Wiki 三类）；单页判定用 `--check-page <页面...>`（退出码 1 = 有需处理项） |
-| 刷新 Wiki 缓存（wikitext/lossless） | `python scripts/fetch_wiki.py --refresh`（不带页面名 = 全量，维护场景）；**按需单页**加页面名（如术语查证命中过期缓存时）见 [wiki-tools#缓存过期与主动刷新](../wiki-tools/SKILL.md#缓存过期与主动刷新按需)；`--dry-run` 只探测；规范见 `docs/WIKI_CACHE_FORMAT.md` |
+| 刷新 Wiki 缓存（wikitext/lossless） | `python scripts/fetch_wiki.py --refresh`（不带页面名 = 全量，维护场景）；**按需单页**加页面名（如术语查证命中过期缓存时）见 [wiki-tools#缓存过期与主动刷新](../wiki-tools/SKILL.md#缓存过期与主动刷新)；`--dry-run` 只探测；规范见 `docs/WIKI_CACHE_FORMAT.md` |
 
 ## 安全规则
 

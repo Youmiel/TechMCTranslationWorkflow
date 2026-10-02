@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""将 SRT 字幕流按「N 条负责 + M 条上下文」分块，供 subagent 分块处理长视频。
+"""将 SRT 字幕流按“N 条负责 + M 条上下文”分块，供 subagent 分块处理长视频。
 
-⚠️ 旧版工具（仅 SRT）：**新任务一律用 `text_chunk.py`**（SRT 与非 SRT 统一，见 docs/PRODUCT_FORMATS.md「通用文本分块」）。
+⚠️ 旧版工具（仅 SRT）：**新任务一律用 `text_chunk.py`**（SRT 与非 SRT 统一，见 docs/PRODUCT_FORMATS.md「PRODUCT_FORMATS.md#通用文本分块」）。
 本脚本仅保留兼容历史产物/旧流程。
 
 设计：
 - 每块 = OWNED 区（本块负责的 cue，必须产出）+ CONTEXT 区（前/后各 M 条，只读，仅作衔接参考，不产出）
 - 块边界始终在 cue 边界，不切开任何 cue；合并后的段时间码仍 ⊆ 原字幕边界集
-- 「未完成句结转」是语义规则（见 `segment-subtitles` Skill），本脚本只做确定性分块：
+- “未完成句结转”是语义规则（见 `segment-subtitles` Skill），本脚本只做确定性分块：
   每块只负责产出 start cue 落在 OWNED 区的完整句；跨块未完成句由下一块在 CONTEXT 中看到开头后完成。
 
 用法:
@@ -24,22 +24,6 @@ import argparse
 import os
 import re
 import sys
-
-sys.stdout.reconfigure(encoding="utf-8")
-
-ap = argparse.ArgumentParser(description='将 SRT 字幕流按 N+M 分块，供 subagent 分块处理')
-ap.add_argument('srt', help='输入 SRT 路径')
-ap.add_argument('--out', required=True, help='输出目录（不存在则创建）')
-ap.add_argument('--owned', type=int, default=100, help='每块负责的 cue 数 N（默认 100）')
-ap.add_argument('--ctx', type=int, default=6, help='块前后只读上下文 cue 数 M（默认 6）')
-ap.add_argument('--order', choices=('en-zh', 'zh-en'), default='zh-en',
-                help='双语行语言顺序（仅影响输出标注）：zh-en=中文前英文后（默认）；en-zh=英文前中文后')
-args = ap.parse_args()
-
-if args.owned < 1:
-    sys.exit('--owned 必须 >= 1')
-if args.ctx < 0:
-    sys.exit('--ctx 必须 >= 0')
 
 
 def parse_srt(path):
@@ -68,45 +52,63 @@ def fmt_text(body, order):
     return 'zh: %s | en: %s' % (body[0], body[1])
 
 
-units = parse_srt(args.srt)
-if not units:
-    sys.exit('未解析到任何 cue，请检查 SRT 格式')
-n = len(units)
-N, M = args.owned, args.ctx
+def main():
+    sys.stdout.reconfigure(encoding="utf-8")
+    ap = argparse.ArgumentParser(description='将 SRT 字幕流按 N+M 分块，供 subagent 分块处理')
+    ap.add_argument('srt', help='输入 SRT 路径')
+    ap.add_argument('--out', required=True, help='输出目录（不存在则创建）')
+    ap.add_argument('--owned', type=int, default=100, help='每块负责的 cue 数 N（默认 100）')
+    ap.add_argument('--ctx', type=int, default=6, help='块前后只读上下文 cue 数 M（默认 6）')
+    ap.add_argument('--order', choices=('en-zh', 'zh-en'), default='zh-en',
+                    help='双语行语言顺序（仅影响输出标注）：zh-en=中文前英文后（默认）；en-zh=英文前中文后')
+    args = ap.parse_args()
 
-os.makedirs(args.out, exist_ok=True)
+    if args.owned < 1:
+        sys.exit('--owned 必须 >= 1')
+    if args.ctx < 0:
+        sys.exit('--ctx 必须 >= 0')
 
+    units = parse_srt(args.srt)
+    if not units:
+        sys.exit('未解析到任何 cue，请检查 SRT 格式')
+    n = len(units)
+    N, M = args.owned, args.ctx
 
-def write_chunk(k, start, end):
-    """写第 k 块；owned 区为 units[start:end]。"""
-    owned = units[start:end]
-    before = units[max(0, start - M):start]
-    after = units[end:min(n, end + M)]
-    total = (n + N - 1) // N
-    lines = ['# CHUNK %d/%d  SRC: %s  TYPE: srt  UNIT: cue  OWN: c%d-c%d  CTX: BEFORE %d AFTER %d' %
-             (k + 1, total, os.path.basename(args.srt), owned[0][0], owned[-1][0], len(before), len(after))]
-    if before:
-        lines.append('## BEFORE')
-        for idx, s, e, body in before:
+    os.makedirs(args.out, exist_ok=True)
+
+    def write_chunk(k, start, end):
+        """写第 k 块；owned 区为 units[start:end]。"""
+        owned = units[start:end]
+        before = units[max(0, start - M):start]
+        after = units[end:min(n, end + M)]
+        total = (n + N - 1) // N
+        lines = ['# CHUNK %d/%d  SRC: %s  TYPE: srt  UNIT: cue  OWN: c%d-c%d  CTX: BEFORE %d AFTER %d' %
+                 (k + 1, total, os.path.basename(args.srt), owned[0][0], owned[-1][0], len(before), len(after))]
+        if before:
+            lines.append('## BEFORE')
+            for idx, s, e, body in before:
+                lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
+        lines.append('## OWNED')
+        for idx, s, e, body in owned:
             lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
-    lines.append('## OWNED')
-    for idx, s, e, body in owned:
-        lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
-    if after:
-        lines.append('## AFTER')
-        for idx, s, e, body in after:
-            lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
-    fname = os.path.join(args.out, 'chunk_%03d.txt' % (k + 1))
-    with open(fname, 'w', encoding='utf-8', newline='\n') as fh:
-        fh.write('\n'.join(lines) + '\n')
-    return fname
+        if after:
+            lines.append('## AFTER')
+            for idx, s, e, body in after:
+                lines.append('c%d\t%s --> %s\t%s' % (idx, s, e, fmt_text(body, args.order)))
+        fname = os.path.join(args.out, 'chunk_%03d.txt' % (k + 1))
+        with open(fname, 'w', encoding='utf-8', newline='\n') as fh:
+            fh.write('\n'.join(lines) + '\n')
+        return fname
+
+    k = 0
+    for start in range(0, n, N):
+        write_chunk(k, start, min(start + N, n))
+        k += 1
+
+    print('总 cue 数: %d' % n)
+    print('分块数: %d（每块负责 %d 条，前后只读上下文各 %d 条）' % (k, N, M))
+    print('输出目录: %s' % os.path.abspath(args.out))
 
 
-k = 0
-for start in range(0, n, N):
-    write_chunk(k, start, min(start + N, n))
-    k += 1
-
-print('总 cue 数: %d' % n)
-print('分块数: %d（每块负责 %d 条，前后只读上下文各 %d 条）' % (k, N, M))
-print('输出目录: %s' % os.path.abspath(args.out))
+if __name__ == "__main__":
+    main()

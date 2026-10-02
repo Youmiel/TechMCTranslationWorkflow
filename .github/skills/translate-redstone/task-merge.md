@@ -35,7 +35,7 @@ description: 合并断句任务（translate）——01 分块 cue 英文侧断�
 7. **对白拆分（多说话人）**：说话人切换 → **拆成独立段，不标注说话人**。
    - 识别切换主要靠**语义**（问答句式、话题转换、句首呼名如 "ragou, ..."、语气词变化），时间戳仅作**辅助**信号
    - 同一 cue 内两人对白（无时间戳参考）默认整条 cue 归属一侧，必须中间断开才走规则 6
-   - 单人讲解中的「自问自答」不拆，保持一段
+   - 单人讲解中的“自问自答”不拆，保持一段
 8. **分割超长句**：中文行超宽（>`<行宽硬限>` 视觉宽度，硬限制）的整句 → 分割为几段独立字幕，每段独立序号与时间码（>`<行宽软限>` 软告警）。
    - 分割点优先在语义相对完整处，不硬切残句
    - 分割后各段时间码取原段内连续 cue 的 start / end，仍 ⊆ 原边界集
@@ -48,7 +48,7 @@ description: 合并断句任务（translate）——01 分块 cue 英文侧断�
     - 下一块在 CONTEXT 看到该句开头则正常产出（start 落 CONTEXT 的结转句允许产出）
     - 合并脚本对结转句只采用 start 最早的版本
 
-## 输出（写入 `_work/<视频名>/_merge_results/chunk_<k>.txt`）
+## 输出
 
 - 产物 = **每行一段** `段号|cstart[-cend][~]|英文文本`（srt 类型），段号**块内从 1 连续编号**（`text_merge.py` 合并时全局段号重排）
 - `~` 标注该段为估算切分点（规则 6 受控例外）；`CARRY: c<idx>` 结转标记行**独立成行**（规则 10）
@@ -63,5 +63,4 @@ description: 合并断句任务（translate）——01 分块 cue 英文侧断�
 > 3. `## 先验知识` = 02_terms.md 术语表（断句不译，主要供识别专名 / 命令，可选）
 > 4. `## 本块数据` = 数据文件引用：`chunks/chunk_<k>.txt`（本块输入）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `_merge_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`
-
 > **渲染手段（脚本）**：由 `scripts/render_subagent_prompt.py` 会话外组装落盘 `_work/<视频名>/prompts/task-merge-chunk_<k>.txt`（完整 prompt 不进主会话）；未走脚本时按上方顺序同序拼接。派发见 [subagent-dispatch#派发引用 prompt](../subagent-dispatch/SKILL.md#派发引用-prompt)。

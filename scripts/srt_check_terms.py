@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """译文术语全量核对（reflow r02 / translate 译文，跨工作流共用）：逐条遍历 02_terms.md 术语表——01 定位原文出现单元 → 该单元译文必须含确认译名（变体容错）
 
-reflow 步骤 4 / translate 阶段二共用校验：翻译后全量核对译文术语是否按 02_terms.md 确认译名落地，替代人工抽查。
+reflow 翻译 / translate 阶段三共用校验：翻译后全量核对译文术语是否按 02_terms.md 确认译名落地，替代人工抽查。
 
 逻辑（逐术语）：
 1. 原文定位：01 各块 OWNED cue 拼接文本中搜原文候选词（词边界、大小写不敏感；块级拼接天然覆盖 ASR 跨 cue 拆词）→ 命中块集合
@@ -23,7 +23,7 @@ reflow 步骤 4 / translate 阶段二共用校验：翻译后全量核对译文�
 用法（命令根 = Project_Main/）：
   python scripts/srt_check_terms.py <01.srt> <02_terms.md> <r02_results/> --chunks <chunks/> [--expand] [--chunk 3]
   python scripts/srt_check_terms.py <01.srt> <02_terms.md> <s04_draft.srt> --plan <s03_plan.md> [--order en-zh] [--expand]
-统一反馈：默认只输出「问题数目 + 提示」（⚠️/ℹ️ 各一条定位行，不输出行号/上下文/01 原句）；--expand 展开每条明细；
+统一反馈：默认只输出“问题数目 + 提示”（⚠️/ℹ️ 各一条定位行，不输出行号/上下文/01 原句）；--expand 展开每条明细；
 --chunk <k> 只核对单块并默认展开（修复单块时防其他块报错占用上下文；ℹ️ 原文未命中与单块无关，单块模式跳过）。
 默认只打印 ⚠️/ℹ️ 与汇总（✅ 折叠）；--verbose 展开全部 ✅。
 退出码：0 = 全部命中；1 = 有未命中（⚠️ 或 ℹ️，Agent 复核后才可放行）。
@@ -64,8 +64,8 @@ def parse_srt(path):
 def parse_terms(path):
     """解析 02_terms.md 术语映射表 → [(原文, 译名, 行号), ...]。
 
-    按表头定位「原文」「译名」列（表头固定，兼容多列/列序差异）；
-    仅解析含两列的表头行所在的表格（ASR 误识别修正表表头为「原 ASR/修正为」，自动跳过）；
+    按表头定位“原文”“译名”列（表头固定，兼容多列/列序差异）；
+    仅解析含两列的表头行所在的表格（ASR 误识别修正表表头为“原 ASR/修正为”，自动跳过）；
     跳过表头/分隔行；原文或译名为空的行忽略。行号 = 02_terms.md 内 1-based（告警定位用）。
     """
     terms = []
@@ -196,7 +196,7 @@ def is_subword(short, long):
 def main():
     ap = argparse.ArgumentParser(description="译文术语全量核对（reflow r02 / translate）：02_terms.md 逐条检查译文译名落地（替代人工抽查）")
     ap.add_argument("srt", help="01_subtitle_asr_fixed.srt")
-    ap.add_argument("terms", help="02_terms.md（术语映射表，含「原文」「译名」表头）")
+    ap.add_argument("terms", help="02_terms.md（术语映射表，含“原文”“译名”表头）")
     ap.add_argument("r02", help="译文输入：目录（r02_results/ 或 _trans_results/，每块一个 chunk_<k>.txt）或单文件（s04_draft.srt 双语合并稿）")
     ap.add_argument("--chunks", default=None, help="chunks 目录（目录模式解析块↔cue 区间）")
     ap.add_argument("--plan", default=None, help="s03_plan.md（SRT 单文件模式段→cue 区间映射，必填）")
@@ -214,7 +214,7 @@ def main():
     cue_map = {idx: body for idx, body in cues}
     terms = parse_terms(args.terms)
     if not terms:
-        sys.exit("❌ 02_terms.md 未解析到术语条目（检查表头是否含「原文」「译名」）")
+        sys.exit("❌ 02_terms.md 未解析到术语条目（检查表头是否含“原文”“译名”）")
 
     srt_mode = os.path.isfile(args.r02)  # 单文件（s04_draft.srt）→ SRT 模式；目录 → 块级模式
     if srt_mode:

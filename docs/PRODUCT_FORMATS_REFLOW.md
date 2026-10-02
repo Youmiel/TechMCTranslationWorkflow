@@ -1,6 +1,6 @@
 # reflow 产物格式（PRODUCT_FORMATS_REFLOW）
 
-> reflow-redstone（方案二 语义回填重排；建立早于 reflow2）阶段二专有产物的格式 / 结构 / 标记约定。
+> reflow-redstone（方案二 语义回填重排；建立早于 reflow2）阶段三 专有产物的格式 / 结构 / 标记约定。
 > 通用约定、共享产物（`01` / `02` / `term_*` / `wiki_*`）、通用文本分块、配置文件 → [PRODUCT_FORMATS](PRODUCT_FORMATS.md)。
 > **reflow2 复用本文件的块骨架与 r01/r02/r03 格式**——reflow2 文件内只留短句 + 链接，不重复展开。
 
@@ -15,10 +15,10 @@
 | `r01_results/chunk_<k>.txt` | Agent（补标点 subagent） | `srt_reflow_check_breaks.py`、`srt_reflow_check_words.py`（块级模式） |
 | `r02_results/chunk_<k>.txt` | Agent（整段翻译 subagent） | `check-r03`（ZH 忠实基准） |
 | `r03_normalized_1/chunk_<k>.txt` | 脚本 `srt_reflow_presplit.py`（EN 预分句 E1..En） | Agent（分句 subagent 输入） |
-| `r03_normalized_2/chunk_<k>.txt` | 脚本 `srt_reflow_presplit.py`（ZH r03 模板骨架：Z 句 + 子句段预填） | Agent（分句 subagent 输入，5-1 task-split 填空） |
-| `r03_zslim/chunk_<k>.txt` | 脚本 `srt_reflow_presplit.py`（`--zh-list-out`；ZH **整句级精简列表**） | Agent（句子匹配 subagent 输入，仅 5-2 task-match） |
-| `r03_matches/chunk_<k>.txt` | Agent（句子匹配 subagent，步骤 5-2 脚本断句） | 脚本 `srt_reflow_build_r03.py`（机械断句填回） |
-| `r03_results/chunk_<k>.txt` | Agent（分句 subagent，步骤 5-1）或脚本 `srt_reflow_build_r03.py`（步骤 5-2，经 `r03_matches/`） | `parse_r03_dir`（回填直读）、`check-r03`、`join-r03` |
+| `r03_normalized_2/chunk_<k>.txt` | 脚本 `srt_reflow_presplit.py`（ZH r03 模板骨架：Z 句 + 子句段预填） | Agent（分句 subagent 输入，[语义分句（LLM）](../.github/skills/reflow-redstone/semantic-reflow.md#语义分句) 填空） |
+| `r03_zslim/chunk_<k>.txt` | 脚本 `srt_reflow_presplit.py`（`--zh-list-out`；ZH **整句级精简列表**） | Agent（句子匹配 subagent 输入，仅[脚本断句（机械）](../.github/skills/reflow-redstone/semantic-reflow.md#脚本断句)） |
+| `r03_matches/chunk_<k>.txt` | Agent（句子匹配 subagent，[脚本断句（机械）](../.github/skills/reflow-redstone/semantic-reflow.md#脚本断句)） | 脚本 `srt_reflow_build_r03.py`（机械断句填回） |
+| `r03_results/chunk_<k>.txt` | Agent（分句 subagent，[语义分句（LLM）](../.github/skills/reflow-redstone/semantic-reflow.md#语义分句)）或脚本 `srt_reflow_build_r03.py`（经 `r03_matches/`） | `parse_r03_dir`（回填直读）、`check-r03`、`join-r03` |
 | `r03_plan.md` | 脚本 `join-r03`（按需，审核/审计用） | `plan.py parse_r03`、`check-r03` |
 | `r04_draft.srt` | `srt_reflow.py reflow` | `srt_check_segments.py`、`check-duration` |
 | `r04_bilingual.srt` | `srt_reflow.py attach-en` | `srt_check_width.py --order zh-en` |
@@ -42,7 +42,9 @@
 ## 长停顿清单（>5s，N 处，按时长降序）           ← 剪辑跳转 ⚠️ / 普通长停顿
 ### 1. c43 → c48（9.2s）⚠️ 剪辑跳转
 - 区间 / 前 cue / 后 cue / 用途
-## 非语音标记 cue（[Music] 等，已跳过空隙判定）
+## 非语音标记 cue
+
+> [Music] 等，已跳过空隙判定
 ## 使用说明
 ```
 
@@ -88,13 +90,15 @@ c43	c48	9200	jump	active	剪辑跳转
   - 性质判定: [x] 剪辑跳转… [ ] 语义停顿…
   - 断句方式: [x] 独立成段…
   - ⚠️ 游离停顿词提示（可选）
-## 校验（补标点后必跑）
+## 校验
+
+> 补标点后必跑
 ```
 
 - 消费：断句点清单供 **Agent 复核回填**（空隙点级，仅含清单、**不含 01 全文**）+ 补标点 subagent **先验知识注入**（空隙断句标记 `【强制断句】`，见 task-punctuate）
 - 约束：`【强制断句】` 为空隙标记、**非本文档文本**（由断句点清单派生、经复核注入补标点先验知识），Agent 不手写
 
-## `r01_normalized/chunk_<k>.txt`（归一化输入）
+## `r01_normalized/chunk_<k>.txt`
 
 - 命名：`<工作目录>/reflow/r01_normalized/chunk_<k>.txt`
 - 生成：脚本 `srt_reflow_normalize.py`（`python scripts/srt_reflow_normalize.py reflow/chunks/ -o reflow/r01_normalized/`）——**一次性处理整个 chunks/ 目录**，每块独立合并、互不影响，命令只运行一次
@@ -102,12 +106,12 @@ c43	c48	9200	jump	active	剪辑跳转
   > ⚠️ **折行宽度为形态描述、非判据**：实际值由脚本 `MAX_LINE` 决定（`shared/srt_common.py`），改值以代码为准；本文件不重复取值范围定义。
 - 定位：补标点 subagent 输入（替代直接读 `chunks/` 的 cue 结构，subagent 无需再自行拼接 OWNED 文本）——**仅作补标点输入，非校验基准**（校验仍读 `chunks/` 的 cue 区间 + `r01_results/`）
 - 约束：折行为**显示性换行、非语义分行**——subagent 按整段解析、**忽略行尾换行**；纯标记块（无语音 cue）输出空块注释（`> 本块无语音 cue`），对应补标点产物为空块、校验跳过
-- 消费：步骤 3 补标点 subagent（`r01_results/` 对应块）
+- 消费：补标点 subagent（`r01_results/` 对应块）
 
-## `r01_results/chunk_<k>.txt`（补标点块）
+## `r01_results/chunk_<k>.txt`
 
 - 命名：`<工作目录>/reflow/r01_results/chunk_<k>.txt`
-- 生成：Agent（步骤 3 逐块补标点 subagent；各块独立文件，块数 = 空隙组数 × 组内片数）
+- 生成：Agent（逐块补标点 subagent；各块独立文件，块数 = 空隙组数 × 组内片数）
 - 格式：**整段文字**，每块 = 对应 `reflow/chunks/chunk_<k>.txt` 的 OWNED 空隙组-片 = **一段连续英文**。
   - 块内加标点但**不按 cue 分行、不按句分行**（逐句 / cue 分行会孤立 ASR 残片导致误译）
   - **不带 `c<idx>\t时间码\t` 前缀**
@@ -119,14 +123,14 @@ c43	c48	9200	jump	active	剪辑跳转
   - **跨块句补全（仅片边界）**：
     - OWNED 首句承接前块 → 行首 `【承接句】<完整句>`
     - 末句延伸后块 → 行首 `【延伸句】<完整句>`
-    - 相邻块对同一跨块句都补全（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`）；主会话「衔接归位」后**只在一侧留无标记完整句、另一侧不留该句文本**
+    - 相邻块对同一跨块句都补全（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`）；主会话“衔接归位”后**只在一侧留无标记完整句、另一侧不留该句文本**
   - 空隙边界不承接
-- 消费：步骤 4 整段翻译（`r02_results/` 对应块）、预分句标号（`r03_normalized_1/`，见该节）、`check_breaks`/`check_words` 块级模式（`【承接句】`/`【延伸句】` 标记由校验脚本识别、不计入词序列）
+- 消费：整段翻译（`r02_results/` 对应块）、预分句标号（`r03_normalized_1/`，见该节）、`check_breaks`/`check_words` 块级模式（`【承接句】`/`【延伸句】` 标记由校验脚本识别、不计入词序列）
 
-## `r02_results/chunk_<k>.txt`（翻译块）
+## `r02_results/chunk_<k>.txt`
 
 - 命名：`<工作目录>/reflow/r02_results/chunk_<k>.txt`
-- 生成：Agent（步骤 4 逐块整段翻译 subagent，**先验知识注入 humanizer 注入版规则（humanizer-inject）**；各块独立文件，块数 = 空隙组数 × 组内片数）
+- 生成：Agent（逐块整段翻译 subagent，**先验知识注入 humanizer 注入版规则（humanizer-inject）**；各块独立文件，块数 = 空隙组数 × 组内片数）
 - 格式：**整段中文译文**，每块 = 对应 `r01_results/chunk_<k>.txt` 的整段翻译。
   - 块内**不按 cue 分行、不按句分行、不编号、不输出原文**
   - **不带 `c<idx>\t时间码\t` 前缀**
@@ -135,22 +139,22 @@ c43	c48	9200	jump	active	剪辑跳转
 - 约束：r02 定稿即自然译文（去翻译腔内联）；`check-r03` 块级模式以本文件整段为 ZH 忠实基准（r03 逐字复用）
 - 消费：ZH 归一化模板骨架（`r03_normalized_2/`，见该节）、分句（`r03_results/` 对应块）、`check-r03` 块级模式
 
-## `r03_normalized_1/chunk_<k>.txt`（分句输入·EN 预分句）
+## `r03_normalized_1/chunk_<k>.txt`
 
 - 命名：`<工作目录>/reflow/r03_normalized_1/chunk_<k>.txt`
-- 生成：脚本 `srt_reflow_presplit.py`（`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/`，一次性全目录）——EN 按句末标点 `.?!` 预分句（常见缩写 Mr./Fig./e.g. 等保护、省略号不切分、跨块句标记剥离）标号 `E1..En`
+- 生成：脚本 `srt_reflow_presplit.py`（`python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/`，一次性全目录）——EN 按句末标点（角色表 `terminator`）预分句（常见缩写 Mr./Fig./e.g. 等保护、省略号不切分、跨块句标记剥离）标号 `E1..En`
 - 格式：每句一行 `- E1: <句文本>`（句内 `wrap_text` 折行 ≤1000 字符、续行顶格，显示性换行非语义分行）
 - 定位：分句 subagent 输入的**整句骨架**（替代自行逐句分句）——脚本只做句级初分，游离停顿词归属/长句语义再切仍由 agent 处理；**不形成中英对照**（与 `r03_normalized_2/` 各自编号）
 - 消费：分句 subagent（`r03_results/` 对应块）
 
-## `r03_normalized_2/chunk_<k>.txt`（分句输入·ZH r03 模板骨架）
+## `r03_normalized_2/chunk_<k>.txt`
 
 - 命名：`<工作目录>/reflow/r03_normalized_2/chunk_<k>.txt`
 - 生成：脚本 `srt_reflow_presplit.py`（一次性全目录）。命令：
   ```
   python scripts/srt_reflow_presplit.py reflow/r01_results/ reflow/r02_results/ -o reflow/
   ```
-  - ZH 按句末标点 `。！？…` 预分句（括号配平保护）标号 `Z1..Zm`
+  - ZH 按句末标点（同一通用角色表；中文侧即 `。！？…`）预分句（括号配平保护）标号 `Z1..Zm`
   - 句内按标点切候选段 + 代价最小化拼合 [15,22]（硬 ≤27）
   > ⚠️ **宽度区间为脚本行为描述、非本文件判据**：由 `srt_reflow_presplit.py` 执行（阈值源自 `shared/srt_common.py`）；subagent **不折行、不自行断段**，无需据此计算。
     - **直读 `r02_results/` 原稿**（脚本读取不受行宽限制，无需折行副本）
@@ -165,10 +169,10 @@ c43	c48	9200	jump	active	剪辑跳转
   - agent 只做**填空与核对**（S 号 / EN / 关系 / 子单元 EN / 对应 / 游离词）
   - `默认 E<n>` 为按序启发式提示须核对
   - 不形成中英对照
-- 参数：`--soft-min/--soft-max/--hard-max/--min-unit`（多语言通用，默认 CJK）+ 标点角色表 `--punct-terminators/--punct-strong/--punct-clause/--punct-list`（默认 zh：句界 `。！？…` / strong `；：—` / clause `，` / list `、`）；旧 `--punct-levels` 仍接受（按字符归属映射到角色，不推荐）
+- 参数：`--soft-min/--soft-max/--hard-max/--min-unit`（多语言通用）+ 标点角色表 `--punct-terminators/--punct-strong/--punct-clause/--punct-list`（**默认取跨语言通用表** `shared.srt_common.PUNCT_ROLE_CHARS`；改字符集会改 Z 句数、使 `align/` 失效，谨慎）；旧 `--punct-levels` 仍接受（按字符归属映射到角色，不推荐）
 - 消费：分句 subagent（`r03_results/` 对应块）
 
-## `r03_zslim/chunk_<k>.txt`（分句输入·ZH 整句级精简列表，5-2 task-match 专用）
+## `r03_zslim/chunk_<k>.txt`
 
 - 命名：`<工作目录>/reflow/r03_zslim/chunk_<k>.txt`
 - 生成：脚本 `srt_reflow_presplit.py` 的 **`--zh-list-out <目录>`**（与 r03_normalized_2 同源 `split_zh`、同命令一次性生成），**独立产物路径**，不复用 / 替代 r03_normalized_2 模板骨架。命令：
@@ -186,10 +190,10 @@ c43	c48	9200	jump	active	剪辑跳转
   - r03_normalized_2 与 r03_zslim 并存、各司其职
 - 消费：句子匹配 subagent（`r03_matches/` 对应块）
 
-## `r03_matches/chunk_<k>.txt`（分句输入·匹配文件，脚本断句路径）
+## `r03_matches/chunk_<k>.txt`
 
 - 命名：`<工作目录>/reflow/r03_matches/chunk_<k>.txt`
-- 生成：Agent（步骤 5-2 句子匹配 subagent，`task-match`；各块独立文件，块数 = 空隙组数 × 组内片数）——LLM **只做句子匹配**（不做断句、不填 EN、不写 r03）
+- 生成：Agent（句子匹配 subagent，`task-match`；各块独立文件，块数 = 空隙组数 × 组内片数）——LLM **只做句子匹配**（不做断句、不填 EN、不写 r03）
 - 格式：**匹配文件**——每行一个整句：左 = 合并成该整句的 ZH 句组（Z 号升序、`+` 连接）、右 = 对应 EN 句组（E 号升序、`+` 连接）：
   ```
   Z5+Z6+Z7+Z8 = E5
@@ -208,7 +212,9 @@ c43	c48	9200	jump	active	剪辑跳转
 - 格式（`plan.py parse_r03` 解析标准，**不得改动**）：
 
 ```markdown
-## S<n>            （合句为 S<n+m>，如 S19+20）
+## S<n>
+
+> 合句为 S<n+m>，如 S19+20
 - EN: <整句英文全文>
 - ZH: <整句中文>
 - 关系: 1:1 | 1:n
@@ -218,7 +224,7 @@ c43	c48	9200	jump	active	剪辑跳转
 ```
 
 - 头部可加 `> ` 注释（如残片剔除说明）
-- **漏句留空（不静默丢弃，两路径通用）**：某 Z 句无法对应 EN / 超宽段切不动 → 产物中写 `> ⚠️ 未匹配 Z<n>：<文本>`（步骤 5-2 由 `build-r03` 自动写 `> ⚠️ 脚本断句·未匹配 Z<n>: <文本>`）——漏句会让 check-r03 ④ ZH 忠实报缺句，留空标记便于按 `> ⚠️` 精确定位、定点补 / 回 r02 改
+- **漏句留空（不静默丢弃，两路径通用）**：某 Z 句无法对应 EN / 超宽段切不动 → 产物中写 `> ⚠️ 未匹配 Z<n>：<文本>`（脚本断句路径由 `build-r03` 自动写 `> ⚠️ 脚本断句·未匹配 Z<n>: <文本>`）—— 漏句会让 check-r03 ④ ZH 忠实报缺句，留空标记便于按 `> ⚠️` 精确定位、定点补 / 回 r02 改
 - 约束：
   - **EN/ZH 值单行**：`- EN:`/`- ZH:` 的值各占**恰好一行**，值内禁止换行/折行/空行（`plan.py parse_r03` 按行解析 `- EN:`/`- ZH:` 前缀；跨行破坏解析与忠实校验）
   - 子单元 ZH 拼接（去标点）== 整句 ZH（忠实铁律）；EN 片段互斥拼接 == 整句 EN
@@ -229,8 +235,8 @@ c43	c48	9200	jump	active	剪辑跳转
 
 - 命名：`<工作目录>/reflow/r03_results/chunk_<k>.txt`（每块一个，块数 = 空隙组数 × 组内片数）
 - 生成：**两条路径任一**——
-  - 步骤 5-1：分句 subagent（`task-split`），读 `r03_normalized_1/`（EN 骨架）+ `r03_normalized_2/`（ZH 模板骨架）填空
-  - 步骤 5-2：脚本 `srt_reflow_build_r03.py`，读 `r03_matches/`（号对应）+ 预分句骨架机械填回
+  - [语义分句（LLM）](../.github/skills/reflow-redstone/semantic-reflow.md#语义分句)：分句 subagent（`task-split`），读 `r03_normalized_1/`（EN 骨架）+ `r03_normalized_2/`（ZH 模板骨架）填空
+  - [脚本断句（机械）](../.github/skills/reflow-redstone/semantic-reflow.md#脚本断句)：脚本 `srt_reflow_build_r03.py`，读 `r03_matches/`（号对应）+ 预分句骨架机械填回
 - 格式：**同 `r03_plan.md`**（`## S<n>` 整句分组）——差别仅在 **S 号块内从 1 连续编号**（不跨块引用），回填时由 `parse_r03_dir` 按块序**全局重编号**
 - 消费：回填直读（`parse_r03_dir`，零拼接）、`check-r03` 块级模式、`join-r03`（按需生成 `r03_plan.md`）
 

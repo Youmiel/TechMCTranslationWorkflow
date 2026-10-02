@@ -9,50 +9,52 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 
 每次派发的 subagent 都是**全新上下文**，看不到主会话已加载的术语/陷阱词/ASR 修正。因此**先验知识必须显式写进 subagent 的 prompt**，不能指望"主流程加载过一次就延续"。
 
-## 派发边界（哪些派 subagent / 哪些主会话）
+## 派发边界
 
+> 哪些派 subagent / 哪些主会话。
+>
 > 原则：**粗粒度、少打扰**——派发是执行机制，是否派由任务性质决定，**不需逐步骤报告**（考量沿用 [PIPELINE_ISOLATION.md §3](../../../docs/PIPELINE_ISOLATION.md)）。
 
-**一律派 subagent**（reflow 阶段二补标点/翻译/分句、preprocess §1.1 第一次遍历 + 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
+**一律派 subagent**（reflow 阶段三 补标点/翻译/分句、preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) 第一次遍历 + 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
 
-**查证（preprocess §1.2）→ 研究型 agent 分批派发**：L3 术语查证待查列表按 **30 条/块** 拆 `term_pending_<i>.md`，逐块派 `term-researcher`（研究型 agent）。
+**查证（preprocess [集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐)）→ 研究型 agent 分批派发**：L3 术语查证待查列表按 **30 条/块** 拆 `term_pending_<i>.md`，逐块派 `term-researcher`（研究型 agent）。
 - **非任务处理 agent**：允许推理 / 判断 / 多步查证，但页面原文只进一次性上下文、只返回每词一行压缩总结
-- **任务文件即完整 prompt**（`term-scan/task-term-resolve.md`，规则静态内联）——派发时「任务文件 + 该块 `term_pending_<i>.md`」双引用
+- **任务文件即完整 prompt**（`term-scan/task-term-resolve.md`，规则静态内联）——派发时“任务文件 + 该块 `term_pending_<i>.md`”双引用
 - **不走渲染脚本**、**不追加执行型纪律母版**（研究型纪律由 agent 系统提示词承载）
 
 **Wiki 查询（翻译过程中任何需请求 Wiki 的场合）→ 研究型 agent 派发**：机制细节 / 数值核对 / 版本行为对比 / 页面存在性核查 / 翻译中临时追问等**非术语清单**的 Wiki 请求，派 `wiki-researcher`（研究型 agent）。
-- **任务文件即完整 prompt**（`wiki-tools/task-wiki-query.md`）——派发时「任务文件 + 待查清单 `wiki_pending_<i>.md`」双引用，产物 `wiki_resolve_<i>.md`
+- **任务文件即完整 prompt**（`wiki-tools/task-wiki-query.md`）——派发时“任务文件 + 待查清单 `wiki_pending_<i>.md`”双引用，产物 `wiki_resolve_<i>.md`
 - **分工**：纯术语译名批量查证走 `term-researcher` + `task-term-resolve.md`（产物 `term_resolve_<i>.md`）；其余 Wiki 请求走 `wiki-researcher`（两者查询链一致——缓存 → 过期判定 → 主动刷新 → 降级链）
 - 主会话**不读页面全文**；需浏览器抓取的兜底档由主会话执行（agent 报 `[需浏览器]`）
 - 单个问题（一两句能问清）不需建清单文件，可直接以问题文本代替待查清单引用；**批量查询才拆块**（条数多必分，防推理截断）
 
-**不派 subagent（主会话）**：需用户交互（术语确认 §1.3、审核循环 阶段二½）——能力约束；需全貌的跨切面决策（如 r03 分句对应、回填判断）。
+**不派 subagent（主会话）**：需用户交互（[术语确认](../redstone-preprocess/SKILL.md#23-术语确认)、审核循环 阶段五）——能力约束；需全貌的跨切面决策（如 r03 分句对应、回填判断）。
 
-**translate**：阶段二合并断句 / 翻译**一律派 subagent**（与 reflow 对齐）——块数由分块骨架决定，无需报告"用/不用"，直接按派发配方派发。
+**translate**：阶段三 合并断句 / 翻译**一律派 subagent**（与 reflow 对齐）——块数由分块骨架决定，无需报告"用/不用"，直接按派发配方派发。
 
-## 主会话读写最小化（token 纪律）
+## 主会话读写最小化
 
 > **作用域**：本节仅约束 **translate / reflow 派发-校验阶段**的主会话调度行为（两工作流经本 skill 派发时加载）；**maintain-knowledge / wiki-tools 等日常维护工作流不适用**——那些工作流主会话的正常读写不受本节限制。
-> 背景：主会话历史只增不减、每轮都付——**无论多小的读/写/验证动作都进入对话历史**（流程越长越明显）。凡能由脚本/subagent 完成的读、写、验证一律下沉，主会话只保留「路由 + 决策必需」动作。
+> 背景：主会话历史只增不减、每轮都付——**无论多小的读/写/验证动作都进入对话历史**（流程越长越明显）。凡能由脚本/subagent 完成的读、写、验证一律下沉，主会话只保留“路由 + 决策必需”动作。
 
 - **读**：数据文件读取一律下沉（渲染脚本 / 校验脚本 / subagent），主会话不读块数据、不读 wiki 页面全文。
   - 大内容（Wiki 页面 / 长产物）→ 研究型 agent（`term-researcher` / `wiki-researcher`）读取、只返回压缩总结
-  - 校验告警已带「文件:行号 + 上下文」→ **直接打包进 `task-fix` 清单派发（B 档）**，主会话不读文件定位、不自行定点修（A 档已废弃，见「定点修正」）
+  - 校验告警已带“文件:行号 + 上下文”→ **直接打包进 `task-fix` 清单派发（B 档）**，主会话不读文件定位、不自行定点修（A 档已废弃，见“定点修正”）
 - **写**：产物全部由 subagent（新建文件动作直接写盘）或脚本（`--out`）产出，主会话只发命令触发、不自行新建中间产物文件。
   - 主会话唯一写 = 需用户确认的交付物（`02_terms`、`_output/`）+ 小量路由产物（如 `term_pending.md` 全量待查列表 + 分块 `term_pending_<i>.md`、批量 Wiki 请求的 `wiki_pending_<i>.md`）
 - **验证**：存在性验证（收信号即验）用**目录列举**一次校验，不读文件内容。
   - 行数 / 非空由脚本统计（`text_merge` 报告 / `(Get-Content).Count`），主会话不数
-- **例外（决策必需，允许）**：用户交互展示（§1.3 确认表、审核对象）。
-  - **校验告警定位后的定点编辑不再例外**，一律下放 B 档 `task-fix`（主会话零定点编辑，见「定点修正」）
+- **例外（决策必需，允许）**：用户交互展示（[术语确认](../redstone-preprocess/SKILL.md#23-术语确认) 表、审核对象）。
+  - **校验告警定位后的定点编辑不再例外**，一律下放 B 档 `task-fix`（主会话零定点编辑，见“定点修正”）
 
 ## 派发前主 Agent 准备
 
 1. 生成/读取该视频的**知识卡**（`02_terms.md`：已确认术语 + 陷阱词命中项 + ASR 修正映射）
-2. 用 `scripts/text_chunk.py` 分块（见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)；SRT 与非 SRT 统一，超阈值判定先跑 `context_estimate.py`）
+2. 用 `scripts/text_chunk.py` 分块（见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块)；SRT 与非 SRT 统一，超阈值判定先跑 `context_estimate.py`）
 3. **清理旧产物（重跑/重试前必做，mv 不删）**：目标结果文件若已存在（校验打回重跑、整轮重跑等场景），用 `Move-Item` 移到同目录的 `<结果目录>_bak_<时间戳>/`（如 `reflow/r01_results_bak_20260816_1530/`，时间戳取当前时刻）。
    - **只移动、不删除**——纪律母版「五、工作区与工具纪律」禁删，主会话亦用 mv 规避删除
    - 示例：`Get-ChildItem reflow/r01_results/chunk_*.txt | Move-Item -Destination "reflow/r01_results_bak_$(Get-Date -Format yyyyMMdd_HHmm)/" -Force`
-   - **清理是写盘前提**：新建文件动作只新建、遇已存在即报错；结果文件多为超长单行（读文件内容会截断、走「读后改」必死循环）——故必须保证 subagent 写盘时目标路径不存在
+   - **清理是写盘前提**：新建文件动作只新建、遇已存在即报错；结果文件多为超长单行（读文件内容会截断、走“读后改”必死循环）——故必须保证 subagent 写盘时目标路径不存在
    - **备份带时间戳即历史归档**（每轮独立、不覆盖、可审计可恢复），不删除、无需清退
 4. **跑渲染脚本生成每块 prompt**：`python scripts/render_subagent_prompt.py <task> --video <视频工作目录> [--chunk <k> | --all] [--prior-file <文件>]`（渲染逻辑与任务映射见「派发配方」）。
    - 完整 prompt 落盘 `_work/<视频名>/prompts/<task>-chunk_<k>.txt`，**不经主会话**（完整 prompt 文本不进主会话历史，主会话只发短命令）
@@ -75,22 +77,19 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > 5. 生成块数据引用
 >
 > **完整 prompt 文本不进主会话历史**，主 agent 只发渲染命令 + 派发引用。任务**特有规则直接内联**在任务文件（不建独立规则文件）；**通用纪律**由 `_discipline.md` 单一权威；**产物格式约定**（格式查找路径）由渲染脚本注入（见下）。
-
 > **渲染脚本覆盖范围**：
-> - reflow 阶段二：`scripts/render_subagent_prompt.py` 接入 `task-punctuate` / `task-translate` / `task-split` / `task-match`
-> - translate 阶段二：同一脚本接入 `task-merge` / `task-humanize` / `task-translate`
+> - reflow 阶段三：`scripts/render_subagent_prompt.py` 接入 `task-punctuate` / `task-translate` / `task-split` / `task-match`
+> - translate 阶段三：同一脚本接入 `task-merge` / `task-humanize` / `task-translate`
 >   - **同名任务多 skill**：派发时 `--skill translate-redstone` 取 translate 版，默认 reflow 版
-> - preprocess 阶段一：**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）
-> - **§1.2 查证（`task-term-resolve`）/ Wiki 查询（`task-wiki-query`）不走渲染脚本**：研究型任务、规则静态内联于任务文件，派发时「任务文件 + 该批待查清单」双引用（见「派发边界」）
+> - preprocess 阶段二：**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）
+> - **[集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐) 查证（`task-term-resolve`）/ Wiki 查询（`task-wiki-query`）不走渲染脚本**：研究型任务、规则静态内联于任务文件，派发时“任务文件 + 该批待查清单”双引用（见「派发边界」）
 > - `task-fix`（reflow / translate 版）/ `task-summary` 未接入：错误清单 / 摘要为动态内容不走块级渲染，仍按旧方式——主 agent 读模板 + 手工组装 + 落盘存档（内容不大时也可直接内联派发）
 >
 > **每任务的实际取材在各任务文件底部**（`> **渲染步骤**` 区块，渲染时剥离）：声明该任务按什么顺序、用哪些内容拼接（见该区块的有序列表）。**本节（派发配方）只描述通用流程与规则**，具体取材以任务文件为准。
-
 > **执行型纪律与模型**：reflow 类执行任务**派发 `reflow-worker`（执行型 agent），使用无思考模型**。
 > - 具体做法（派发入口 / agent 定义 / 模型名 / adapt）按你自己的编辑器执行，见 [EDITOR_COMPAT](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml` 的 `execution_model`）
 > - 纪律母版「一、执行型定位」与 agent 系统提示词同源，由渲染脚本随 prompt 整体注入（内联兜底 + 任务特定纪律 + 兜底）
-> - **研究型任务不同**（`term-researcher` §1.2 查证 / `wiki-researcher` Wiki 查询）：用主模型（非 `execution_model`）、不追加执行型纪律母版——见「派发边界」
-
+> - **研究型任务不同**（`term-researcher` 查证 / `wiki-researcher` Wiki 查询）：用主模型（非 `execution_model`）、不追加执行型纪律母版——见「派发边界」
 > **组装原则（内联 vs 引用，单一权威）**：**默认全部内联，仅数据文件例外**——任务规则、纪律母版、`## 先验知识`（术语表/陷阱词/ASR 修正/humanizer 注入等）等一切规则与知识内容由渲染脚本**直接内联进 prompt 文件**；**唯一例外 = 块数据**（`## 本块数据` 单独注明数据文件路径，subagent 按引用读取）；subagent 侧只读边界见纪律母版「五、工作区与工具纪律」。
 
 ```
@@ -99,13 +98,13 @@ subagent prompt = 任务文件内容（含任务特有规则）
                 + 纪律母版（_discipline.md 整体追加；通用纪律单一权威）
                 + 产物格式约定（查找路径：PRODUCT_FORMATS 对应节，subagent 唯一允许的外部读取）
                 + 知识卡（术语/陷阱词/ASR 修正映射；脚本直读 02_terms.md 等）
-                + 块数据（## 本块数据 单独注明数据文件路径——唯一引用例外，其余全部内联，见「组装原则」）
-                + 写盘/报告约定（输出路径 + 「已写入 <文件名>」；**不数行数**——行数/非空由脚本统计校验，见「合并」）
+                + 块数据（## 本块数据 单独注明数据文件路径——唯一引用例外，其余全部内联，见“组装原则”）
+                + 写盘/报告约定（输出路径 + “已写入 <文件名>”；**不数行数**——行数/非空由脚本统计校验，见「合并」）
 ```
 
 > **产物格式约定**：输出文件格式 / 折行 / 标记的权威在**对应格式文件**的对应节——通用机制与共享产物在 `docs/PRODUCT_FORMATS.md`，工作流专有产物在 `docs/PRODUCT_FORMATS_{TRANSLATE,REFLOW,REFLOW2}.md`（任务文件已内联关键规则，细节以该节为准）。
 > - 渲染脚本按任务把**查找路径**注入 prompt（如 `docs/PRODUCT_FORMATS_REFLOW.md` 的 `r01_results/chunk_<k>.txt（补标点块）` 节），subagent 按需查阅——这是唯一允许的外部读取
-> - 内联 / 引用分工见「组装原则」与纪律母版「五、工作区与工具纪律」
+> - 内联 / 引用分工见“组装原则”与纪律母版「五、工作区与工具纪律」
 > - 无外部格式权威的任务（如 `task-summary`）此项省略
 > **`## 先验知识` 内部顺序**：**高优先级靠前、紧贴对应任务规则**，不得打乱。
 > - **事实源 = 各渲染脚本 `TASKS[task]["prior"]` 的列表序**
@@ -113,10 +112,10 @@ subagent prompt = 任务文件内容（含任务特有规则）
 >   - `task-punctuate` = `["breaks"]`
 >   - `task-split` = `["breaks"]`
 >   - `task-match` = `[]`
-> - 整体拼接按「纪律 → 格式 → 知识 → 数据」序
+> - 整体拼接按“纪律 → 格式 → 知识 → 数据”序
 > - 需主会话判断的额外先验（块边界情况、前文摘要等）用 `--prior-file` 传文件追加到 `## 先验知识`
 
-## 提示词渲染与存档（render_subagent_prompt.py 会话外落盘）
+## 提示词渲染与存档
 
 > 完整 prompt 由渲染脚本**会话外组装落盘**（`_work/<视频名>/prompts/<task>-chunk_<k>.txt`）——**不经主会话**，完整 prompt 文本不进主会话历史；存档既是复盘材料（会话会丢、不可重放），也是派发时 subagent 引用的唯一任务指令。
 
@@ -135,7 +134,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 ```
 你的完整任务指令在存档文件：`_work/<视频名>/prompts/<task>-chunk_<k>.txt`
 
-**先用 read 工具读取该文件**，严格按其中「任务规则」「纪律母版」「先验知识」「本块数据」执行。
+**先用 read 工具读取该文件**，严格按其中「任务规则」「纪律母版」“先验知识”“本块数据”执行。
 
 关键执行要求（与本块特殊说明一致）：
 - <每块特殊说明，从 --prior-file 关键点提一句（可选）>
@@ -143,56 +142,57 @@ subagent prompt = 任务文件内容（含任务特有规则）
 - 只读不写 = 未完成任务；写盘后报告 `已写入 <文件名>`（不数行数，不粘贴任何内容）
 ```
 
-> **小块 / 简单任务**：末行改用强化措辞——**「唯一成功标准 = 目标文件已存在于磁盘，必须先执行写盘动作再回复」**（实测显著降低假完成，见「收信号即验」）。
+> **小块 / 简单任务**：末行改用强化措辞——**“唯一成功标准 = 目标文件已存在于磁盘，必须先执行写盘动作再回复”**（实测显著降低假完成，见「收信号即验」）。
 
 - **约束**：
   - 引用路径必须精确（`_work/<视频名>/prompts/<task>-chunk_<k>.txt`），路径错则 subagent 读不到
-  - 首条必须是「先读该文件」强指令（no-think agent 可能不读就做）
+  - 首条必须是“先读该文件”强指令（no-think agent 可能不读就做）
   - 假完成兜底（「收信号即验」）不因引用式改变，仍生效
 
-## 收信号即验（`已写入` 真实性门禁，拦截假完成）
+## 收信号即验
 
-> subagent 可能**只读不写**——读了 `## 本块数据` 输入、却未执行任何写盘动作就直接返回 `已写入`（模型行为不可靠，完成信号不可信）。主会话**每收到一个 `已写入` 信号立即校验真实性**，不等到全部完成（内容正确性校验仍按「统一验证时间点」等所有块 subagent 全部完成后一次跑）。
+> subagent 可能**只读不写**——读了 `## 本块数据` 输入、却未执行任何写盘动作就直接返回 `已写入`（模型行为不可靠，完成信号不可信）。主会话**每收到一个 `已写入` 信号立即校验真实性**，不等到全部完成（内容正确性校验仍按“统一验证时间点”等所有块 subagent 全部完成后一次跑）。
 
 - **校验（用工具，不跑终端命令，不读文件内容）**：目标文件**存在**——用**目录列举**列目标目录（如 `_work/<视频名>/reflow/r01_results`），在返回子项中确认目标文件在列：**命中 = 存在 = 通过**。
   - 未命中 = 假完成（**不用路径模糊搜索**——`_work/` 被 `.gitignore` 忽略，glob 搜不到）
   - **禁读文件内容**（结果文件是超长单行，读必截断）
-  - **非空不在此验**——假完成 = 「只读不写」= 文件不存在，即时拦存在即可；空文件由合并阶段脚本统计兜底（`text_merge` 异常清单 / `(Get-Content -LiteralPath <file>).Count`）
+  - **非空不在此验**——假完成 = “只读不写”= 文件不存在，即时拦存在即可；空文件由合并阶段脚本统计兜底（`text_merge` 异常清单 / `(Get-Content -LiteralPath <file>).Count`）
 - **通过** → 记该块已产出，继续派发下一块
 - **不通过（缺文件 / 空文件 = 假完成）** → 该块**立即打回重派**：先按「派发前主 Agent 准备」#3 用 mv 清理残留（仅此低频场景用终端命令），再重派同一块，**不等待其它块**
 - 同一块连续多次假完成 → 升级主 Agent/用户排查（模型或写盘工具问题），不再空转重派
 
-**假完成率与块大小无关（实测）**：小块 / 简单任务同样高发（实测约 1/3）——**不能按「块大才危险」预判风险**，门禁对每块一律生效。对策分层：
-- **默认**：锚定 agent 系统提示词（`.agent.md`）的「读 ≠ 完成」条款
-- **小块 / 简单任务**：派发 prompt 默认附「先写盘再报」强化措辞——**「唯一成功标准 = 目标文件已存在于磁盘，必须先执行写盘动作再回复」**（实测成功率显著提升）
+**假完成率与块大小无关（实测）**：小块 / 简单任务同样高发（实测约 1/3）——**不能按“块大才危险”预判风险**，门禁对每块一律生效。对策分层：
+- **默认**：锚定 agent 系统提示词（`.agent.md`）的“读 ≠ 完成”条款
+- **小块 / 简单任务**：派发 prompt 默认附“先写盘再报”强化措辞——**“唯一成功标准 = 目标文件已存在于磁盘，必须先执行写盘动作再回复”**（实测成功率显著提升）
 - **同块连续 ≥3 次假完成**：不再空转重派，升级排查模型或写盘工具
 
-## 内容保真兜底（改写风险与块大小无关）
+## 内容保真兜底
 
 > 「收信号即验」拦的是**产物不存在**（假完成）；本节拦的是**产物存在但内容被改写**（执行型 subagent 越界）。两类风险相互独立，都要拦。
 
 - **判据：改写风险与块大小无关**——补标点 / 翻译 subagent 的越界改写（补词、改词、补全版本号、删重复词）**在任何块都可能发生**，大块零改写而小块多处改写的实测组合已出现——**不得按块大小或任务难度判断风险**
-- **落点**：各工作流步骤的校验脚本即兜底闸门（清单见各工作流「校验」段），**任何块都必须跑、不跳过**；校验不通过按「定点修正」处置，不因「看起来是小问题」放过
+- **落点**：各工作流步骤的校验脚本即兜底闸门（清单见各工作流「semantic-reflow.md#校验」段），**任何块都必须跑、不跳过**；校验不通过按“定点修正”处置，不因“看起来是小问题”放过
 
-## 校验输出与错误清单收集（主会话侧）
+## 校验输出与错误清单收集
+
 
 所有校验闸门脚本统一反馈策略，权威见 [scripts/README.md#验证脚本统一反馈约定](../../../scripts/README.md#验证脚本统一反馈约定)——**主会话收集错误清单时按下述两条取明细**：
 
-1. **默认折叠**：不带参数只输出「问题数目 + 提示」，不输出内容与上下文——先用它判断是否需要修复，零占用
-2. **`--expand` 取明细**：展开每处「文件:行号 + 片段 + 目标」，**这是组装 `task-fix` `## 修复范围` 的数据来源**（见下节「定点修正」）
+1. **默认折叠**：不带参数只输出“问题数目 + 提示”，不输出内容与上下文——先用它判断是否需要修复，零占用
+2. **`--expand` 取明细**：展开每处“文件:行号 + 片段 + 目标”，**这是组装 `task-fix` `## 修复范围` 的数据来源**（见下节“定点修正”）
 3. **`--chunk <k>` 单块模式**：仅块级脚本支持（`check_terms` / `check_breaks` / `check_words` / `check_sentence_len` / `check-r03`），只校验该块并默认展开——**针对单块修复时用**，其它块问题零输出、零占用
 4. **`--verbose`**：展开通过项统计（部分脚本），与 `--expand` 正交，一般不需要
 
-## 定点修正（surgical-fix）：校验打回先小规模修，不整块重派
+## 定点修正：校验打回先小规模修，不整块重派
 
-> 动机：整块打回重派 = subagent 全文重读重写（token 代价大）。校验脚本已精确给出错位置：
+> `surgical-fix`。动机：整块打回重派 = subagent 全文重读重写（token 代价大）。校验脚本已精确给出错位置：
 > - `check_breaks` → 空隙点 cue + 块
 > - `check_words` → 块 + 第 i 词 + 01/r01 具体词
 > - `check-r03` → 块 + `S<n>` + 子单元 `S<n><a>`
 >
 > 大部分错误是单点 / 单节（措辞小误、缺断句标点、行宽超限、断点调整）——**可小规模决策与改动**，无需重派全文。
 
-### 三档决策（按错误范围与目标文件结构）
+### 修复档位决策
 
 | 档位 | 执行者 | 适用 | 操作 |
 |------|--------|------|------|
@@ -202,7 +202,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 > **A 档（主会话零 subagent 定点改）已废弃（token 纪律）**：
 > - 主会话**不得**自行用搜索 + 读文件 + 定点替换工具做定点修复——任何读 / 写都**永久计入主会话历史**（历史只增不减）
 > - 单节小修仍产生读 + 编辑两次历史滞留，且随校验轮次累积
-> - 原 A 档适用场景（r03 单节小修）由 **B 档 `task-fix` 承接**（task-fix 本身就是「逐处定点编辑只改指出处」，能力等价、上下文一次性、不进主会话历史）
+> - 原 A 档适用场景（r03 单节小修）由 **B 档 `task-fix` 承接**（task-fix 本身就是“逐处定点编辑只改指出处”，能力等价、上下文一次性、不进主会话历史）
 > - **主会话 = 调度器**：只读脚本校验输出（已在上下文）+ 组装错误清单 + 派发，零定点编辑
 
 
@@ -220,34 +220,34 @@ subagent prompt = 任务文件内容（含任务特有规则）
    - 定点修复采用 **B 档批量（方案 3）**
    - **逐处派发（方案 2）弃用**——主会话每轮要完整输出 N 份 prompt（含 `dispatch`）为确定性高单价劣势
    - **不实现 subagent 内部自主循环（方案 4）**——实现繁琐且实际修复大概率一轮过
-   - 未来若实测多轮频繁，优先上「规则引用化」轻量增强（主会话每轮只输出增量清单）
-   - **A 档（主会话定点改）一并废弃**——主会话任何 read/edit 均永久入历史，定点修复一律 B 档派发（见「定点修正」弃用注）
+   - 未来若实测多轮频繁，优先上“规则引用化”轻量增强（主会话每轮只输出增量清单）
+   - **A 档（主会话定点改）一并废弃**——主会话任何 read/edit 均永久入历史，定点修复一律 B 档派发（见“定点修正”弃用注）
 
-## 任务导航表（任务 → 任务文件）
+## 任务导航表
 
 > 每个可派发任务的**任务文件**（现成 prompt）与产物输出。任务文件在所属 skill 目录内；格式契约权威见各任务文件 + [PRODUCT_FORMATS](../../../docs/PRODUCT_FORMATS.md)。任务文件逐步建立，未建时按各工作流步骤的规则组装。
 
 | 任务 | 任务文件 | 输出（`_work/<视频名>/`） |
 |------|----------|--------------------------|
-| 术语识别（preprocess §1.1） | `term-scan/task-term-recognition` | `_term_results/chunk_<k>.txt` |
-| 英文预整理·第一次遍历（preprocess §1.1） | `term-scan/task-en-preprocess` | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
-| L3 术语查证（preprocess §1.2，研究型 agent 分批派发 30 条/块，任务文件即 prompt） | `term-scan/task-term-resolve` | `term_resolve_<i>.md`（输入 `term_pending_<i>.md`；派发双引用） |
+| 术语识别（preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)） | `term-scan/task-term-recognition` | `_term_results/chunk_<k>.txt` |
+| 英文预整理·第一次遍历（preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)） | `term-scan/task-en-preprocess` | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
+| L3 术语查证（preprocess [集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐)，研究型 agent 分批派发 30 条/块，任务文件即 prompt） | `term-scan/task-term-resolve` | `term_resolve_<i>.md`（输入 `term_pending_<i>.md`；派发双引用） |
 | Wiki 查询（翻译过程任何需请求 Wiki 的场合，研究型 agent，任务文件即 prompt） | `wiki-tools/task-wiki-query` | `wiki_resolve_<i>.md`（输入 `wiki_pending_<i>.md`；派发双引用） |
-| 补标点（reflow 步骤 3） | `reflow-redstone/task-punctuate` | `reflow/r01_results/chunk_<k>.txt` |
-| 整段翻译（reflow 步骤 4） | `reflow-redstone/task-translate` | `reflow/r02_results/chunk_<k>.txt` |
-| 分句·5-1 LLM 语义分句（reflow 步骤 5-1） | `reflow-redstone/task-split` | `reflow/r03_results/chunk_<k>.txt` |
-| 句子匹配·5-2 脚本断句（reflow 步骤 5-2） | `reflow-redstone/task-match` | `reflow/r03_matches/chunk_<k>.txt` |
-| 补标点（reflow2 步骤 3） | `reflow2/task-punctuate`（派发渲染用 `--skill reflow2`） | `reflow2/r01_results/chunk_<k>.txt` |
-| 整段翻译（reflow2 步骤 5） | `reflow2/task-translate`（派发渲染用 `--skill reflow2`） | `reflow2/r02_results/chunk_<k>.txt` |
-| 句子匹配（reflow2 步骤 6） | `reflow2/task-match`（派发渲染用 `--skill reflow2`） | `reflow2/align/chunk_<k>.txt` |
+| 补标点（reflow [补标点](../reflow-redstone/semantic-reflow.md#补标点)） | `reflow-redstone/task-punctuate` | `reflow/r01_results/chunk_<k>.txt` |
+| 整段翻译（reflow [翻译](../reflow-redstone/semantic-reflow.md#翻译)） | `reflow-redstone/task-translate` | `reflow/r02_results/chunk_<k>.txt` |
+| 分句·[语义分句（LLM）](../reflow-redstone/semantic-reflow.md#语义分句) | `reflow-redstone/task-split` | `reflow/r03_results/chunk_<k>.txt` |
+| 句子匹配·[脚本断句（机械）](../reflow-redstone/semantic-reflow.md#脚本断句) | `reflow-redstone/task-match` | `reflow/r03_matches/chunk_<k>.txt` |
+| 补标点（reflow2 [补标点](../reflow2/phase2.md#补标点)） | `reflow2/task-punctuate`（派发渲染用 `--skill reflow2`） | `reflow2/r01_results/chunk_<k>.txt` |
+| 整段翻译（reflow2 [翻译](../reflow2/phase2.md#翻译)） | `reflow2/task-translate`（派发渲染用 `--skill reflow2`） | `reflow2/r02_results/chunk_<k>.txt` |
+| 句子匹配（reflow2 [切 Z 句与对齐](../reflow2/phase2.md#切-z-句与对齐)） | `reflow2/task-match`（派发渲染用 `--skill reflow2`） | `reflow2/align/chunk_<k>.txt` |
 | 定点修复（校验打回 B 档） | `reflow-redstone/task-fix` | 覆盖写 `## 目标文件` 同一路径 |
-| 前文摘要（reflow 步骤 4 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
-| 合并断句（translate 阶段二） | `translate-redstone/task-merge` | `_merge_results/chunk_<k>.txt` |
-| 翻译（translate 阶段二） | `translate-redstone/task-translate`（同名 reflow 任务，派发渲染用 `--skill translate-redstone`） | `_trans_results/chunk_<k>.txt` |
-| 去翻译腔（translate 阶段二+） | `translate-redstone/task-humanize` | `_humanize_results/chunk_<k>.txt` |
+| 前文摘要（reflow [翻译](../reflow-redstone/semantic-reflow.md#翻译) 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
+| 合并断句（translate 阶段三） | `translate-redstone/task-merge` | `_merge_results/chunk_<k>.txt` |
+| 翻译（translate 阶段三） | `translate-redstone/task-translate`（同名 reflow 任务，派发渲染用 `--skill translate-redstone`） | `_trans_results/chunk_<k>.txt` |
+| 去翻译腔（translate 阶段四） | `translate-redstone/task-humanize` | `_humanize_results/chunk_<k>.txt` |
 | 定点修复（translate 校验打回 B 档） | `translate-redstone/task-fix` | 覆盖写 `## 目标文件` 同一路径 |
 
-## 纪律母版（派发时必须整体追加）
+## 纪律母版
 
 > 全局纪律**单一权威**在 [_discipline.md](_discipline.md)，正文 = 5 类纪律：
 > 1. 执行型定位
@@ -260,7 +260,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 >
 > **任务文件自带完整任务规则、可独立执行**（不依赖 agent 定义或本文件被读取）；母版提供的是跨任务的全局行为纪律。
 
-## 合并（text_merge.py 全自动 + 异常清单，替代主 Agent 手工读头尾）
+## 合并
 
 > 分块与合并的格式契约见 [PRODUCT_FORMATS#通用文本分块](../../../docs/PRODUCT_FORMATS.md)。主 Agent **不再手工读每块头尾**——合并交脚本，只读异常报告。
 
@@ -271,11 +271,11 @@ subagent prompt = 任务文件内容（含任务特有规则）
    - `## 结论: 无异常` → 直接进入第 4 步，**零读取**
    - `## 异常清单` → 只读清单 + `## 异常块头尾窗口`（每块 OWNED 头尾各 `--window` 行），按异常类型决策：
      - **行数不符/缺块** → 回对应块补跑 subagent
-     - **重复产出**（srt 重叠）→ 保留更完整版本（默认 start 最早，见 [redstone-conventions#跨块未完成句结转](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)）
+     - **重复产出**（srt 重叠）→ 保留更完整版本（默认 start 最早，见 [redstone-conventions#跨块未完成句结转](../redstone-conventions/SKILL.md#长视频分块)）
      - **gap/cue 缺口**（srt）→ 查 SRT 确认 gap 处是否空 cue（[Music] 等），是则并入相邻段、否则标记重译
      - **结转**：`CARRY: c<idx>` 对应产出段，确认未重复未遗漏
      - **片号不连续**（text）→ 查该组是否缺片，补跑
    - 已确认的 ASR 修正（`02_terms.md`）在组装期应用（合并后手动替换或脚本内处理）
 4. 落盘最终产物（`s03_plan.md` / `s04_draft.srt` / `r03_plan.md` 等，见各工作流）
 5. **全量机械校验交脚本**（覆盖完整/不重叠/边界⊆原集/格式）-> [segment-subtitles#输出与校验](../segment-subtitles/SKILL.md#输出与校验)；校验报错即回到对应块修复后重跑 `text_merge.py`
-6. 阶段二½ 交用户审核
+6. 阶段五 交用户审核

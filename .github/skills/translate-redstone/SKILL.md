@@ -44,55 +44,59 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 **全流程各阶段（子 skill）的输入与产物**：
 
-1. **阶段〇 领域预判与准备**（`redstone-preprocess`）——加载领域知识/预判，无落盘产物
-2. **阶段一 术语扫描与知识补齐**（`redstone-preprocess`）
-   - 输入：`_input/` 原始字幕
+1. **阶段〇 字幕机械修复**（`redstone-preprocess`）——纯脚本、零知识；结构清理 + 时间轴吸附（可选），**文本逐条未改**
+   - 输入：`_input/` 原始字幕（+ 可选音频/视频）
+   - 产物：`<工作目录>/00_subtitle_snapped.srt`（**全工作流时间轴新基准**）
+2. **阶段一 领域预判与准备**（`redstone-preprocess`）——加载领域知识/预判，无落盘产物
+3. **阶段二 术语扫描与知识补齐**（`redstone-preprocess`）
+   - 输入：`<工作目录>/00_subtitle_snapped.srt`
    - 产物：
-     - §1.1 术语扫描 → `<工作目录>/01_subtitle_asr_fixed.srt`
-     - §1.3 术语确认 → `<工作目录>/02_terms.md`
-   - **阶段门禁**：`01`/`02` 交用户确认，**确认后才进阶段二**（阶段间确认是本工作流的流程控制，Agent 不得擅自跨阶段）
-3. **阶段二 正式翻译**（本工作流）
+     - [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) → `<工作目录>/01_subtitle_asr_fixed.srt`
+     - [术语确认](../redstone-preprocess/SKILL.md#23-术语确认) → `<工作目录>/02_terms.md`
+   - **阶段门禁**：`01`/`02` 交用户确认，**确认后才进阶段三**（阶段间确认是本工作流的流程控制，Agent 不得擅自跨阶段）
+4. **阶段三 正式翻译**（本工作流）
    - 输入：`01_subtitle_asr_fixed.srt` + `02_terms.md`
    - **执行一律 subagent**（块数由骨架决定，无需报告用 / 不用），块级产物 + 合并稿：
      - 分块：`<工作目录>/chunks/`（01 `text_chunk.py --type srt` 分块骨架）
      - 合并断句：`<工作目录>/_merge_results/chunk_<k>.txt`，`text_merge.py` 合并为 `<工作目录>/s03_plan.md`
      - 逐段翻译：`<工作目录>/_trans_results/chunk_<k>.txt`，`text_merge.py` 合并为 `<工作目录>/s04_draft.srt`（标准 SRT 双语）
    - 校验（机械，硬闸门）：断句措辞一致性（`srt_check_plan_words.py`）/ 术语全量核对（`srt_check_terms.py`）/ 行宽（`srt_check_width.py` >27 打回）
-4. **阶段二+ 去翻译腔**（`humanizer-zh`，可选）
+5. **阶段四 去翻译腔**（`humanizer-zh`，可选）
    - 输入：`s04_draft.srt` 全稿
    - 产物：修订稿（回写 `s04`）
-5. **阶段二½ 人工审核**（`redstone-review`）
+6. **阶段五 人工审核**（`redstone-review`）
    - 输入：待审方案 + 翻译结果（`s03` / `s04`）
    - 产物：用户确认（无新落盘）
-6. **阶段三 数据源总结**（`redstone-finalize`）
+7. **阶段六 数据源总结**（`redstone-finalize`）
    - 输入：确认后的完整成果
    - 产物：`.github/experience/` 追加（coverage_log / source_experience）
 
 **中断恢复路由**：检查 `_work/<视频名>/` 最完整产物，**从产出该产物的阶段开头继续**（假设该阶段异常中断、产物可能不完整）：
 
-1. 无任何产物 → 从头开始（阶段〇）
-2. 仅 `01_subtitle_asr_fixed.srt` → 阶段一 §1.1 开头（重新第一次遍历，确保 01 完整）
-   - 有 `_en_chunks/` + 部分 `_en_results/` → 步骤 2 补派缺失块后 `srt_join_parts.py` 合并
-3. 有 `02_terms.md` → 阶段一 §1.3 开头（重新术语确认；§1.4 入库照做）
-4. 有 `chunks/`（01 分块骨架，无 `_merge_results/`）→ 阶段二 合并断句派发开头（逐块派发 `task-merge`）
-5. 有 `_merge_results/` 部分 → 补派缺失断句块，`text_merge.py` 合并为 `s03_plan.md`（断句措辞 / 时间校验通过后进翻译）
-6. 有 `s03_plan.md`（无 `_trans_results/`）→ 阶段二 翻译派发开头（逐块派发 `task-translate`）
-7. 有 `_trans_results/` 部分 → 断点续译（补派缺失翻译块，`text_merge.py` 合并为 `s04_draft.srt`）
-8. 有 `s04_draft.srt` → 阶段二½ 人工审核（或阶段二+ 去翻译腔）
+- 无任何产物 → 从头开始（[阶段〇](#阶段〇字幕机械修复)）
+- 仅 `00_subtitle_snapped.srt` → [阶段一](#阶段一领域预判与准备)（领域预判）
+- 仅 `01_subtitle_asr_fixed.srt` → [阶段二 §2.1 术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) 开头（重新第一次遍历，确保 01 完整）
+  - 有 `_en_chunks/` + 部分 `_en_results/` → 补派缺失块后 `srt_join_parts.py` 合并
+- 有 `02_terms.md` → [阶段二 §2.3 术语确认](../redstone-preprocess/SKILL.md#23-术语确认) 开头（重新术语确认；[术语入库](../redstone-preprocess/SKILL.md#24-术语入库) 照做）
+- 有 `chunks/`（01 分块骨架，无 `_merge_results/`）→ 阶段三 合并断句派发开头（逐块派发 `task-merge`）
+- 有 `_merge_results/` 部分 → 补派缺失断句块，`text_merge.py` 合并为 `s03_plan.md`（断句措辞 / 时间校验通过后进翻译）
+- 有 `s03_plan.md`（无 `_trans_results/`）→ 阶段三 翻译派发开头（逐块派发 `task-translate`）
+- 有 `_trans_results/` 部分 → 断点续译（补派缺失翻译块，`text_merge.py` 合并为 `s04_draft.srt`）
+- 有 `s04_draft.srt` → [阶段五](#阶段五人工审核循环) 人工审核（或 [阶段四](#阶段四去翻译腔) 去翻译腔）
 
-> 各阶段结束**立即落盘**（conventions「断点恢复」）；中间产物是工作底稿，**禁止自动删除**（AGENTS.md #6），清理提示用户手动执行。
+> 各阶段结束**立即落盘**（「redstone-conventions#断点恢复」）；中间产物是工作底稿，**禁止自动删除**（AGENTS.md #6），清理提示用户手动执行。
 
-## 依赖（扩展 Skill 地图）
+## 依赖
 
 | 话题 | 权威 Skill |
 |------|-----------|
 | 通用规则（环境/工作区/分块/门禁等） | `redstone-conventions` |
-| 翻译前置（阶段〇/一） | `redstone-preprocess` |
-| 人工审核（阶段二½）+ 输出门禁 | `redstone-review` |
-| 数据源总结（阶段三） | `redstone-finalize` |
+| 翻译前置（阶段〇–阶段二） | `redstone-preprocess` |
+| 人工审核（阶段五）+ 输出门禁 | `redstone-review` |
+| 数据源总结（阶段六） | `redstone-finalize` |
 | 断句/合并/行宽 | `segment-subtitles` |
 | subagent 派发 | `subagent-dispatch` |
-| 术语表加载/四级查找 | `use-glossary` |
+| 术语表加载/术语源优先级 | `use-glossary` |
 | 术语扫描机制（ASR 解码/scan 覆盖网） | `term-scan` |
 | 术语登记 | `term-registration` |
 | CSV 读写/表头 | `csv-rules` |
@@ -110,39 +114,42 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 #### 时间戳
 - 输出 SRT 的所有时间边界**必须 ⊆ 原字幕边界集合**（不允许新造时间点）——**本工作流特有**（reflow 允许预测点）
-- **01 生成后立即校验时间轴对齐**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig <原始ASR.srt> --cue-exact`——01 只改文本、保留原时间码、不增删 cue；错位须在断句前发现（否则一路传 s03/s04，表现为"字幕比语音快/慢"）
-- 合并/断句后每段时间码 = 覆盖原字幕片段**首段 start → 末段 end**；共享 cue 整条归属/中间断句估算见 [segment-subtitles#共享 cue 与整条归属（时间不重叠）](../segment-subtitles/SKILL.md#共享-cue与整条归属时间不重叠)
-- （时间不重叠 + 每步即时校验为通用规则，见 conventions「时间纪律」）
+- **01 生成后立即校验时间轴对齐**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig 00_subtitle_snapped.srt --cue-exact`——01 只改文本、**时间码逐条照抄 00**、不增删 cue；错位须在断句前发现（否则一路传 s03/s04，表现为"字幕比语音快/慢"）
+- 合并/断句后每段时间码 = 覆盖原字幕片段**首段 start → 末段 end**；共享 cue 整条归属/中间断句估算见 [segment-subtitles#共享 cue 与整条归属](../segment-subtitles/SKILL.md#共享-cue-与整条归属)
+- （时间不重叠 + 每步即时校验为通用规则，见 「redstone-conventions#时间纪律」）
 
-#### 断句（合并与分割）
+#### 断句
 
-断句规则**全部见 [segment-subtitles](../segment-subtitles/SKILL.md)（权威）**——语义合并判据（不以标点为准）、英文预整理（游离单词归位）、两遍式、对白拆分、分割超长句、语义锚点、行宽，均以该 Skill 为准，本段不再重复。分块是通用机制，见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)。
+断句规则**全部见 [segment-subtitles](../segment-subtitles/SKILL.md)（权威）**——语义合并判据（不以标点为准）、英文预整理（游离单词归位）、两遍式、对白拆分、分割超长句、语义锚点、行宽，均以该 Skill 为准，本段不再重复。分块是通用机制，见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块)。
 
-> **必须使用工具**：合并/断句一律按 [segment-subtitles](../segment-subtitles/SKILL.md) 执行；长视频（cue 数超出单次上下文）**必须先分块**（见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制)），禁止整条字幕一次性合并/翻译。
+> **必须使用工具**：合并/断句一律按 [segment-subtitles](../segment-subtitles/SKILL.md) 执行；长视频（cue 数超出单次上下文）**必须先分块**（见 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块)），禁止整条字幕一次性合并/翻译。
 
 
 ## 固定工作流指令
 
-本工作流包含四个阶段 + 一个人工审核循环。
+本工作流包含阶段〇–阶段六（阶段四 去翻译腔为可选）+ 一个人工审核循环。
 
 ---
 
-### 阶段〇：领域预判与准备（翻译前，轻量扫描）
+### 阶段〇：字幕机械修复
 
-按 [redstone-preprocess#阶段〇领域预判与准备](../redstone-preprocess/SKILL.md#阶段〇领域预判与准备) 原样执行（刷新缓存 / 类别预判 / 红石补充加载 / 知识地图 / SOURCE_COVERAGE / asr_fixes）。
+按 [redstone-preprocess#阶段〇字幕机械修复](../redstone-preprocess/SKILL.md#阶段〇字幕机械修复) 原样执行（结构清理 + 时间轴吸附 → `00_subtitle_snapped.srt`）。
 
----
+### 阶段一：领域预判与准备
 
-### 阶段一：术语扫描与知识补齐
-
-按 [redstone-preprocess#阶段一术语扫描与知识补齐](../redstone-preprocess/SKILL.md#阶段一术语扫描与知识补齐) 原样执行（§1.1 扫描 / §1.2 补齐 / §1.3 确认 / §1.4 入库），产物 `01_subtitle_asr_fixed.srt` + `02_terms.md` 见 [redstone-preprocess#产物契约](../redstone-preprocess/SKILL.md#产物契约本阶段落盘见各工作流目录约定)。
+按 [redstone-preprocess#阶段一领域预判与准备](../redstone-preprocess/SKILL.md#阶段一领域预判与准备) 原样执行（刷新缓存 / 类别预判 / 红石补充加载 / 知识地图 / SOURCE_COVERAGE / asr_fixes）。
 
 ---
 
-### 阶段二：正式翻译
+### 阶段二：术语扫描与知识补齐
 
-> **执行一律 subagent（无需报告）**：合并断句 / 翻译**逐块派 subagent**（块数由分块骨架决定，无需报告「用 / 不用」）——统一路径，见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)。
->
+按 [redstone-preprocess#阶段二术语扫描与知识补齐](../redstone-preprocess/SKILL.md#阶段二术语扫描与知识补齐) 原样执行（[术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) / [集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐) / [术语确认](../redstone-preprocess/SKILL.md#23-术语确认) / [术语入库](../redstone-preprocess/SKILL.md#24-术语入库)），产物 `01_subtitle_asr_fixed.srt` + `02_terms.md` 见 [redstone-preprocess#产物契约](../redstone-preprocess/SKILL.md#输入--输出)。
+
+---
+
+### 阶段三：正式翻译
+
+> **执行一律 subagent（无需报告）**：合并断句 / 翻译**逐块派 subagent**（块数由分块骨架决定，无需报告“用 / 不用”）——统一路径，见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界)。>
 > 主会话只做：分块 → 渲染 → 派发 → 合并 → 校验 → 定点修复派发。
 >
 > **需请求 Wiki 时**（翻译中遇未收录术语/机制不明/数值核对）：先 `refresh_cache.py --check-page "<页面名>"` 判定、过期则 `fetch_wiki.py --refresh "<页面名>"` 主动刷新后重读；需阅页面派 `wiki-researcher`（任务文件 `wiki-tools/task-wiki-query.md`）——见 [wiki-tools](../wiki-tools/SKILL.md)（权威）。
@@ -159,22 +166,22 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 所有术语译名已就绪，零网络等待。**先定段落，再逐句翻译**。
 
-#### 合并与断句（翻译前先定段落）
+#### 合并断句
 
-1. **分块**：`python scripts/text_chunk.py 01_subtitle_asr_fixed.srt --type srt --owned <N> --ctx <M> --out chunks/`（N 按 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块全流程通用机制) 用 `context_estimate.py` 定；N=1 单块亦分，产物契约一致）
+1. **分块**：`python scripts/text_chunk.py 01_subtitle_asr_fixed.srt --type srt --owned <N> --ctx <M> --out chunks/`（N 按 [redstone-conventions#长视频分块](../redstone-conventions/SKILL.md#长视频分块) 用 `context_estimate.py` 定；N=1 单块亦分，产物契约一致）
 2. **渲染**：`python scripts/render_subagent_prompt.py task-merge --video <工作目录> --all --chunks-dir <工作目录>/chunks`
 3. **逐块派发** `task-merge`（断句 subagent）→ `_merge_results/chunk_<k>.txt`。
    - 规则见 [segment-subtitles](../segment-subtitles/SKILL.md) 权威 + 任务文件 [task-merge.md](task-merge.md)
-   - 每收一个 `已写入` 立即验证真实性（[subagent-dispatch#收信号即验](../subagent-dispatch/SKILL.md#收信号即验已写入-真实性门禁拦截假完成)）
-4. **合并**：`python scripts/text_merge.py chunks/ _merge_results/ --out s03_plan.md [--report <报告>]`（异常只读报告，见 [subagent-dispatch#合并](../subagent-dispatch/SKILL.md#合并text_mergepy-全自动--异常清单替代主-agent-手工读头尾)）
+   - 每收一个 `已写入` 立即验证真实性（[subagent-dispatch#收信号即验](../subagent-dispatch/SKILL.md#收信号即验)）
+4. **合并**：`python scripts/text_merge.py chunks/ _merge_results/ --out s03_plan.md [--report <报告>]`（异常只读报告，见 [subagent-dispatch#合并](../subagent-dispatch/SKILL.md#合并)）
 5. **校验（硬闸门，全量）**：
    - 断句措辞一致性（断句只合并/分割、不改措辞）：`python scripts/srt_check_plan_words.py 01_subtitle_asr_fixed.srt s03_plan.md --asr-fixes 02_terms.md`
    - 时间边界：`python scripts/srt_check_segments.py s03_plan.md --orig 01_subtitle_asr_fixed.srt`
-   - 打回 → B 档定点修复派发（见下「校验打回」）；**通过才进翻译**
+   - 打回 → B 档定点修复派发（见下“校验打回”）；**通过才进翻译**
 6. **ASR 修正应用在组装期**：`02_terms.md` 已确认的 ASR 修正（如 word tear、the end dimension）在组装 `s03_plan.md` 时直接替换文本，勿留待翻译期
-7. **分段方案先交用户审核**（阶段二½），确认后再定稿翻译
+7. **分段方案先交用户审核**（[阶段五](#阶段五人工审核循环)），确认后再定稿翻译
 
-#### 正式翻译
+#### 翻译
 
 1. **渲染**：`python scripts/render_subagent_prompt.py task-translate --skill translate-redstone --video <工作目录> --all --chunks-dir <工作目录>/chunks`
 2. **逐块派发** `task-translate`（翻译 subagent，任务文件 [task-translate.md](task-translate.md)）→ `_trans_results/chunk_<k>.txt`
@@ -183,19 +190,21 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
    - 术语全量核对：`python scripts/srt_check_terms.py 01_subtitle_asr_fixed.srt 02_terms.md <_trans_results/> --chunks <chunks/>`（分块时）或 `... s04_draft.srt --plan s03_plan.md`（合并后）
    - 行宽：`python scripts/srt_check_width.py s04_draft.srt --order zh-en`（>27 硬打回退出码 1、>22 软告警）
    - 时间边界：`python scripts/srt_check_segments.py s04_draft.srt --orig 01_subtitle_asr_fixed.srt`
-5. **校验打回 → 定点修复（B 档）**：收集**全部错误清单**一次派发 `task-fix`（[task-fix.md](task-fix.md)，见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正surgical-fix校验打回先小规模修不整块重派)）。
-   - 修复范围：断句措辞按 01 改回；译文改措辞 / 术语漂移 / 行宽（**translate 修复就是改译文本身**，无 reflow「r03 只许切不许译」约束）
+5. **校验打回 → 定点修复（B 档）**：收集**全部错误清单**一次派发 `task-fix`（[task-fix.md](task-fix.md)，见 [subagent-dispatch#定点修正](../subagent-dispatch/SKILL.md#定点修正校验打回先小规模修不整块重派)）。
+   - 修复范围：断句措辞按 01 改回；译文改措辞 / 术语漂移 / 行宽（**translate 修复就是改译文本身**，无 reflow“r03 只许切不许译”约束）
    - 修正后复验（重跑触发它的校验）
    - 仍有残留 → 第二轮只派增量清单；多轮仍失败 → C 档整块重派（mv 清理 + 重派）
 
-#### 输出约束（审核口径，与 [task-translate.md](task-translate.md) 任务规则同源，不重复定义）
+#### 输出约束
 
-- 禁止直译红石术语（Comparator 必须为“比较器”）；禁止使用未在阶段一确认的译名
+> 审核口径，与 [task-translate.md](task-translate.md) 任务规则同源，不重复定义。
+
+- 禁止直译红石术语（Comparator 必须为“比较器”）；禁止使用未在阶段二确认的译名
 - 结论附上来源（`knowledge/` 或 `.cache/` 中的引用路径）
 
 ---
 
-### 阶段二+：去翻译腔（可选，独立上下文）
+### 阶段四：去翻译腔
 
 初步翻译完成后，消除译文中的“翻译腔”和 AI 味——规则见 [humanizer-zh](../humanizer-zh/SKILL.md)（24 种 AI 写作模式 + 改写原则）。**仅当用户明确要求“去除翻译腔”或译文 AI 味明显时才执行；字幕本身偏口语时可跳过。**
 
@@ -209,12 +218,12 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 ---
 
-### 阶段二½：人工审核循环
+### 阶段五：人工审核循环
 
 按 [redstone-review](../redstone-review/SKILL.md) 执行（循环机制 + 输出门禁）。**审核对象：分段方案 + 翻译结果**（`s03_plan.md` + `s04_draft.srt`）。
 
 ---
 
-### 阶段三：数据源效果总结
+### 阶段六：数据源效果总结
 
 按 [redstone-finalize](../redstone-finalize/SKILL.md) 原样执行（coverage_log 流水 + source_experience 经验提炼）。

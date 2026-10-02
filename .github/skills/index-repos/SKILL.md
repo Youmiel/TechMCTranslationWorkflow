@@ -16,20 +16,19 @@ description: 为 _repos/ 下的外部 Git 仓库生成内容索引文件（index
 - `indexes/repos/<repo-name>.md` — 每个仓库一个索引文件
 - `indexes/repos/_manifest.md` — 总清单
 
-## 工作流程（处理顺序）
+## 工作流程
 
-1. **判断哪些需更新** -> [更新判断](#更新判断submodule-commit-id)：`python scripts/check_index_stale.py`，取需更新的仓库列表
+1. **判断哪些需更新** -> [更新判断](#更新判断)：`python scripts/check_index_stale.py`，取需更新的仓库列表
 2. **逐仓库扫描**：读 `_repos/<repo>/` 内容，按 [扫描范围](#扫描范围) 过滤
 3. **生成索引**：按 [索引格式](#索引格式) 与 [质量要求](#质量要求) 写 `indexes/repos/<repo>.md`（头部记录 生成时间 + 上游 commit）
 4. **更新总清单**：写 `indexes/repos/_manifest.md` -> [_manifest.md 格式](#_manifestmd-格式)
-
 > 每个需更新的仓库执行 2-3，全部完成后执行 4。
 
 ## 规则
 
-### 更新判断（submodule commit id）
+### 更新判断
 
-- **更新依据**：比较 `_repos/<repo>/` 当前 HEAD commit 与索引中记录的「上游 commit」——不一致即该仓库索引过期，需重新生成
+- **更新依据**：比较 `_repos/<repo>/` 当前 HEAD commit 与索引中记录的“上游 commit”——不一致即该仓库索引过期，需重新生成
 - **固化脚本**：`python scripts/check_index_stale.py`（扫描全部 submodule，比对当前 commit 与索引记录 commit，报告哪些需更新；`--only <repo>` 只看单个）
 - **commit id 记录位置**：每个仓库索引文件头部 `> 上游 commit：<hash>`（即 `indexes/repos/<repo>.md`），**不**写入 `_manifest.md`（manifest 只做总清单，不重复记录 commit）
 
@@ -44,7 +43,6 @@ description: 为 _repos/ 下的外部 Git 仓库生成内容索引文件（index
 
 ```markdown
 # <仓库名> 内容索引
-
 > 生成时间：YYYY-MM-DD
 > 上游 commit：<hash>
 

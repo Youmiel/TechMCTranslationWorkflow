@@ -30,7 +30,7 @@ description: 句子匹配任务（reflow2）——对照 en_timeline（E 句+固
 6. **不手算、不重抄、不返工**：宽度 / 拼接 / 忠实 / 漏句校验全由脚本承担。
    - 匹配写完后直接写盘，错误由回填脚本校验指出
 
-## 输出（写入 `_work/<视频名>/reflow2/align/chunk_<k>.txt`）
+## 输出
 
 - 每行一个匹配 `Z<n>+Z<n> = E<n>+E<n>`；`#` 开头注释行说明归属/合并
 - **输入行含义**：`en_timeline` 每行 `E<n>\t<时间>\t<cues>\t<文本>`（文本在最后一段）；`zh_sentences` 每行 `Z<n> <文本>` 即一个整句
@@ -44,5 +44,4 @@ description: 句子匹配任务（reflow2）——对照 en_timeline（E 句+固
 > 3. `## 先验知识` = 无；主会话复核结论可用 `--prior-file` 追加
 > 4. `## 本块数据` = 数据文件引用：`reflow2/en_timeline/chunk_<k>.txt` + `reflow2/zh_sentences/chunk_<k>.txt`（本块输入）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `reflow2/align/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`
-
 > **渲染手段（脚本）**：由 `scripts/render_subagent_prompt.py --skill reflow2` 会话外组装落盘 `_work/<视频名>/prompts/task-match-chunk_<k>.txt`（完整 prompt 不进主会话）；未走脚本时按上方顺序同序拼接。派发见 [subagent-dispatch#派发引用 prompt](../subagent-dispatch/SKILL.md#派发引用-prompt)。

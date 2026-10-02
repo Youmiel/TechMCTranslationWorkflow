@@ -7,15 +7,6 @@ import argparse
 import re
 import sys
 
-sys.stdout.reconfigure(encoding="utf-8")
-
-ap = argparse.ArgumentParser(description='核对并重编号修正 SRT')
-ap.add_argument('orig', help='原始 SRT 路径')
-ap.add_argument('fixed', help='修正后 SRT 路径')
-args = ap.parse_args()
-ORIG = args.orig
-FIXED = args.fixed
-
 
 def parse(path):
     blocks = []
@@ -37,36 +28,49 @@ def parse(path):
     return blocks
 
 
-orig = parse(ORIG)
-fixed = parse(FIXED)
+def main():
+    sys.stdout.reconfigure(encoding="utf-8")
+    ap = argparse.ArgumentParser(description='核对并重编号修正 SRT')
+    ap.add_argument('orig', help='原始 SRT 路径')
+    ap.add_argument('fixed', help='修正后 SRT 路径')
+    args = ap.parse_args()
+    ORIG = args.orig
+    FIXED = args.fixed
 
-print(f"原始块数: {len(orig)}  修正后块数: {len(fixed)}")
-print(f"原始编号: {orig[0]['idx']}..{orig[-1]['idx']}")
+    orig = parse(ORIG)
+    fixed = parse(FIXED)
 
-# 检查原编号是否有跳跃
-missing = []
-for i in range(1, len(orig)):
-    if orig[i]["idx"] != orig[i - 1]["idx"] + 1:
-        missing.append((orig[i - 1]["idx"], orig[i]["idx"]))
-print(f"原始编号跳跃点: {missing if missing else '无'}")
+    print(f"原始块数: {len(orig)}  修正后块数: {len(fixed)}")
+    print(f"原始编号: {orig[0]['idx']}..{orig[-1]['idx']}")
 
-# 用原始编号序列重编号修正文件
-new_idx_seq = [b["idx"] for b in orig]
-if len(fixed) == len(new_idx_seq):
-    print("块数一致，按原始编号重编号。")
-    with open(FIXED, "w", encoding="utf-8", newline="\n") as f:
-        for b, new_idx in zip(fixed, new_idx_seq):
-            f.write(f"{new_idx}\n{b['ts']}\n{b['body']}\n\n")
-    print("重编号完成。")
-else:
-    print("块数不一致！需要手动核查。")
-    # 逐块对比
-    for i, (o, fx) in enumerate(zip(orig, fixed)):
-        if o["ts"] != fx["ts"]:
-            print(f"  [{i}] 时间码不同: 原 {o['idx']} {o['ts']} vs 修 {fx['idx']} {fx['ts']}")
-    if len(orig) > len(fixed):
-        for j in range(len(fixed), len(orig)):
-            print(f"  修正文件缺少: {orig[j]['idx']} {orig[j]['ts']} {orig[j]['body'][:40]}")
-    if len(fixed) > len(orig):
-        for j in range(len(orig), len(fixed)):
-            print(f"  修正文件多出: {fixed[j]['idx']} {fixed[j]['ts']} {fixed[j]['body'][:40]}")
+    # 检查原编号是否有跳跃
+    missing = []
+    for i in range(1, len(orig)):
+        if orig[i]["idx"] != orig[i - 1]["idx"] + 1:
+            missing.append((orig[i - 1]["idx"], orig[i]["idx"]))
+    print(f"原始编号跳跃点: {missing if missing else '无'}")
+
+    # 用原始编号序列重编号修正文件
+    new_idx_seq = [b["idx"] for b in orig]
+    if len(fixed) == len(new_idx_seq):
+        print("块数一致，按原始编号重编号。")
+        with open(FIXED, "w", encoding="utf-8", newline="\n") as f:
+            for b, new_idx in zip(fixed, new_idx_seq):
+                f.write(f"{new_idx}\n{b['ts']}\n{b['body']}\n\n")
+        print("重编号完成。")
+    else:
+        print("块数不一致！需要手动核查。")
+        # 逐块对比
+        for i, (o, fx) in enumerate(zip(orig, fixed)):
+            if o["ts"] != fx["ts"]:
+                print(f"  [{i}] 时间码不同: 原 {o['idx']} {o['ts']} vs 修 {fx['idx']} {fx['ts']}")
+        if len(orig) > len(fixed):
+            for j in range(len(fixed), len(orig)):
+                print(f"  修正文件缺少: {orig[j]['idx']} {orig[j]['ts']} {orig[j]['body'][:40]}")
+        if len(fixed) > len(orig):
+            for j in range(len(orig), len(fixed)):
+                print(f"  修正文件多出: {fixed[j]['idx']} {fixed[j]['ts']} {fixed[j]['body'][:40]}")
+
+
+if __name__ == "__main__":
+    main()

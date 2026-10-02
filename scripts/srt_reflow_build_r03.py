@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""脚本断句填回（机械断句路径）：由「匹配文件 + EN 预分句 + ZH 模板骨架」机械生成 r03_results。
+"""脚本断句填回（机械断句路径）：由“匹配文件 + EN 预分句 + ZH 模板骨架”机械生成 r03_results。
 
-reflow 工作流（reflow-redstone）步骤 5 的「脚本断句」平行路径（LLM 只做句子匹配，断句/填回全机械）：
+reflow 工作流（reflow-redstone）分句的「semantic-reflow.md#脚本断句」平行路径（LLM 只做句子匹配，断句/填回全机械）：
 - **匹配文件**：`reflow/r03_matches/chunk_<k>.txt`（LLM 句子匹配 subagent 产物）——每行一个整句，
   左 = 合并成整句的 ZH 句 Z 组、右 = 对应 EN 句 E 组（组内 `+` 连接）：
       `Z5+Z6+Z7+Z8 = E5+E6+E7+E8`
@@ -11,7 +11,8 @@ reflow 工作流（reflow-redstone）步骤 5 的「脚本断句」平行路径�
 生成逻辑（零 LLM、全确定性）：
 - **子单元 = 复用模板骨架的子句段**（presplit 机械断句结果：只在标点处切、宽度 ≤ hard_max、
   段拼接 == Z 原文 == r02——忠实铁律由结构保证）；单段 Z 句（模板 1:1）整句成单元
-- **EN 整句 = 匹配的 E 组按号顺序拼接**；**子单元 EN = 按 ZH 子单元宽度比例机械切 EN 整句**
+- **EN 整句 = 匹配的 E 组按号顺序拼接**；**子单元 EN = 切成与 ZH 子单元同数，就近按标点找断点**
+  （`punct.split_secondary`；副语言侧无标点可用时退词边界——机械按词数比例切会劈开语义单元）
   （词边界就近切，互斥拼接 == 整句，check-r03 ② 可过；语义对齐是近似的、须人工核对）
 - **关系 = 1:1（单子单元）/ 1:n（多子单元）**，S 号块内从 1 连续
 - **漏句留空**（本脚本核心收益）：匹配未覆盖的 Z 句 / E 句**不静默消失**，产物写 `> ⚠️` 标记
@@ -31,6 +32,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8")
 
 from shared.srt_common import collect_chunk_files, text_width
+from srt_reflow_core.punct import split_secondary
 
 # 匹配文件每行格式：`Z5+Z6+Z7+Z8 = E5+E6+E7+E8`（左 Z 组 / 右 E 组，组内 `+` 连接、每组元素带 Z/E 前缀）
 MATCH_RE = re.compile(r"^\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*=\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*$")
@@ -108,12 +110,12 @@ def parse_matches(text):
             continue
         m = MATCH_RE.match(s)
         if not m:
-            problems.append(f"行{lineno}: 无法解析「{ln.strip()}」（应为 `Z5+Z6 = E5+E6`）")
+            problems.append(f"行{lineno}: 无法解析“{ln.strip()}”（应为 `Z5+Z6 = E5+E6`）")
             continue
         zg = _parse_group(m.group(1), "Z")
         eg = _parse_group(m.group(2), "E")
         if not zg or not eg:
-            problems.append(f"行{lineno}: 组内无有效 Z/E 号「{ln.strip()}」")
+            problems.append(f"行{lineno}: 组内无有效 Z/E 号“{ln.strip()}”")
             continue
         out.append((zg, eg))
     return out, problems
@@ -151,7 +153,7 @@ def split_en_by_weights(en_text, weights):
 def render_r03(matches, zh_map, en_map):
     """按匹配生成 r03 文本（含 `> ⚠️` 漏句/漏 EN 标记）。返回 (文本, 统计 dict)。"""
     lines = [
-        "> 脚本断句产物（build-r03 机械生成）：子单元复用 presplit 模板骨架、EN 按宽度比例机械切分，",
+        "> 脚本断句产物（build-r03 机械生成）：子单元复用 presplit 模板骨架、副语言（EN）就近按标点切分，",
         "> 中英对应以 r03_matches 匹配文件为准（须人工核对；未匹配处见下方 `> ⚠️` 标记）",
     ]
     stats = {"s": 0, "miss_z": 0, "miss_e": 0}
@@ -167,7 +169,7 @@ def render_r03(matches, zh_map, en_map):
             zh_parts.append(zh_map[z]["text"])
             subs.extend(zh_map[z]["subs"])
         zh_full = "".join(zh_parts)
-        # EN 整句 = E 组按号拼接（空格连接）；子单元 EN 机械切分
+        # EN 整句 = E 组按号拼接（空格连接）；子单元 EN 就近按标点切分
         en_parts = [en_map[e] for e in es if e in en_map]
         en_full = " ".join(en_parts)
         missing_en = [e for e in es if e not in en_map]
@@ -176,7 +178,9 @@ def render_r03(matches, zh_map, en_map):
             lines.append(f"{MISS_TAG} E{e}: 匹配引用的 E 号在预分句缺失")
         if not subs:
             continue
-        en_subs = split_en_by_weights(en_full, [text_width(s) for s in subs])
+        # 子单元 EN（副语言）= 切成 len(subs) 片，**就近按标点找断点**（而非按词数比例
+        # 机械切——后者会劈开语义单元）。无标点可用时退词边界，互斥拼接 == 整句。
+        en_subs = split_secondary(en_full, [text_width(s) for s in subs])
         s_num += 1
         rel = "1:1" if len(subs) == 1 else "1:n"
         lines.append(f"## S{s_num}")

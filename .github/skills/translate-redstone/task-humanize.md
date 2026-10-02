@@ -23,7 +23,7 @@ description: 去翻译腔任务（translate）——译文（s04_draft.srt 全�
 5. **逐段修订，保留段号**：输入每段含段号，输出**每行一段** `段号|修订后中文`。
    - 未改动的段也输出（`段号|原中文`），保证段号齐全
 
-## 输出（写入 `_work/<视频名>/_humanize_results/chunk_<k>.txt`）
+## 输出
 
 - 产物 = **每行一段** `段号|修订后译文`（可附改动点说明，如 `3|改成这样（删了多余的"然后"）`）
 - 写完后报告 `已写入 <文件名>`，不粘贴全文
@@ -36,5 +36,4 @@ description: 去翻译腔任务（translate）——译文（s04_draft.srt 全�
 > 3. `## 先验知识` = humanizer 注入版（`humanizer-inject.md`）
 > 4. `## 本块数据` = 数据文件引用：`_humanize_chunks/chunk_<k>.txt`（本块输入）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `_humanize_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`
-
 > **渲染手段（脚本）**：由 `scripts/render_subagent_prompt.py` 会话外组装落盘 `_work/<视频名>/prompts/task-humanize-chunk_<k>.txt`（完整 prompt 不进主会话）；未走脚本时按上方顺序同序拼接。派发见 [subagent-dispatch#派发引用 prompt](../subagent-dispatch/SKILL.md#派发引用-prompt)。

@@ -6,14 +6,14 @@
 对每个空隙点 c_a → c_b：
   在 r01 中定位 c_a 的末尾字符偏移 与 c_b 的首字符偏移（全文按 cue 顺序对齐），
   检查两偏移之间的原始文本是否含句末标点（. ? !）：
-    有 → 通过（空隙处已断句）；无 → 违规（跨空隙合句，打回步骤 1 重跑）。
+    有 → 通过（空隙处已断句）；无 → 违规（跨空隙合句，打回空隙探测 重跑）。
 
 Agent 裁决角色：
 - 违规的处置：默认打回；若判定该空隙为语义停顿（语义本就连贯）可作受控例外放行，但须在 r03 不跨空隙成单元。
 - 通过的复核：断句方式（独立成句 / 分段 / 归前句）由 Agent 复核，影响 r03 游离停顿词归属。
 
 块级模式（产物单轨）：r01 为 r01_results 目录，--chunks 必填（单块亦适用）；整段模式（<r01_merged_en.txt>）保留兼容历史产物。
-统一反馈：默认只输出「问题数目 + 提示」（违规/未定位只计数，不输出内容/上下文）；--expand 展开每处违规详情；
+统一反馈：默认只输出“问题数目 + 提示”（违规/未定位只计数，不输出内容/上下文）；--expand 展开每处违规详情；
 --chunk <k> 只校验涉及该块的空隙点并默认展开（修复单块时防其他块报错占用上下文）。
 
 用法（命令根 = Project_Main/）：
@@ -40,10 +40,11 @@ from shared.srt_common import (
     LONG_GAP_MS,
     MAX_LINE,
     BRACKET_RE,
+    TERMINATOR_CLASS,
 )
 
 NORM_RE = re.compile(r"[^a-z0-9']")
-SENT_END_RE = re.compile(r"[.?!]")
+SENT_END_RE = re.compile(r"[" + TERMINATOR_CLASS + r"]")
 
 
 def parse_srt(path):
@@ -120,7 +121,7 @@ def load_breaks(gaps_path):
     """读空隙点清单 → [(ia, ib, gap_ms), ...]。**只收生效项**（`excluded` 跳过）。
 
     优先按 tsv 解析（`r00_gaps_active.tsv`，权威）；若给的是旧 `r00_gaps.md`，
-    先尝试同目录同名 tsv（`r00_gaps_active.tsv`）——实现「排除某空隙改 tsv 即可」。
+    先尝试同目录同名 tsv（`r00_gaps_active.tsv`）——实现“排除某空隙改 tsv 即可”。
 
     回退：tsv 不存在时按旧 md 正则 `### N. c<ia> → c<ib>（<gap>s）` 解析（兼容历史产物）。
     """
@@ -218,17 +219,17 @@ def main_whole(args, cues, breaks):
                 print(f"   前 cue c{ia}: `{a_text}`")
                 print(f"   后 cue c{ib}: `{b_text}`")
                 if getattr(args, "break_meta", {}).get((ia, ib), {}).get("kind") == "suspect":
-                    print("   ⚠️ **本处为「疑似源字幕切分缺陷」（前 cue 无句末标点 + 后 cue 首字母小写）**——")
+                    print("   ⚠️ **本处为“疑似源字幕切分缺陷”（前 cue 无句末标点 + 后 cue 首字母小写）**——")
                     print("      若确认是源缺陷（而非作者停顿）：**不要**按空隙强制断句，"
                           "而应在 `r00_gaps_active.tsv` 把该行 status 改为 `excluded` 后重跑（自动跳过本校验）")
                 else:
-                    print(f"   → 默认处置: 打回步骤 1，复核 r01_breaks.md 断句点清单后按空隙标记（【强制断句】先验知识注入补标点 subagent）重跑")
+                    print(f"   → 默认处置: 打回空隙探测，复核 r01_breaks.md 断句点清单后按空隙标记（【强制断句】先验知识注入补标点 subagent）重跑")
                     print(f"   受控例外: 若你判定该空隙为语义停顿（非剪辑跳转、语义本就连贯），可放行——")
                     print(f"   但须在 r03 分句对应时确保不跨空隙成单元，并在 r04 告警对照中记录（与生效空隙集对照）")
     print("-" * 60)
     print(f"结果: 通过 {n_pass} / 违规 {n_violate} / 未定位 {n_skip}（共 {len(breaks)}）")
     if n_violate:
-        print("❌ 存在跨空隙合句 —— r01 需打回步骤 1 重跑（硬性断句）")
+        print("❌ 存在跨空隙合句 —— r01 需打回空隙探测 重跑（硬性断句）")
         if not args.expand:
             print("   提示：--expand 展开每处违规详情（空隙点+块+上下文）；--chunk <k> 只查单个块")
         sys.exit(1)
@@ -307,7 +308,7 @@ def main_block(args, cues, breaks):
         b_text = cues[ib - 1]["text"]
         # 块级：空隙点应在块边界处（块边界优先在空隙点）；检查前块是否以句末标点结尾
         # 剥离跨块句标记【承接句】/【延伸句】后无文本（纯标记块/空块）→ 无文本可判，跳过该空隙，
-        # 避免把「无文本」误报为「前块末尾无句末标点」（打回信号）
+        # 避免把“无文本”误报为“前块末尾无句末标点”（打回信号）
         if not text_a or not text_b:
             n_skip += 1
             if args.expand:

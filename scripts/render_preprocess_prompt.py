@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
-"""preprocess 阶段一 subagent prompt 渲染脚本（会话外组装落盘，独立于 reflow 渲染链路）。
+"""preprocess 阶段二 subagent prompt 渲染脚本（会话外组装落盘，独立于 reflow 渲染链路）。
 
-把「任务模板 + 纪律母版 + 产物格式约定 + 先验知识 + 块数据引用 + 写盘约定」渲染成最终
+把“任务模板 + 纪律母版 + 产物格式约定 + 先验知识 + 块数据引用 + 写盘约定”渲染成最终
 subagent prompt，落盘 `_work/<视频名>/prompts/<task>-chunk_<k>.txt`。
 
-服务任务（preprocess §1.1，translate / reflow 两工作流共享的阶段一）：
+服务任务（preprocess 术语扫描，translate / reflow 两工作流共享的阶段二）：
   - task-term-recognition：术语识别（输入 `_term_chunks/` → 输出 `_term_results/`）
   - task-en-preprocess：英文预整理·第一次遍历（输入 `_en_chunks/` → 输出 `_en_results/`）
 
-与 `render_subagent_prompt.py`（reflow 阶段二专用）分开：本脚本不读 02_terms.md（阶段一确认前
-不存在）、注入的是阶段一先验（scan 命中项按块过滤 / asr_fixes 映射 / 领域术语集），而非
+与 `render_subagent_prompt.py`（reflow 阶段三专用）分开：本脚本不读 02_terms.md（术语确认前
+不存在）、注入的是阶段二先验（scan 命中项按块过滤 / asr_fixes 映射 / 领域术语集），而非
 humanizer/术语表；两链路产物目录互不重叠。
 
 核心动机与 reflow 渲染脚本一致：完整 prompt 文本**不进主会话历史**——主 agent 只发本脚本命令
-（短）+ 派发时只给引用路径（见 subagent-dispatch「派发引用 prompt」），subagent 自行 read。
+（短）+ 派发时只给引用路径（见 「subagent-dispatch#派发引用 prompt」），subagent 自行 read。
 模板正文零改动（`<k>`/`<视频名>` 正则替换），纪律母版读 `subagent-dispatch/_discipline.md`。
 
 用法（命令根 = Project_Main/）：
@@ -38,7 +38,7 @@ SKILLS_DIR = os.path.join(PROJECT_ROOT, ".github", "skills")
 DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md")
 ASR_FIXES_GLOBAL = os.path.join(PROJECT_ROOT, ".github", "experience", "asr_fixes.md")
 
-# 模板尾部「渲染步骤」说明区的起点（渲染时剥离——该区块给主会话/维护者看：
+# 模板尾部“渲染步骤”说明区的起点（渲染时剥离——该区块给主会话/维护者看：
 # 声明本任务按什么顺序、用哪些内容拼接，不是 subagent 执行内容）。含前置分隔线，一并剥离避免残留孤立 `---`。
 FILL_MARKERS = (
     "\n---\n\n> **渲染步骤",
@@ -52,7 +52,7 @@ TASKS = {
         "skill": "term-scan",
         "template": "task-term-recognition.md",
         "role": "术语识别",
-        "format_section": None,  # 无外部格式权威，任务文件「输出」节已内联
+        "format_section": None,  # 无外部格式权威，任务文件“输出”节已内联
         "inputs": ["_term_chunks/chunk_<k>.txt"],
         "output": "_term_results/chunk_<k>.txt",
         "chunks_key": "_term_chunks",
@@ -70,9 +70,9 @@ TASKS = {
     },
 }
 
-# 注：§1.2 术语查证（task-term-resolve）为研究型单次任务（agent = term-researcher），
-# 不走本渲染脚本——任务规则静态内联于任务文件，派发时「任务文件 + term_pending.md 双引用」，见
-# redstone-preprocess §1.2 / subagent-dispatch 任务导航表。
+# 注：术语查证（task-term-resolve）为研究型单次任务（agent = term-researcher），
+# 不走本渲染脚本——任务规则静态内联于任务文件，派发时“任务文件 + term_pending.md 双引用”，见
+# redstone-preprocess 集中补齐 / subagent-dispatch 任务导航表。
 
 
 def read(path):
@@ -239,7 +239,7 @@ def render(task, video_dir, chunk, scan_path, glossary_paths, asr_fixes_paths, c
     cfg = TASKS[task]
     video_name = os.path.basename(os.path.normpath(video_dir))
 
-    # 1. 模板正文（剥离尾部「组装与派发」说明区）
+    # 1. 模板正文（剥离尾部“组装与派发”说明区）
     template_path = os.path.join(SKILLS_DIR, cfg["skill"], cfg["template"])
     text = read(template_path)
     for marker in FILL_MARKERS:

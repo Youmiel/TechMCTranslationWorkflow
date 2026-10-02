@@ -1,13 +1,13 @@
 ---
 name: task-term-resolve
-description: L3 术语查证任务（preprocess §1.2 集中补齐）——对待查列表逐条查证译名（缓存/索引/网络 MCP），写盘与待查列表同名前缀的 term_resolve_<i>.md + 返回压缩总结。
+description: L3 术语查证任务（preprocess [集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐)）——对待查列表逐条查证译名（缓存/索引/网络 MCP），写盘与待查列表同名前缀的 term_resolve_<i>.md + 返回压缩总结。
 ---
 
 # L3 术语查证任务
 
 你是术语查证研究员（研究型 agent）。对待查列表（`term_pending_<i>.md`，见派发引用中的输入路径；**本批约 30 条**）中的 L3 术语**逐条查证译名**，写盘 `term_resolve_<i>.md`（与待查列表同目录 `_work/<当前视频名>/`、**同名前缀**；无编号 `term_pending.md` → `term_resolve.md`，下同）。
 
-## 查证链（逐条执行）
+## 查证链
 
 1. **缓存第一道门**：`.cache/wiki/<中文规范标题>.md` 存在即命中，不再联网。
    - 中文译名缺失时用**搜索工具**在 `.cache/wiki/` 按英文关键词搜正文兜底
@@ -15,7 +15,7 @@ description: L3 术语查证任务（preprocess §1.2 集中补齐）——对�
    - 跑 `python scripts/refresh_cache.py --check-page "<页面名>"` 判定 `未过期` / `过期` / `未缓存`（退出码 1 = 有需处理项）
    - `过期` 且本词要从中取译名 → 先跑 `python scripts/fetch_wiki.py --refresh "<页面名>"` 主动刷新（wikitext/lossless 直连），**刷新后重新读缓存**，数据源列写 `已刷新`
    - 刷新失败 → 数据源列写 `刷新失败：<原因>`，退回第 3 步降级链取内容并在依据中标注保真度与 `fetched` 时间；**不得静默使用过期内容**
-   - `过期` 但仅确认「某词存在」且结论与版本无关 → 可继续用，数据源列写 `未过期判定：仅核查存在性`
+   - `过期` 但仅确认“某词存在”且结论与版本无关 → 可继续用，数据源列写 `未过期判定：仅核查存在性`
    - `未缓存` → 第 3 步抓取
    - `.cache/wiki/` 是跨视频共享缓存，**旧缓存不因跨视频复用而免检**
 3. **未命中判断数据源**（wiki-tools 降级链）：
@@ -36,7 +36,7 @@ description: L3 术语查证任务（preprocess §1.2 集中补齐）——对�
 - 抓取落盘 `.cache/wiki/`（模板见 `docs/WIKI_CACHE_FORMAT.md`，中文规范标题命名）
 - **终端工具边界**：仅用于 `python scripts/refresh_cache.py --check-page` / `python scripts/fetch_wiki.py`（抓取与刷新）——不得用于其它命令
 
-## 输出（写入 `term_resolve.md`，与待查列表同目录）
+## 输出
 
 - 每行：`term_en\t候选译名\t数据源\t依据\t[标记]`
 - `[标记]` = `[推断]` / `[待审核]`
@@ -54,4 +54,4 @@ description: L3 术语查证任务（preprocess §1.2 集中补齐）——对�
 > 2. `任务指令` = 本文件（规则静态内联，即完整 prompt）
 > 3. `## 待查列表` = 该批 `_work/<视频名>/term_pending_<i>.md`（约 30 条/批）——与任务文件**双引用**
 > 4. `写盘/报告约定` = 写入 `_work/<视频名>/term_resolve_<i>.md` + 报告 `已写入 term_resolve_<i>.md`（附每词一行总结）
-> 5. `派发方式` = **串行**（上一批写盘后再派下一批）；派发见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界哪些派-subagent--哪些主会话)
+> 5. `派发方式` = **串行**（上一批写盘后再派下一批）；派发见 [subagent-dispatch#派发边界](../subagent-dispatch/SKILL.md#派发边界)

@@ -1,24 +1,24 @@
 # -*- coding: utf-8 -*-
 """继承时间 + 回填（新 reflow2 工作流核心）：中文 Z 句继承 E 固化时间 → 拆子段 → r04
 
-背景（2026-09-09 设计「时间轴源头固化」）：E 句时间已在源头固化（en_timeline，只读真值锚），
-Z 句（中文）通过对齐（align，Z组=E组）**继承** E 固化时间——不再「整句 EN 全文搜索猜时间 +
-共享 cue 切分 + 预测点」（现 reflow 的回填机制）。
+背景（2026-09-09 设计“时间轴源头固化”）：E 句时间已在源头固化（en_timeline，只读真值锚），
+Z 句（中文）通过对齐（align，Z组=E组）**继承** E 固化时间——不再“整句 EN 全文搜索猜时间 +
+共享 cue 切分 + 预测点”（现 reflow 的回填机制）。
 
 本脚本做两件事：
 1. **继承**：每 Z 组 = 一个中文整句，对应 E 组 → 时间 = E 组覆盖范围 [首 E.start, 末 E.end]
    （E 固化时间已含共享 cue 字符占比切分，故继承天然零重叠）
 2. **拆子段**：Z 句文本超宽（>hard_max）或时长碎片（<min_ms）时按中文阅读速度/宽度比例在
    E 组区间内细分（复用 allocate._allocate_by_weight 逻辑：吸附真实 cue 边界 ≤snap_ms，
-   无则 100ms 取整预测点）——阅读舒适优先（≤22 字），不因「尊重原轴」保留超长句。
+   无则 100ms 取整预测点）——阅读舒适优先（≤22 字），不因“尊重原轴”保留超长句。
    拆段标点分级 = **标点功能角色表**（`srt_reflow_core.punct`）——句末标点（`。！？…`，terminator）
    为显示段硬边界（逐句独立成段）；句内按断点**强度**做代价最小化拼合：
    `strong`（`；：—`）> `clause`（`，`）> `list`（`、`）。
-   **拼合 = 代价最小化**（而非「贪心填满 hard_max」）：贪心会吞掉强断点
+   **拼合 = 代价最小化**（而非“贪心填满 hard_max”）：贪心会吞掉强断点
    （实例 `…回答一下：第一，`(17) + `怎么搭…？`(12)，断点落在逗号而非冒号；
    代价最小化给出 `…回答一下：`(14) + `第一，怎么搭…？`(15)）。
    分号 = `strong` 强优先（可被宽度否决）、不硬断——
-   断点代价表达「并列项不挤在同一屏段」（`strong` 2.0 ≪ `clause` 5.0）。
+   断点代价表达“并列项不挤在同一屏段”（`strong` 2.0 ≪ `clause` 5.0）。
    由标点切不动仍超宽的单句保留原样并计入告警（此类需回 r02 改写句子）
 
 产物：
@@ -44,11 +44,11 @@ sys.stdout.reconfigure(encoding="utf-8")
 from shared.srt_common import (
     collect_chunk_files, fmt, text_width, CJK_SPEED, MIN_FRAG_MS, SNAP_MS,
     SOFT_MIN as SOFT_MIN_UNIT, SOFT_MAX, HARD_MAX, MIN_UNIT as DEFAULT_MIN_UNIT,
+    TERMINATOR_CLASS,
 )
 from srt_reflow_presplit import split_zh, pack_candidates
-from srt_reflow_core.punct import build_profile, split_atomic
+from srt_reflow_core.punct import build_profile, split_atomic, split_secondary
 from srt_reflow_build_r03 import split_en_by_weights
-
 PM = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PM not in sys.path:
     sys.path.insert(0, PM)
@@ -57,14 +57,14 @@ from scripts.srt_reflow_core.allocate import _allocate_by_weight, cjk_reading_ms
 MATCH_RE = re.compile(r"^\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*=\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*$")
 ET_RE = re.compile(r"^E(\d+)\t(.+?)\t.+?\t(.*)$")   # en_timeline 行：E<n>\t<start> --> <end>\tc..\t文本
 
-# ---- 跨块句衔接归位（2026-09-27 补上「步骤 3 校验 #4 衔接归位」从未落地的实现）----
+# ---- 跨块句衔接归位（2026-09-27 补上“补标点 的校验项 #4 衔接归位”从未落地的实现）----
 # 背景：块边界由 `--owned` cue 数等分，**常落在句子中间**（ASR 字幕 93% 的 cue 末尾无句末标点，
 # 且 cue 间常无缝 → 无句末可吸附）。于是补标点 agent 在两块各补全一次同一句，产生：
 #   ① 英文 E 句重复（两块时间完全相同 → 下游重叠）  ② 中文 Z 句被劈成两半（`输出则从` + `下面。`）
 # 归位 = 拆段前把边界两侧的同一句合并为一条（EN 去重 / ZH 互补拼接 / 时间与真实边界取并集）。
 CROSS_MARKS = ("【延伸句】", "【承接句】")
 # 中文句末标点（判 prev 中文句界是否已闭合——闭合时拼接可能需润色）
-ZH_EOS_RE = re.compile(r"[。！？…]\s*$")
+ZH_EOS_RE = re.compile(r"[" + TERMINATOR_CLASS + r"]\s*$")
 # 悬空成分（候选断点**前**的词：以此收尾 = 句子未完成）——与 task-punctuate 规则 7 判据 A 同源
 DANGLING = {
     # 介词
@@ -165,12 +165,12 @@ def parse_align(text):
             continue
         m = MATCH_RE.match(s)
         if not m:
-            problems.append(f"无法解析「{ln.strip()}」")
+            problems.append(f"无法解析“{ln.strip()}”")
             continue
         zg = [int(x) for x in re.findall(r"Z(\d+)", m.group(1))]
         eg = [int(x) for x in re.findall(r"E(\d+)", m.group(2))]
         if not zg or not eg:
-            problems.append(f"组内无号「{ln.strip()}」")
+            problems.append(f"组内无号“{ln.strip()}”")
             continue
         out.append((sorted(zg), sorted(eg)))
     return out, problems
@@ -224,8 +224,8 @@ def main():
     ap.add_argument("--snap-ms", type=int, default=SNAP_MS, help="吸附真实 cue 边界最大距离（默认 300ms）")
     ap.add_argument("--cjk-speed", type=float, default=CJK_SPEED, help="中文阅读速度 字/秒（默认 5）")
     # 标点角色表覆盖（srt_reflow_core.punct；不传 = 语言默认）
-    ap.add_argument("--punct-terminators", default=None, help="句界字符集（默认 。！？…；扩它会改变 Z 句数、使 align/ 失效）")
-    ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认 ；：—）")
+    ap.add_argument("--punct-terminators", default=None, help="句界字符集（默认取跨语言通用表；扩它会改变 Z 句数、使 align/ 失效）")
+    ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认取跨语言通用表）")
     ap.add_argument("--punct-clause", default=None, help="句内断点字符集（默认 ，）")
     ap.add_argument("--punct-list", dest="punct_list", default=None, help="并列内部断点字符集（默认 、）")
     args = ap.parse_args()
@@ -249,7 +249,7 @@ def main():
     alerts = []
     total_cue = 0
     problems = []
-    all_cues = []       # 全部块的 Z/E 组（累积后先做「跨块句衔接归位」、再统一拆段）
+    all_cues = []       # 全部块的 Z/E 组（累积后先做“跨块句衔接归位”、再统一拆段）
     for k in keys:
         with open(a_blocks[k], encoding="utf-8") as fh:
             aligns, ap = parse_align(fh.read())
@@ -317,7 +317,7 @@ def main():
             # 候选段按阅读时长权重分配区间
             # 句界硬边界：逐句独立成段（禁止跨句拼合）；句内超软限则按**断点强度**
             # （角色表 ：strong=冒号/分号 > clause=逗号 > list=顿号）做代价最小化拼合——
-            # 不用「贪心填满 hard_max」（会吞掉强断点：`…回答一下：第一，`+`怎么搭…？`）。
+            # 不用“贪心填满 hard_max”（会吞掉强断点：`…回答一下：第一，`+`怎么搭…？`）。
             # 单段切不动仍超宽时保留（由告警暴露，需回 r02 改写）
             units = []
             for st in sents:
@@ -330,8 +330,11 @@ def main():
             if not units:
                 units = [(zh, text_width(zh))]
             weights = [max(1, cjk_reading_ms(u, args.cjk_speed)) for u, _w in units]
-            # 子段 EN = 整句 EN 按子段宽度比例机械切（互斥拼接==整句 EN；语义近似）
-            en_subs = split_en_by_weights(en_full, [text_width(u) for u, _w in units])
+            # 子段 EN（副语言）= 切成 len(units) 片，**就近按标点找断点**（而不是按词数比例
+            # 机械切——后者会劈开语义单元：`soft | power`、`stone pressure | plates`）。
+            # 段落数与目标语言一致（目标语言受行宽硬闸门约束，为主导侧）；
+            # 无标点可用时退词边界，仍保证互斥拼接 == 整句 EN。
+            en_subs = split_secondary(en_full, [text_width(u) for u, _w in units])
             # 复用 _allocate_by_weight：按权重比例在 [start,end] 内分界 + 吸附
             # units 元素取 u[0](key)/u[2](zh)，u[1] 作 en 占位；此处 zh 子段即显示文本
             segs = _allocate_by_weight([(f"u{i}", en_subs[i] if i < len(en_subs) else "", u)

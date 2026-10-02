@@ -1,6 +1,6 @@
 # translate 产物格式（PRODUCT_FORMATS_TRANSLATE）
 
-> translate-redstone（方案一 逐句翻译；**项目最早建立的工作流**）阶段二专有产物的格式 / 结构 / 标记约定。
+> translate-redstone（方案一 逐句翻译；**项目最早建立的工作流**）阶段三 专有产物的格式 / 结构 / 标记约定。
 > 通用约定、共享产物（`01` / `02` / `term_*` / `wiki_*`）、通用文本分块、配置文件 → [PRODUCT_FORMATS](PRODUCT_FORMATS.md)。
 > 其它工作流复用本文件约定时，在各自文件内只留短句 + 链接，不重复展开。
 
@@ -36,13 +36,13 @@
 - 约束：时间边界 **⊆ 原字幕边界集合**（translate 特有，不允许新造时间点）；行宽软 22 / 硬 27
 - 校验：`python scripts/srt_check_segments.py s04_draft.srt --orig <01>`、`python scripts/srt_check_width.py s04_draft.srt --order zh-en`、`python scripts/srt_check_terms.py 01_subtitle_asr_fixed.srt 02_terms.md s04_draft.srt --plan s03_plan.md`
 
-## `_merge_results/chunk_<k>.txt`（断句块，translate 阶段二 subagent 产物）
+## `_merge_results/chunk_<k>.txt`
 
 - 命名：`<工作目录>/_merge_results/chunk_<k>.txt`（每块一个；分块时产生，N=1 即单块）
 - 生成：断句 subagent（`task-merge`）——对 chunks 块 OWNED cue 做英文侧断句（游离单词归位 + 语义合并 + 对白拆分 + 分割超长句 + 共享 cue 归属）
 - 格式：**srt 类型**，**每行一段** `段号|cstart[-cend][~]|英文文本`。
   - 段号**块内从 1 连续编号**（`text_merge.py` 合并时全局段号重排）
-  - `~` = 估算切分点（受控例外，见 segment-subtitles「中间断句与估算时间」）
+  - `~` = 估算切分点（受控例外，见 「segment-subtitles#中间断句与估算时间」）
   - `CARRY: c<idx>` 结转标记行**独立成行**（跨块未完成句，见 redstone-conventions §5）
 - 约束：
   - **断句只合并 / 分割、不改措辞**（英文词序列须与 01 对应 cue 区间一致，`srt_check_plan_words.py` 校验；02_terms 确认的 ASR 修正除外）
@@ -51,7 +51,7 @@
 - 合并：`python scripts/text_merge.py <chunks_dir> <_merge_results/> --out s03_plan.md`（srt 类型：全局段号重排）
 - 校验（合并后）：`python scripts/srt_check_plan_words.py 01_subtitle_asr_fixed.srt s03_plan.md [--asr-fixes 02_terms.md]`
 
-## `_trans_results/chunk_<k>.txt`（翻译块，translate 阶段二 subagent 产物）
+## `_trans_results/chunk_<k>.txt`
 
 - 命名：`<工作目录>/_trans_results/chunk_<k>.txt`（每块一个）
 - 生成：翻译 subagent（`task-translate`）——对 `_merge_results/chunk_<k>.txt` 段行逐段翻译为中文
@@ -60,7 +60,7 @@
 - 合并：`text_merge.py <chunks_dir> <_trans_results/> --out <中间稿>`（srt 类型全局段号重排）→ 主会话转 `s04_draft.srt`（标准 SRT 双语 zh-en）
 - 校验：`python scripts/srt_check_terms.py 01_subtitle_asr_fixed.srt 02_terms.md <_trans_results/> --chunks <chunks/>`（分块时逐块核对）
 
-## `_humanize_results/chunk_<k>.txt`（去翻译腔块，translate 阶段二+ subagent 产物）
+## `_humanize_results/chunk_<k>.txt`
 
 - 命名：`<工作目录>/_humanize_results/chunk_<k>.txt`（每块一个）
 - 生成：去翻译腔 subagent（`task-humanize`）——对 `s04_draft.srt` 全稿或其分块做去翻译腔/去 AI 味

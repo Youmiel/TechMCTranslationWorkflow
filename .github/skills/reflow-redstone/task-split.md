@@ -49,7 +49,7 @@ description: 分句 + 语义对应任务（reflow）——对照 r03_normalized_
    - 思考中不得逐字手算宽度、不得重抄整句核对
    - 填空后直接写盘；切分是否正确由校验指出，不逐条自修、不整块重写
 
-## 输出（写入 `_work/<视频名>/reflow/r03_results/chunk_<k>.txt`）
+## 输出
 
 - 产物 = r03 整句分组格式（`## S<n>`），与 PRODUCT_FORMATS_REFLOW 的 `r03_plan.md` 节一致
 - **EN / ZH 值必须单行**：`- EN: ` / `- ZH: ` 的值（整句与子单元片段）各占**恰好一行**
@@ -63,7 +63,9 @@ description: 分句 + 语义对应任务（reflow）——对照 r03_normalized_
 格式骨架：
 
 ```markdown
-## S<n>            （合句为 S<n+m>，如 S19+20）
+## S<n>
+
+> 合句为 S<n+m>，如 S19+20
 - EN: <整句英文全文>
 - ZH: <整句中文>
 - 关系: 1:1 | 1:n | n:1
@@ -89,6 +91,5 @@ description: 分句 + 语义对应任务（reflow）——对照 r03_normalized_
 > 3. `## 先验知识` = 空隙断句标记（`r01_breaks.md` 复核结果，紧贴任务规则 5）；**不注入术语表**（分句不产出译名）；主会话复核结论用 `--prior-file` 追加
 > 4. `## 本块数据` = 数据文件引用：`reflow/r03_normalized_1/chunk_<k>.txt`（E 号预分句）+ `reflow/r03_normalized_2/chunk_<k>.txt`（ZH 模板骨架）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `reflow/r03_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`
-
 > **渲染手段（脚本）**：由 `scripts/render_subagent_prompt.py` 会话外组装落盘 `_work/<视频名>/prompts/task-split-chunk_<k>.txt`（完整 prompt 不进主会话）；未走脚本时按上方顺序同序拼接。派发见 [subagent-dispatch#派发引用 prompt](../subagent-dispatch/SKILL.md#派发引用-prompt)。
 

@@ -29,7 +29,7 @@ python scripts/setup_editors.py
 | [请求身份](#请求身份) | `configs/request_identity.yaml` | 建议确认（非 git clone 获取、或想用邮箱/站点） |
 | [执行型 subagent 模型](#执行型-subagent-模型) | `configs/subagent_model.yaml` | 派发 subagent 前**必填** |
 | [上下文窗口](#上下文窗口与分块比例) | `configs/context_window.json` | 换用窗口不同的模型时 |
-| [MCP Wiki 工具](#mcp-wiki-工具可选) | `.vscode/mcp.json` 等 | 可选，提升查证质量 |
+| [MCP Wiki 工具](#mcp-wiki-工具) | `.vscode/mcp.json` 等 | 可选，提升查证质量 |
 | 编辑器适配 | — | 用非 VS Code 编辑器时，见 [EDITOR_COMPAT](EDITOR_COMPAT.md) |
 
 ## 请求身份
@@ -86,20 +86,20 @@ execution_model: "<你的 no-think 模型名>"
 
 - **因人而异**：按你当前编辑器里可用的模型名填写（VS Code：模型选择器中的名称；Claude Code：模型标识；等）
 - **所有 skill / 文档不硬编码模型名**
-- Agent 派发 `reflow-worker` 时**必须读取本文件，把 `execution_model` 的值「照原样」填入派发参数**（逐字复用，不得改动 / 推断 / 凭记忆臆造；文件缺失或未配置 → 停下请使用者填写）
+- Agent 派发 `reflow-worker` 时**必须读取本文件，把 `execution_model` 的值“照原样”填入派发参数**（逐字复用，不得改动 / 推断 / 凭记忆臆造；文件缺失或未配置 → 停下请使用者填写）
 - 各编辑器的模型指定方式（派发参数 / agent frontmatter）见 [EDITOR_COMPAT#各编辑器派发 subagent 命令表](EDITOR_COMPAT.md#各编辑器派发-subagent-命令表)
 
 > **Copilot 特例标注（仅本机适用）**：LLM API 配置（VS Code `chatLanguageModels.json`，BYOK 注册）**不随仓库分发**，故下述仅适用于本机 VS Code Copilot + BYOK 场景。
 > - Copilot 不透传 `thinking: disabled`（chat-completions 只认 `temperature` / `top_p`）
 > - 且 DeepSeek 无非思考模型
 > - 故 `execution_model` 实际运行的是 **`reasoning_effort: low`（最小思考量）**——Copilot 不支持传递 disabled 情况下的**权宜办法**，并非真正关闭思考
-> - 「无思考模型」是执行型纪律的**称呼**（配合 `thinking: false` 隐藏思考 UI），不代表模型零思考
+> - “无思考模型”是执行型纪律的**称呼**（配合 `thinking: false` 隐藏思考 UI），不代表模型零思考
 >
 > 其它编辑器 / 其它模型配置无此限制，按各自方式填真正 no-think 模型即可。
 
 ## 上下文窗口与分块比例
 
-`configs/context_window.json`——描述**你所用的模型容量**，分块阈值计算的基准（决定「何时把长视频拆给多个 subagent」）。
+`configs/context_window.json`——描述**你所用的模型容量**，分块阈值计算的基准（决定“何时把长视频拆给多个 subagent”）。
 
 **必须按你实际使用的模型填写**：不同模型的窗口与单次输出上限差异很大，**没有通用默认值**（文件缺失时脚本按内置兜底值估算并告警，结果可能偏差较大）。
 
@@ -114,7 +114,7 @@ execution_model: "<你的 no-think 模型名>"
 - 模板：[examples/configs/context_window.json](examples/configs/context_window.json)（**模板内数值仅为填写格式示例，需按你的模型替换**）
 - 字段语义 / 算法推导 / 变更同步要求见 [PRODUCT_FORMATS#configscontext_windowjson](PRODUCT_FORMATS.md#configscontext_windowjson)（权威）
 
-## MCP Wiki 工具（可选）
+## MCP Wiki 工具
 
 两个 Minecraft Wiki MCP 工具的本地部署。未配置时 Agent 自动降级至脚本或浏览器方案，查证可靠度相对较低。
 
@@ -134,7 +134,7 @@ execution_model: "<你的 no-think 模型名>"
 
 > 格式差异：VS Code 的 `.vscode/mcp.json` 支持 JSONC（可用 `//` 注释）；Claude / Cursor / Zed 按严格 JSON 解析，模板中不含注释。MCP 服务器名称（`servers` / `mcpServers` 下的键）可自由命名，建议使用项目相关名称。
 
-### mc-wiki-fetch-mcp（自定义 API）
+### mc-wiki-fetch-mcp
 
 - **仓库**：`https://github.com/rice-awa/mc-wiki-mcp-pypi`
 - **后端依赖**：`https://mcwiki.rice-awa.top`（自定义 Wiki API）
@@ -154,7 +154,7 @@ pip install -e .
 mc-wiki-fetch-mcp --transport http --port 3001
 ```
 
-### Minecraft-Wiki-MCP（MediaWiki API 直连）
+### Minecraft-Wiki-MCP
 
 - **仓库**：`https://github.com/L3-N0X/Minecraft-Wiki-MCP`
 - **后端依赖**：`https://zh.minecraft.wiki/api.php`（官方 MediaWiki API）

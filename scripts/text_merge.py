@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """通用文本合并脚本（A 模式：全自动拼接 + 异常清单）——替代主 Agent 手工读头尾组装。
 
-设计（通用文本分块格式，见 docs/PRODUCT_FORMATS.md「通用文本分块」）：
+设计（通用文本分块格式，见 docs/PRODUCT_FORMATS.md「PRODUCT_FORMATS.md#通用文本分块」）：
 - 输入：text_chunk.py 的输出目录（chunk_*.txt 含块头元数据）+ subagent 结果目录（chunk_<k>.txt）
 - 默认全自动：按块序读各块结果，归位拼接成完整产物，主 Agent 零读取
-- 异常时：把【异常块的头尾衔接窗口】导出到报告，主 Agent 只读报告即可决策（A 模式）
+- 异常时：把[异常块的头尾衔接窗口]导出到报告，主 Agent 只读报告即可决策（A 模式）
 - 拼接规则：
-  - text 类型：同「组」内多片按片号无缝拼接（不留空行）；不同组之间空行分隔
+  - text 类型：同“组”内多片按片号无缝拼接（不留空行）；不同组之间空行分隔
   - srt 类型：按块序 + 全局段号重排；检查相邻段 cue 重叠 / 缺口（[Music] 空 cue 允许）/ CARRY 结转
 
 用法（命令根 = Project_Main/）:
@@ -18,7 +18,7 @@
 
 输出:
   <merged>            合并后的完整产物
-  <report>.md         异常清单（正常则为「无异常」）；异常块附头尾窗口供 Agent 决策
+  <report>.md         异常清单（正常则为“无异常”）；异常块附头尾窗口供 Agent 决策
 """
 import argparse
 import os
@@ -108,7 +108,7 @@ def _split_label(row_lines):
 
 
 def _parse_label(label, k):
-    """label → (gid, part)。支持「块0-片2」「块1」「S19+20-片2」「S19+20」；无法解析回退组=label。"""
+    """label → (gid, part)。支持“块0-片2”“块1”“S19+20-片2”「S19+20」；无法解析回退组=label。"""
     if "-片" in label:
         gid, part_s = label.rsplit("-片", 1)
         try:
@@ -119,7 +119,7 @@ def _parse_label(label, k):
 
 
 def merge_text(chunks, results, report):
-    """text 类型：按「组-片」归位拼接；同组多片无缝拼接（中文空连接/英文空格）、组间空行。
+    """text 类型：按“组-片”归位拼接；同组多片无缝拼接（中文空连接/英文空格）、组间空行。
     返回 (合并文本, 异常清单[(块号或0, 消息)])。"""
     groups = OrderedDict()
     issues = []
@@ -182,7 +182,7 @@ def merge_text(chunks, results, report):
 
 
 def merge_srt(chunks, results, report):
-    """srt 类型：按块序读「段号|cue范围|文本」行，全局重排段号 + 检查重叠/gap/CARRY。"""
+    """srt 类型：按块序读“段号|cue范围|文本”行，全局重排段号 + 检查重叠/gap/CARRY。"""
     rows = []  # (block_k, seg_no, cue_start, cue_end, est, text, carry)
     issues = []
     for k in sorted(results):

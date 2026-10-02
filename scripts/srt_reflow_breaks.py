@@ -5,7 +5,7 @@
 （性质判定 / 断句方式 / 游离停顿词提示）——每个空隙点由 Agent 复核回填，
 供补标点 subagent 先验知识注入（空隙断句标记 `【强制断句】`，见 task-punctuate）与 r03 归属参考。
 
-背景：S56 事故实证「合句逻辑胜过分割逻辑」——只给文本无时间信息时 LLM 必然合句，
+背景：S56 事故实证“合句逻辑胜过分割逻辑”——只给文本无时间信息时 LLM 必然合句，
 剪辑空隙被文本连续性吞掉。软指令（prompt 里写"空隙处强制断句"）不足，
 必须把空隙点作为结构约束注入（复核后经先验知识注入补标点 subagent）。
 非语音标记 cue（[Music] 等，去括号后为空）不参与空隙判定。
@@ -23,13 +23,14 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 from shared.srt_common import (
     is_pure_marker, parse_time, fmt, BRACKET_RE, LONG_GAP_MS, JUMP_GAP_MS,
+    TERMINATOR_CLASS,
 )
 from srt_reflow_gap_scan import load_breaks_tsv
 
 # 说话人标签（转写字幕的 `Name:` 开头，如 `jazziRed:` / `CraftyMasterman:`）
 SPEAKER_RE = re.compile(r"^\s*[A-Za-z][A-Za-z0-9_.\-]*\s*:\s")
-# 句末标点（判「前 cue 末尾是否已自带句界」）
-EOS_RE = re.compile(r"[.?!]\s*$")
+# 句末标点（判“前 cue 末尾是否已自带句界”）
+EOS_RE = re.compile(r"[" + TERMINATOR_CLASS + r"]\s*$")
 
 
 def parse_srt(path):
@@ -98,7 +99,7 @@ def main():
     lines.append("- 用途: 断句点清单供 Agent 复核回填（空隙点性质 / 断句方式 / 游离停顿词），")
     lines.append("  复核结果经先验知识注入补标点 subagent（`【强制断句】` 空隙标记，见 task-punctuate）与 r03 归属参考；")
     lines.append("  补标点后必须跑 `srt_reflow_check_breaks.py` 校验，未通过（跨空隙合句）打回重跑。软指令不足（S56 实证空隙被合句吞掉）。")
-    lines.append("- 另有「参考断句点（说话人话轮）」节：从**原字幕行结构**提取的说话人标签边界（**结构提示，非硬约束**）——")
+    lines.append("- 另有“参考断句点（说话人话轮）”节：从**原字幕行结构**提取的说话人标签边界（**结构提示，非硬约束**）——")
     lines.append("  归一化会抹平 cue 边界，不注入则补标点无从判断话轮切换（edkkLsir9M8 实证）。")
     lines.append("")
     lines.append("> **生效空隙点集的裁决入口 = `r00_gaps_active.tsv`**（`status` 列）——"
@@ -142,7 +143,7 @@ def main():
 
     # —— 参考断句点：说话人话轮（**结构提示，非硬约束**）——
     # 背景（edkkLsir9M8 2026-09-27 用户指出）：转写文本的说话人标签（`Name:`）处常无句末标点——
-    # 原字幕把「标签 + 回答」切成独立 cue（c4 `CraftyMasterman: (thinking)` / c5 `CraftyMasterman: yes`），
+    # 原字幕把“标签 + 回答”切成独立 cue（c4 `CraftyMasterman: (thinking)` / c5 `CraftyMasterman: yes`），
     # 而归一化把块内 cue 无缝合并、抹平 cue 边界；补标点子代理看不到话轮切换，
     # 于是把两次回答并成一个 E 句 → 下游中英拆段错位（两个话轮挤在同一英文行）。
     # 判据：前 cue 末尾无句末标点 `.?!` **且** 前/后 cue 以说话人标签开头。
@@ -163,7 +164,7 @@ def main():
         lines.append(f"- 共 {len(turn_points)} 处：前 cue 末尾无句末标点 **且** 前/后 cue 以说话人标签（`Name:`）开头。")
         lines.append("- **为何要列**：归一化把块内 cue 合并成连续文本、抹平 cue 边界；补标点看不到话轮切换，")
         lines.append("  会把两次回答并成一句 → E 句被并大 → 下游中英拆段错位（两个话轮挤在同一英文行）。")
-        lines.append("- **不得机械遵循**：这是**行结构提示**，不是「必须在此断句」的命令。请结合语义判断：")
+        lines.append("- **不得机械遵循**：这是**行结构提示**，不是“必须在此断句”的命令。请结合语义判断：")
         lines.append("  - 确为**话轮切换**（换人说话 / 一问一答）→ 在标签前结束上一句（补 `.` / `?`）")
         lines.append("  - 只是**同一说话人的长话**被字幕行切断、语义与前后连贯 → **不要断**")
         lines.append("  - 拿不准就不动（保持原样比切碎好）")
@@ -182,7 +183,7 @@ def main():
     lines.append(f"python scripts/srt_reflow_check_breaks.py {args.src} reflow/r01_results/ --chunks reflow/chunks/ --gaps {Path(tsv_path).name}")
     lines.append("```")
     lines.append("")
-    lines.append("> 通过 = 每个**生效**空隙点两侧 cue 之间已断句；违规 = 存在跨空隙合句，打回步骤 1 重跑（带断句标记输入）。")
+    lines.append("> 通过 = 每个**生效**空隙点两侧 cue 之间已断句；违规 = 存在跨空隙合句，打回空隙探测 重跑（带断句标记输入）。")
     lines.append("> `--gaps` 现接受 `r00_gaps_active.tsv`（生效集，`excluded` 项自动跳过校验）——"
                  "旧版传 `r00_gaps.md` 仍兼容（脚本内部读同目录 tsv）。")
 

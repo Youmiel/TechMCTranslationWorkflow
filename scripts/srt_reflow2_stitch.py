@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""跨块句衔接归位（reflow2 步骤 3 校验 #4）
+"""跨块句衔接归位（reflow2 补标点 的校验项 #4）
 
-## 文档设计（phase2.md 步骤 3 校验 #4）
+## 文档设计
 
+> phase2.md 补标点 的校验项 #4
 > 跨块句重复（块 k `【延伸句】` ≡ 块 k+1 `【承接句】`）——**只在一侧留无标记完整句，另一侧不留文本**；
 > 单边标记兜底（回填 01 cue 拼接原文留完整句删标记）
 
@@ -20,7 +21,7 @@
 **归位 = 翻译前删掉后块侧的重复**（保留前块的无标记完整句），使翻译看到干净输入。
 （保留前块：句子归属它开始的地方，前块译完整句、后块从下一句开始。）
 
-## 用法（命令根 = Project_Main/）
+## 用法
 
     python scripts/srt_reflow2_stitch.py reflow2/r01_results/
     python scripts/srt_reflow2_stitch.py reflow2/r01_results/ --dry-run   # 只报告
@@ -32,11 +33,11 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from shared.srt_common import auto_wrap_file, collect_chunk_files
+from shared.srt_common import auto_wrap_file, collect_chunk_files, TERMINATOR_CLASS
 
-# 标记与「标记 + 其句」：与 shared.srt_common.STITCH_RE 同构（此处独立声明，避免隐式耦合）
+# 标记与“标记 + 其句”：与 shared.srt_common.STITCH_RE 同构，共用同一标点表避免再度漂移
 EXT_RE = re.compile(r"【延伸句】")
-JOIN_RE = re.compile(r"【承接句】.*?(?:[.?!。]|$)", re.DOTALL)
+JOIN_RE = re.compile(r"【承接句】.*?(?:[" + TERMINATOR_CLASS + r"]|$)", re.DOTALL)
 
 
 def norm(s):

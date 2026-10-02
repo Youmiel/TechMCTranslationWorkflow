@@ -3,7 +3,7 @@
 
 背景（reflow2 = 时间轴源头固化设计）：
 现 reflow 的 r01_results 是块内整段连续英文（task-punctuate 不带 cue 前缀），翻译后中文句重建时间轴
-靠「整句 EN 去 01 全文子串搜索猜时间」+ 共享 cue 切分 + 预测点。本脚本把时间轴**在源头固化**：
+靠“整句 EN 去 01 全文子串搜索猜时间”+ 共享 cue 切分 + 预测点。本脚本把时间轴**在源头固化**：
 补标点后按 .?! 切 E1..En，每句用与消费端 reflow 同构的 char→cue 映射（srt_reflow_core.io.build_full：
 norm 去空格、cue 无缝拼接）在 01 精确锚定 → 固化时间戳。E 句 = 只读真值锚，下游中文句通过对齐继承，
 不再靠猜。
@@ -104,7 +104,7 @@ def main():
                 # **钳制到本块 OWNED 时间范围**（2026-09-27）：跨块句（衔接归位后留在前块）在全文命中时
                 # 会一直占到后块的 cue（global 路径不做共享 cue 切分）→ 与后块首 E 重叠
                 # （实测 ZXGpmaIcMMo：`...transfer items.` 占 c198-c201 与块 2 的 c201-c203 重叠 2s）。
-                # E 句固化时间语义 = 「该句在本块内的可显示范围」，块外部分由相邻块承担。
+                # E 句固化时间语义 = “该句在本块内的可显示范围”，块外部分由相邻块承担。
                 if o_start is not None and gs < o_start:
                     gs = o_start
                 if o_end is not None and ge > o_end:

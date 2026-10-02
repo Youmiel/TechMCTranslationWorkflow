@@ -2,13 +2,13 @@
 """参数同步校验：文档中的参数值 vs 代码常量。
 
 **为什么需要**：多个 Skill 运行时不加载 `segment-subtitles`（行宽等规则**内联**在各自文件里，
-见 `reflow-redstone/SKILL.md` 权威表「规则已内联语义回填文件，不加载」），故文档侧必须保留
-**自包含值**——这是「省上下文」与「单一事实源」的取舍。代价是「改代码常量后文档滞后」成为
+见 `reflow-redstone/SKILL.md` 权威表“规则已内联语义回填文件，不加载”），故文档侧必须保留
+**自包含值**——这是“省上下文”与“单一事实源”的取舍。代价是“改代码常量后文档滞后”成为
 结构性风险（2026-09-27 行宽 26→27 即实例，残留 5 处）。
 
-**为什么不是新副本**：本脚本**不重复任何数值**——`VALUE_CHECKS` 只登记「文件 + 正则 + 期望
-常量引用」，期望值运行时从 `shared/srt_common` 读取。改常量后直接重跑即可发现全部滞后处，
-不存在「脚本自己过期」的问题。
+**为什么不是新副本**：本脚本**不重复任何数值**——`VALUE_CHECKS` 只登记“文件 + 正则 + 期望
+常量引用”，期望值运行时从 `shared/srt_common` 读取。改常量后直接重跑即可发现全部滞后处，
+不存在“脚本自己过期”的问题。
 
 同时检查两类结构性隐患：
 - **旧模块名残留**：改名/移动后残留的旧引用会**静默生效**（拿到陈旧副本而不报错）——
@@ -34,6 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shared.srt_common import (  # noqa: E402
     CJK_SPEED, HARD_MAX, JUMP_GAP_MS, LONG_GAP_MS, MAX_LINE, MIN_FRAG_MS, SNAP_MS,
     SOFT_MAX, SOFT_MIN, ULTRA_SHORT_MS,
+    PUNCT_ROLE_CHARS, TERMINATOR_ROLE,
 )
 
 # 扫描范围（旧模块名 / 死占位符检查用）；_work 为一次性产物、不参与
@@ -44,7 +45,7 @@ class ExpectPlaceholder(str):
     """期望该处**保持占位符形式**（而非硬编码数值）。
 
     用途：已改用占位符注入的位置（如 `_discipline.md` 的 `<折行宽度>`），若有人把它退回写死数值，
-    脚本即报错——防止「占位符机制被绕过」这一回归。
+    脚本即报错——防止“占位符机制被绕过”这一回归。
     """
 
 
@@ -65,7 +66,7 @@ def fmt(v):
 # 格式：(相对路径, 正则含 1+ 捕获组, 期望常量元组, 描述)
 # 维护：新增参数值时追加一行即可；**不要在正则或描述里写具体数值**（那是副本）。
 VALUE_CHECKS = (
-    # 行宽（权威段 = segment-subtitles「行宽规则」；下列为不加载该 Skill 的内联消费方）
+    # 行宽（权威段 = 「segment-subtitles#行宽规则」；下列为不加载该 Skill 的内联消费方）
     (".github/skills/segment-subtitles/SKILL.md",
      r"中文行超宽（>(\d+) 视觉宽度，硬限制）", (HARD_MAX,), "行宽硬限"),
     (".github/skills/segment-subtitles/SKILL.md",
@@ -152,14 +153,23 @@ VALUE_CHECKS = (
      r"\[--snap-ms (\d+)\] \[--cjk-speed (\d+)\]", (SNAP_MS, CJK_SPEED), "CLI 示例"),    (".github/skills/reflow-redstone/semantic-reflow.md",
      r"按中文阅读速度（`--cjk-speed (\d+)`）", (CJK_SPEED,), "阅读速度"),
     (".github/skills/reflow-redstone/semantic-reflow.md",
-     r"允许预测点（(\d+)ms 取整", (100,), "预测点取整"),
-)
+     r"允许预测点（(\d+)ms 取整", (100,), "预测点取整"),    # 标点角色表（权威 = shared.srt_common.PUNCT_ROLE_CHARS；此处仅校 terminator ——
+    # 它是 Z/E 句界判据，改动会直接改句数、使 align/ 失效，故必须与文档同步）
+    (".github/skills/segment-subtitles/SKILL.md",
+     r"\|\s*`terminator`\s*\|[^|]*\|\s*`([^`]+)`",
+     (PUNCT_ROLE_CHARS[TERMINATOR_ROLE],), "标点角色表 terminator 字符集"),)
 
 # ---- 旧模块名残留检查（改名/移动后残留会静默生效）----
 LEGACY_PATTERNS = (
     (r"\bsrt_reflow_common\b", "旧模块名 `srt_reflow_common`（现为 `shared.srt_common`）"),
     (r"\bsrt_reflow_punct\b", "旧模块名 `srt_reflow_punct`（现为 `srt_reflow_core.punct`）"),
     (r"from\s+request_identity\s+import", "旧导入路径 `request_identity`（现为 `shared.request_identity`）"),
+    (r"\bDEFAULT_ROLE_CHARS\b",
+     "旧标点表名 `DEFAULT_ROLE_CHARS`（已改为跨语言通用表 `shared.srt_common.PUNCT_ROLE_CHARS`）"),
+    (r"\bDEFAULT_BRACKETS\b",
+     "旧括号表名 `DEFAULT_BRACKETS`（已改为跨语言通用表 `shared.srt_common.PUNCT_BRACKETS`）"),
+    (r"\b_en_extra_guard\b",
+     "旧 guard 名 `_en_extra_guard`（已改为按标点种类判定的 `punct._extra_guard`）"),
 )
 # 已知的历史遗留引用所在目录前缀（一次性产物，不参与生产；改名前产生）
 LEGACY_SKIP_PREFIXES = ("_work/", "_Archive/", "_Archive_Prompt/", "_Sandbox/", "_Release/")
@@ -182,7 +192,7 @@ def check_values(target=None):
         exp = tuple(fmt(c) for c in consts)
         hits = list(re.finditer(pattern, text))
         if not hits:
-            problems.append(f"❌ {rel}：未匹配到「{desc}」（正则 {pattern!r}）——文档措辞可能已改，请更新清单")
+            problems.append(f"❌ {rel}：未匹配到“{desc}”（正则 {pattern!r}）——文档措辞可能已改，请更新清单")
             continue
         for m in hits:
             if m.groups() != exp:

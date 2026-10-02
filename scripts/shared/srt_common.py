@@ -28,32 +28,103 @@ MAX_LINE = 1000      # 单行字符上限（与折行宽度一致；超限 read_
 # 归并原则：**按语义分组，不按数值**——同值不同义者各自独立定义（如 READING_MIN_GAP_MS 与 ULTRA_SHORT_MS 同为 300）。
 # 微调须知：改值后跑 `python scripts/check_param_sync.py` 校验文档同步（零副本：期望值运行时读取本模块）。
 LONG_GAP_MS = 5000            # 长停顿阈值：相邻语音 cue 间隔 > 此值 = 空隙点
-#   权威说明：`.github/skills/redstone-conventions/SKILL.md`「空隙点」节（5s/10s 语义与用途）
+#   权威说明：`.github/skills/redstone-conventions/SKILL.md`“空隙点”节（5s/10s 语义与用途）
 JUMP_GAP_MS = 10000           # 剪辑跳转阈值：相邻单元边界间隔 > 此值 = 剪辑跳转
 #   权威说明：同上
 MIN_FRAG_MS = 1000            # 长句碎片阈值：单元时长 < 此值 = 碎片，须回报 Agent 裁决
-#   权威说明：`.github/skills/segment-subtitles/SKILL.md`「阅读时长」节（单条时长通常 ≥1s）
+#   权威说明：「segment-subtitles#阅读时长」节（单条时长通常 ≥1s）
 SNAP_MS = 300                 # 切分点吸附真实 cue 边界的最大距离（无则 100ms 取整预测点）
 #   权威说明：`.github/skills/reflow-redstone/semantic-reflow.md`（吸附与 100ms 预测点）
 READING_MISMATCH_RATIO = 0.7  # 分配时长 < 阅读所需 × 此值 → 触发阅读感知插值
-#   权威说明：`.github/skills/segment-subtitles/SKILL.md`「阅读时长」节（显著失配判据）
+#   权威说明：「segment-subtitles#阅读时长」节（显著失配判据）
 READING_MIN_GAP_MS = 300      # 显著阅读失配最小毫秒数（避免轻微差异过度触发插值）
 CJK_SPEED = 5.0               # 中文阅读速度（字/秒）；0 = 禁用阅读校验
-#   权威说明：`.github/skills/segment-subtitles/SKILL.md`「阅读时长（5 字/秒）」节
+#   权威说明：「segment-subtitles#阅读时长」节
 ULTRA_SHORT_MS = 300          # 极短单元告警阈值（回填告警分类用，与上者同值不同义）
 LONG_UNIT_MS = 15000          # 超长单元基准阈值：实际阈值 = max(此值, 2 × 时长中位）
 
 BRACKET_RE = re.compile(r"\[[^\]]*\]")   # 方括号非语音标记（[Music]/[Applause] 等）
 TS_RE = re.compile(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})")
 
+# ---- 标点功能角色表（单一事实源；跨语言通用，**不按语言分表**）----
+# 设计依据：**标点承载的功能角色**才是判据，它属于哪种语言不是。同一张表容纳所有
+# 书写系统的标点——新增书写系统只需确认其标点已在本表，无语言分支代码。
+# 为什么不能按 Unicode 类别自动判定（实测）：`,` 与 `、` 同为 Po、`。` 与 `.` 同为 Po、
+# `;`/`：` 同为 Po、`—`/`–`/`-` 同为 Pd → 类别不携带强度信息，必须字符级枚举。
+TERMINATOR_ROLE = "terminator"   # 句界（显示段硬边界；Z/E 句界）
+RPAREN_ROLE = "rparen"           # 右括号后（括注插入语后可断）
+STRONG_ROLE = "strong"           # 强断点（并列/引出/插入）
+CLAUSE_ROLE = "clause"           # 句内断点
+LIST_ROLE = "list"               # 并列内部（最后手段）
+
+ROLE_ORDER = (TERMINATOR_ROLE, RPAREN_ROLE, STRONG_ROLE, CLAUSE_ROLE, LIST_ROLE)   # 强度降序
+
+# 角色字符集（以 \u 转义写，避免同形字符混淆）：
+#   terminator：。！？…．｡ + .?!     中/日句号族与西文句末
+#   strong    ：；：— + ;:          破折号**只收 em dash**；连字符 `-`(U+002D) 与全角 `－`(U+FF0D)
+#                                 绝不可入表——`world-edit` / `2024－2025` 会在词内产生断点
+#   clause    ：， + ,
+#   list      ：、､                日文半角顿号 ､ 与 、 同角色
+PUNCT_ROLE_CHARS = {
+    TERMINATOR_ROLE: "\u3002\uff01\uff1f\u2026\uff0e\uff61.?!",
+    STRONG_ROLE: "\uff1b\uff1a\u2014;:",
+    CLAUSE_ROLE: "\uff0c,",
+    LIST_ROLE: "\u3001\uff64",
+}
+
+# 括号配对（配对区间 = 保护区间，内部标点不跨区拼合；右括号 = rparen 角色）
+# 全角/半角同表：中英混排时括号保护不再因“括号属另一种语言”而失效
+PUNCT_BRACKETS = [
+    ("\uff08", "\uff09"), ("\u3010", "\u3011"), ("\u300c", "\u300d"),
+    ("\u300e", "\u300f"), ("\u300a", "\u300b"), ("\u3008", "\u3009"),
+    ("\u3014", "\u3015"), ("\uff3b", "\uff3d"), ("\uff5b", "\uff5d"),
+    ("(", ")"), ("[", "]"), ("{", "}"),
+]
+
+# 句界标点中的**西文子集**：只有它们适用“点后须终止为词间隔”判据（见 punct._extra_guard）
+LATIN_TERMINATORS = ".?!"
+
+# 收尾符号：句末标点之后可能紧跟的闭合标记（引号 / 括号）。
+# 用于判定西文句末点后是否已“正常结束”（见 punct._extra_guard）——
+# `said "go."` 的 `.` 后是 `"`，仍属正常句末。
+CLOSING_CHARS = frozenset(c for _o, c in PUNCT_BRACKETS) | frozenset("\"'\u201d\u2019")
+
+# 引号配对（左, 右）：覆盖半角/全角/中英弯引号。用作“引号是否成对”的预警判据。
+QUOTE_PAIRS = (
+    ("\u201c", "\u201d"),   # 中文/西文弯双引号
+    ("\u2018", "\u2019"),   # 弯单引号
+    ("\u300c", "\u300d"),   # 「」
+    ("\u300e", "\u300f"),   # 『』
+    ("\"", "\""),         # 半角双引号（同形，计数成对）
+)
+
+# 逗号角色字符集合（逗号堆砌判据用）：含全角 `，` 与半角 `,`。
+# 半角逗号在中文译文里出现（中英混排 / 数字）时同样应计入堆砌判定。
+CLAUSE_CHARS = frozenset(PUNCT_ROLE_CHARS[CLAUSE_ROLE])
+
+# 句末标点字符类（各脚本组正则用：`rf"[{TERMINATOR_CLASS}]"`）。
+# 上表字符在字符类内均为字面量，无需转义。取代此前散落且**互不一致**的副本
+# （`[.?!]` 无 zh 分支 / `。？！` 缺 `…` / `[.?!。]` 缺 `！？…`）——
+# 散落副本会在中英混排处静默漏判，且新增语言时无法全部同步。
+TERMINATOR_CLASS = "".join(dict.fromkeys(PUNCT_ROLE_CHARS[TERMINATOR_ROLE]))
+
+# 需消歧的句界标点：西文点兼作小数点/缩写点（`1.21` / `e.g.`），
+# **只有在带 guards 的切句器（`punct.split_sentences`）里才可作句界**。
+AMBIGUOUS_TERMINATORS = ".\uff0e"
+
+# 无需消歧的句界字符类：给**没有 guards 的朴素切分器**用（如 `text_chunk` 按句分块）。
+# 用全量 `TERMINATOR_CLASS` 会把中文里的 `1.21` / `Minecraft 1.20.4` 切成两段。
+UNAMBIGUOUS_TERMINATOR_CLASS = "".join(
+    c for c in TERMINATOR_CLASS if c not in AMBIGUOUS_TERMINATORS)
+
 # r01 跨块句标记【承接句】/【延伸句】（片边界跨块句补全，见 reflow-redstone task-punctuate 规则 4）
 # 剥离到句末标点 / 行尾 / 结尾。DOTALL 跨显示行（1000 字符折行会把补全拆到多行）。
 # 分型：延伸句补的是句子后半（必含句号）→ 只匹配句号；承接句补句子前半（可无句号）→ 句号或行尾。
 # 校验剥离用：标记内容不计入词序列与断句判定。
-STITCH_RE = re.compile(r"【延伸句】.*?[.?!。]|【承接句】.*?(?:[.?!。]|(?=\n)|$)", re.DOTALL)
+STITCH_RE = re.compile(r"【延伸句】.*?[" + TERMINATOR_CLASS + r"]|【承接句】.*?(?:[" + TERMINATOR_CLASS + r"]|(?=\n)|$)", re.DOTALL)
 # 预分句用：只剔除标记前缀本身、保留补全内容（内容为本块真实句子，需参与 E/Z 锚定）——
 # 与 STITCH_RE 连内容剥离（校验视角）不同；见 strip_stitch_prefix docstring（uVOFckoMdIU S94 事故修复）
-STITCH_PREFIX_RE = re.compile(r"【(?:承接句|延伸句)】")
+STITCH_PREFIX_RE = re.compile(r"[(?:承接句|延伸句)]")
 
 
 def parse_time(s):
@@ -85,7 +156,7 @@ def strip_stitch_marks(text):
 
     跨块句 = OWNED 首/末句被片边界切断，补标点 subagent 用 CONTEXT 补全并标记（task-punctuate 规则 4）；
     标记内容 = 邻块补全部分，不属于本块 OWNED cue——措辞/断句校验前先剥离，避免邻块词污染词序列与定位。
-    本块 OWNED 的跨块句部分若被包在标记内，剥离后缺失——由调用方（check_words）以「有标记 + 子集」放行。"""
+    本块 OWNED 的跨块句部分若被包在标记内，剥离后缺失——由调用方（check_words）以“有标记 + 子集”放行。"""
     return STITCH_RE.sub("", text)
 
 
@@ -94,7 +165,7 @@ def strip_stitch_prefix(text):
 
     与 strip_stitch_marks（连内容剥离，校验用）不同：预分句的 EN/ZH 两侧都需保留标记内容参与 E/Z 锚定，
     只去掉前缀标记本身——否则 EN 侧整句被剥导致锚点缺失（r03_normalized_1 无 E 号）、ZH 侧带标记，
-    两侧不对称（uVOFckoMdIU chunk_002 S94 事故：分句 agent 遇「延伸句无 E 锚点」只能写 CARRY）。
+    两侧不对称（uVOFckoMdIU chunk_002 S94 事故：分句 agent 遇“延伸句无 E 锚点”只能写 CARRY）。
     标记彻底消除由 check-r03 格式标记残留校验兜底拦截。"""
     return STITCH_PREFIX_RE.sub("", text)
 
@@ -103,7 +174,7 @@ def wrap_text(text, width=1000):
     """整段文本就近折行（显示性换行，非语义分行——校验按整段解析不受影响）。
 
     每 ~width 字符折行：英文就近空格折（不拆词）；中文/无空格处按字符硬切。
-    输入/输出均为「组间空行分隔」的整段文本；组内折行不改变语义，read_file 可按行读取超长产物。
+    输入/输出均为“组间空行分隔”的整段文本；组内折行不改变语义，read_file 可按行读取超长产物。
     结构化产物（如 r03_plan.md 的 `- EN:/ZH:` 单行值）**禁用**折行（脚本按行解析）。"""
     out_blocks = []
     for block in text.split("\n\n"):
@@ -163,7 +234,7 @@ def parse_owned_cue_range(chunk_path):
     return (min(cids), max(cids)) if cids else None
 
 
-# ---- 告警定位（统一约定：问题项带「文件:行号 + 行上下文」；通过项只计数） ----
+# ---- 告警定位（统一约定：问题项带“文件:行号 + 行上下文”；通过项只计数） ----
 # 定位 = 块级产物 chunk_<k>.txt:行<l>（行号 = 该块文件内 1-based 物理行）/ 空隙点 c<ia>→c<ib>
 #        / r03 整句（## S<n> 所在行）。上下文 = 该行截断片段（~55 字符），供 Agent 直接核对编辑。
 

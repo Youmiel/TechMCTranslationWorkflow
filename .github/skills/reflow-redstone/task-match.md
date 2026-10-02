@@ -30,7 +30,7 @@ description: 句子匹配任务（reflow）——对照 r03_normalized_1（EN �
 6. **不手算、不重抄、不返工**：宽度 / 拼接 / 忠实 / 漏句校验全由脚本承担。
    - 匹配写完后直接写盘，错误由 `build-r03` 校验指出
 
-## 输出（写入 `_work/<视频名>/reflow/r03_matches/chunk_<k>.txt`）
+## 输出
 
 - 每行一个匹配 `Z<n>+Z<n> = E<n>+E<n>`；`#` 开头注释行说明归属/合并
 - **输入行含义**：`r03_zslim` 每行 `Z<n> <文本>` 即一个整句；`- E<n>:` 前缀为标号锚点，值内不得夹带折行
@@ -44,5 +44,4 @@ description: 句子匹配任务（reflow）——对照 r03_normalized_1（EN �
 > 3. `## 先验知识` = 无（本任务输入不含游离词 cue 数据，不需要 breaks）；主会话复核结论可用 `--prior-file` 追加
 > 4. `## 本块数据` = 数据文件引用：`reflow/r03_normalized_1/chunk_<k>.txt` + `reflow/r03_zslim/chunk_<k>.txt`（本块输入）+ 前后块衔接
 > 5. `写盘/报告约定` = 写入 `reflow/r03_matches/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`
-
 > **渲染手段（脚本）**：由 `scripts/render_subagent_prompt.py` 会话外组装落盘 `_work/<视频名>/prompts/task-match-chunk_<k>.txt`（完整 prompt 不进主会话）；未走脚本时按上方顺序同序拼接。派发见 [subagent-dispatch#派发引用 prompt](../subagent-dispatch/SKILL.md#派发引用-prompt)。

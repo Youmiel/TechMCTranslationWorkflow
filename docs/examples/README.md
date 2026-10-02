@@ -4,7 +4,7 @@
 
 | 内容 | 说明 |
 |------|------|
-| `mcp.*.json` | 各编辑器 MCP 配置模板，见 [SETUP#MCP Wiki 工具](../SETUP.md#mcp-wiki-工具可选) |
+| `mcp.*.json` | 各编辑器 MCP 配置模板，见 [SETUP#MCP Wiki 工具](../SETUP.md#mcp-wiki-工具) |
 | `configs/` | `configs/` 下本地配置的模板（`request_identity.yaml` / `subagent_model.yaml` / `context_window.json`）——复制到 `configs/` 后**按自己实际情况修改**（`context_window.json` 与 `subagent_model.yaml` 的数值/模型名仅为格式示例，必须替换），见 [SETUP](../SETUP.md) |
 
 ## 授权

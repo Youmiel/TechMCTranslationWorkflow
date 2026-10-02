@@ -2,7 +2,7 @@
 """r01 补标点质量校验（2026-08-18）：按句末标点 .?! 分句，检测补标点质量——subagent 偷懒
 （整段逗号堆砌、缺句末标点）导致句子过长，回填锚定 / r03 分句对应困难。
 
-补标点校验新增项（reflow 步骤 3 校验段）：逐块按 `.?!` 分句（与预分句 `srt_reflow_presplit.py`
+补标点校验新增项（补标点 的校验段）：逐块按 `.?!` 分句（与预分句 `srt_reflow_presplit.py`
 同逻辑，复用 `split_en`），**分级告警**——
 - **硬（打回，退出码 1）**：
   - 句级 · 逗号数：单句逗号数 > `--max-comma`（默认 10）→ 逗号连接未用句号断句
@@ -10,13 +10,13 @@
   - 句级 · 字符数：单句字符数 > `--max-sent`（默认 600）→ 绝对超长句
   - 块级 · 句均字符：块内**句均字符** > `--max-avg`（默认 350）→ 断句稀疏（整块仅 1–2 个句号）
 - **软（提示复核 ℹ️，不阻断）**：单句逗号 ≥ `--soft-comma`（默认 8）且 字符 ≥ `--soft-sent`
-  （默认 250）→ 疑似可断句（如 chunk_008 E15「there we go, the next thing...」8 逗号——
+  （默认 250）→ 疑似可断句（如 chunk_008 E15“there we go, the next thing...”8 逗号——
   中等超长、逗号连接明显但未达硬阈值）
 
 硬指标确凿打回（chunk_003 整块 7000+ 字符仅 1 句 / 106 逗号 → 多指标命中）；软指标把
 "该断未断"的中等长句列出供主会话/用户复核（与硬命中一并 task-fix 补句号，或放行真实长句）。
 通过项只汇总计数（`--verbose` 展开每块句数/句均/最大逗号数）。
-统一反馈：默认只输出「问题数目 + 提示」（每块一行统计，不输出行号/上下文）；--expand 展开每处详情；
+统一反馈：默认只输出“问题数目 + 提示”（每块一行统计，不输出行号/上下文）；--expand 展开每处详情；
 --chunk <k> 只校验单块并默认展开（修复单块时防其他块报错占用上下文）。
 退出码：任一**硬**命中 → 1；软提示不计退出码。
 
@@ -33,7 +33,7 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
 
-from shared.srt_common import collect_chunk_files, ctx_snippet
+from shared.srt_common import collect_chunk_files, ctx_snippet, CLAUSE_CHARS
 from srt_reflow_presplit import split_en
 
 
@@ -69,7 +69,7 @@ def main():
         if not sents:
             continue
         lens = [len(s) for s in sents]
-        commas = [s.count(",") for s in sents]
+        commas = [sum(1 for ch in s if ch in CLAUSE_CHARS) for s in sents]
         total = sum(lens)
         avg = total / len(sents)
         if args.verbose:

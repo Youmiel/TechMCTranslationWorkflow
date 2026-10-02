@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """块目录预分句标号 + ZH 机械化断句（方案 4，2026-08-20）：EN 按句末标点 .?! 预分句标号 E1..En；
-ZH 按句末标点 。！？… 预分句标号 Z1..Zm，并按标点切候选段 + 贪心拼合到目标宽度区间，生成 **r03 模板骨架**
+ZH 按句末标点（跨语言通用角色表）预分句标号 Z1..Zm，并按标点切候选段 + 贪心拼合到目标宽度区间，生成 **r03 模板骨架**
 （ZH 整句原文 + 子句段已预填，EN/关系/S 号留待分句 subagent 填空）。
 
-回填工作流（reflow-redstone）步骤 5 分句输入改造（r03 归一化系列，取代 r02 折行副本）：
+回填工作流（reflow-redstone）分句输入改造（r03 归一化系列，取代 r02 折行副本）：
 - **EN 预分句**：`reflow/r01_results/`（补标点整段，衔接归位后）→ `reflow/r03_normalized_1/`
   ——按句末标点 `.?!` 分句（常见缩写 Mr./Fig./e.g. 等保护、跨块句标记剥离），编号 E1..En
 - **ZH 归一化（句级 + 子句级合并产物）**：`reflow/r02_results/`（整段译文原稿）→ `reflow/r03_normalized_2/`
-  ——句号 `。！？…` 预分句编号 Z1..Zm（括号配平保护）+ 句内按标点切候选段 + 贪心拼合 [soft_min, soft_max]
+  ——句末标点（跨语言通用角色表）预分句编号 Z1..Zm（括号配平保护）+ 句内按标点切候选段 + 贪心拼合 [soft_min, soft_max]
   （硬 ≤hard_max），输出 **r03 模板骨架**：每 Z 句一组（`## S?_Z<n>` 占位 + ZH 原文预填 + 子句段预填 +
   关系预填 1:1/1:n + EN 待填），分句 agent 填空后即 r03_results
 
@@ -130,7 +130,7 @@ def _collapse_ws(text):
 
 
 def split_zh(text, profile=None):
-    """中文整段按句末标点 。！？… 分句（折行合并保留中英/数字空格、括号配平保护；剥跨块句标记前缀）→ [句文本]。
+    """整段按句末标点（跨语言通用角色表，中文侧即 。！？…）分句（折行合并保留中英/数字空格、括号配平保护；剥跨块句标记前缀）→ [句文本]。
 
     委托 `srt_reflow_core.punct.split_sentences`（角色表 + 例外模式 guards）
     硬编码 `ZH_EOS_RE` + depth 循环。
@@ -162,7 +162,7 @@ def pack_candidates(segs, hard_max, min_unit, soft_min=None, soft_max=None, prof
     断点落在逗号而非冒号）；DP 版本让断点强度参与决策（结果 `…回答一下：`(14) + `第一，…？`(15)）。
 
     - 旧式输入（纯字符串）→ 段尾角色按段文本末尾字符反查 profile（未传 profile 用 zh）
-    - 旧调用不传 soft_min/soft_max → 退化为「仅防碎片 + 约束 ≤ hard_max」（保持旧语义的宽度部分）
+    - 旧调用不传 soft_min/soft_max → 退化为“仅防碎片 + 约束 ≤ hard_max”（保持旧语义的宽度部分）
     """
     if not segs:
         return []
@@ -187,7 +187,7 @@ def plan_sentence(text, punct_levels, hard_max, min_unit, soft_min=None, soft_ma
     **算法（2026-09-21 起）**：标点角色表切原子段（`srt_reflow_core.punct.split_atomic`，
     含小数点/序号/缩写/省略号/括号配平等例外模式）→ **代价最小化拼合**
     （`pack_by_strength`：断点强度 + 段宽偏离 + 碎片罚）。
-    取代旧的「有序层级递归切分 + 贪心填满 hard_max」——后者会吞掉强断点
+    取代旧的“有序层级递归切分 + 贪心填满 hard_max”——后者会吞掉强断点
     （实例：`…回答一下：第一，`(17) + `怎么搭…？`(12)，断点落在逗号而非冒号）。
 
     状态：ok（全部 ≤ hard_max 且无碎片）/ warn（含 < min_unit 碎片段）/ err（单段切不动仍 > hard_max）。
@@ -271,7 +271,7 @@ def render_zslim(zh_sentences):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="预分句 + ZH 机械化断句：EN（r01_results）按 .?! 分句 → r03_normalized_1/（E1..En）；ZH（r02_results）按 。！？ 分句 + 句内切分 → r03_normalized_2/（r03 模板骨架：Z 句 + 子句段预填）"
+        description="预分句 + ZH 机械化断句：EN（r01_results）按句末标点分句 → r03_normalized_1/（E1..En）；ZH（r02_results）按句末标点分句 + 句内切分 → r03_normalized_2/（r03 模板骨架：Z 句 + 子句段预填）"
     )
     ap.add_argument("en_dir", help="EN 输入目录：reflow/r01_results/（补标点整段）")
     ap.add_argument("zh_dir", help="ZH 输入目录：reflow/r02_results/（整段译文原稿）")
@@ -285,14 +285,14 @@ def main():
     ap.add_argument("--hard-max", type=float, default=DEFAULT_HARD_MAX, help=f"硬上限（默认 {DEFAULT_HARD_MAX:g}；check-r03 ③ 硬）")
     ap.add_argument("--min-unit", type=float, default=DEFAULT_MIN_UNIT, help=f"最小单元宽度/防碎片（默认 {DEFAULT_MIN_UNIT:g}，≈1s@5字/秒）")
     ap.add_argument("--punct-levels", action="append", default=None,
-                    help="【兼容保留·不推荐】旧式有序层级切分标点（可多次指定，先高后低）。"
+                    help="[兼容保留·不推荐]旧式有序层级切分标点（可多次指定，先高后低）。"
                          "**不给则用角色表默认**（推荐，见 srt_reflow_core.punct）；"
                          "给了则按各字符在旧默认层级中的归属映射到 strong/clause/list"
                          "（旧 L1 `，；：` 中：`；：` 为 strong、`，` 为 clause）")
     # 标点角色表细粒度覆盖（srt_reflow_core.punct；不传 = 语言默认，保持既有行为）
     ap.add_argument("--punct-terminators", default=None,
-                    help="句界字符集（默认 zh 。！？… / en .?!）——扩它会改变 Z 句数、使 align/ 失效，谨慎")
-    ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认 zh ；：— / en ;:—）")
+                    help="句界字符集（默认取跨语言通用表）——扩它会改变 Z 句数、使 align/ 失效，谨慎")
+    ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认取跨语言通用表）")
     ap.add_argument("--punct-clause", default=None, help="句内断点字符集（默认 zh ， / en ,）")
     ap.add_argument("--punct-list", dest="punct_list", default=None, help="并列内部断点字符集（默认 zh 、 / en 空）")
     args = ap.parse_args()

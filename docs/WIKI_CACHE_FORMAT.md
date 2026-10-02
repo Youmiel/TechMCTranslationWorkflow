@@ -53,7 +53,7 @@ Agent 读缓存时根据 `fidelity` 决定是否回源补精确数据：
 - 查 **ID / 色值 / 历史 / 隐藏注释** → 需要 `lossless`，否则回源 wikitext
 - 只看**正文定义 / 机制** → `plain` / `refined` 足够
 
-## 写入优先级（保真阶梯）
+## 写入优先级
 
 写入缓存时**按内容保真度优先选源**，而非按工具可用性：
 
@@ -62,7 +62,8 @@ Agent 读缓存时根据 `fidelity` 决定是否回源补精确数据：
 3. **`fetch_wiki.py`（explaintext）→ `plain`**
 4. **`minecraft-wiki-mcp`（markdown）→ `degraded`** — 最差，仅当其他源都不可用
 
-## 工具获取优先级（按数据源可靠度）
+## 工具获取优先级
+
 
 按数据源可靠度降级（与保真阶梯一致，非"哪个在线"的顺序）：
 
@@ -82,7 +83,7 @@ Agent 读缓存时根据 `fidelity` 决定是否回源补精确数据：
 
 ## 刷新策略
 
-> **缓存保真 ≠ 缓存新鲜**：命中缓存只解决了「有没有」，内容是否仍准确必须由**过期判定**回答。翻译质量直接取决于术语/机制描述与当前版本一致，静默复用过期缓存是最隐蔽的错误来源。
+> **缓存保真 ≠ 缓存新鲜**：命中缓存只解决了“有没有”，内容是否仍准确必须由**过期判定**回答。翻译质量直接取决于术语/机制描述与当前版本一致，静默复用过期缓存是最隐蔽的错误来源。
 
 - **过期判定（单页，读缓存后必做）**：`python scripts/refresh_cache.py --check-page "<页面名>" [...]`
   - 时间基准 = front matter **`fetched`**（缺失/不可解析回退文件 mtime）——TTL 默认 7 天（`--ttl` 可调）
@@ -99,7 +100,8 @@ Agent 读缓存时根据 `fidelity` 决定是否回源补精确数据：
 - **谁执行**：翻译过程中的刷新由研究型 agent（`term-researcher` / `wiki-researcher`）执行（终端工具仅限白名单命令：`refresh_cache.py --check-page` / `fetch_wiki.py`）；批量维护由用户在 `maintain-knowledge` 场景触发
 - `.cache/metadata.json` **已废弃**：时间戳 / 来源由各文件 front matter 承担
 
-## 数据源特征备忘（Agent 实测，2026-08-01）
+## 数据源特征备忘
+
 
 | 对比项 | MCP-1 `minecraft-wiki-mcp`（markdown） | MCP-2 `mc-wiki-fetch-mcp`（wikitext） | fetch_wiki.py（默认 explaintext，`--wikitext` 亦支持） |
 |---|---|---|---|

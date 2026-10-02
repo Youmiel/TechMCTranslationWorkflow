@@ -13,14 +13,14 @@
 | **Cursor** | ❌ 无 Skill 系统 | `AGENTS.md` | 自动读取，无需配置 |
 | **GitHub Copilot (web)** | ❌ | `.github/copilot-instructions.md` | 按需手动创建 |
 
-## 自动适配（脚本能完成的）
+## 自动适配
 
 `python scripts/setup_editors.py` 只做**文件链接/同步类**适配：
 
 - `.claude/skills/ → .github/skills/`（符号链接 / junction / 复制，含 humanizer-zh）
 - `CLAUDE.md ← AGENTS.md`（生成，文件头注明来源）
 
-## 手动配置（脚本无法完成，需使用者自己 / 配合自己的 agent）
+## 手动配置
 
 以下**没有脚本**，须按编辑器手工配置（依赖各编辑器私有的 agent 机制 / 模型标识 / 派发入口，无法统一自动化）：
 
@@ -29,8 +29,8 @@
 | **agent 定义适配**（reflow-worker / term-researcher / wiki-researcher） | ❌ | 脚本不生成各编辑器 agent 文件；迁移时按下方「agent 定义适配」手动 adapt |
 | **派发 subagent 入口** | ❌ | 各编辑器派发命令/工具名不同（见「各编辑器派发 subagent 命令表」），由**使用者自己的 agent** 按表执行 |
 | **no-think 模型名**（execution_model） | ❌ | 因人而异、脚本无法探测；统一填 `configs/subagent_model.yaml`（见 [SETUP#执行型-subagent-模型](SETUP.md#执行型-subagent-模型)） |
-| **MCP 配置** | ❌ | `.vscode/mcp.json` 仅 VS Code；其它编辑器 mcp 配置格式不同（见 [SETUP#mcp-wiki-工具可选](SETUP.md#mcp-wiki-工具可选)） |
-| **agent 内模型字段** | ❌ | `reflow-worker.agent.md` 已**移除** `model` 硬编码，模型统一由「模型配置」+ 派发参数决定 |
+| **MCP 配置** | ❌ | `.vscode/mcp.json` 仅 VS Code；其它编辑器 mcp 配置格式不同（见 [SETUP#mcp-wiki-工具](SETUP.md#mcp-wiki-工具)） |
+| **agent 内模型字段** | ❌ | `reflow-worker.agent.md` 已**移除** `model` 硬编码，模型统一由“模型配置”+ 派发参数决定 |
 
 ## 各编辑器派发 subagent 命令表
 
@@ -44,33 +44,33 @@
 | **Gemini CLI** | subagent 工具 | `.gemini/agents/*.md` | agent 定义内模型字段 |
 | **其它** | 以官方文档为准 | 以官方文档为准 | 以官方文档为准 |
 
-> **派发 reflow-worker 时（权威）**：agent **必须读取 `configs/subagent_model.yaml`**，把 `execution_model` 的值**「照原样」填入 subagent 派发参数**。
-> - **「照原样」= 逐字复用配置文件中的值**，不得改动 / 推断 / 凭记忆或上下文臆造模型名
+> **派发 reflow-worker 时（权威）**：agent **必须读取 `configs/subagent_model.yaml`**，把 `execution_model` 的值**“照原样”填入 subagent 派发参数**。
+> - **“照原样”= 逐字复用配置文件中的值**，不得改动 / 推断 / 凭记忆或上下文臆造模型名
 > - 若编辑器支持**调用时指定模型**（如 `runSubagent` 的 `model` 参数）即传入该值，否则填入 agent frontmatter `model`（见「agent 定义适配」模型行）
 > - 文件缺失或未配置 → **停下请使用者填写 `execution_model`，不自行决定**
 
-## 约定文件机制（通用性说明）
+## 约定文件机制
 
 项目约定层：**通用格式承载全部知识 / 流程**（`AGENTS.md` + `.github/skills/`），**执行型 agent 定义 = GitHub Copilot 格式单一权威**（`.github/agents/`），**系统提示词覆盖由 agent 承载**；迁移其它编辑器时从该格式 **adapt**。
 
-**所有编辑器相关操作细节（agent 定义文件 / 格式 / 派发入口 / 模型名 / adapt 步骤）集中在本文档**，主逻辑 skill（`subagent-dispatch` 等）不承载编辑器适配，只表述「派发 `reflow-worker`，使用无思考模型」。
+**所有编辑器相关操作细节（agent 定义文件 / 格式 / 派发入口 / 模型名 / adapt 步骤）集中在本文档**，主逻辑 skill（`subagent-dispatch` 等）不承载编辑器适配，只表述“派发 `reflow-worker`，使用无思考模型”。
 
 - **通用格式（所有编辑器）**：`AGENTS.md`（多工具标准）+ `.github/skills/`（Agent Skills 开放格式）
 - **执行型 agent（系统提示词覆盖，单一权威）**：`.github/agents/reflow-worker.agent.md`——正文即**系统提示词**，从根源替代宿主通用提示词（内联覆盖声明对抗系统层不可靠）；VS Code / Copilot 原生直接使用
 - **内联兜底**：`subagent-dispatch` 纪律母版「一、执行型定位」与 `.agent.md` **同源**，派发时随 prompt 整体追加——编辑器无 agent 机制 / 未 adapt 时的通用兜底（效果弱于系统提示词覆盖）
-- **运行模型**：读 `configs/subagent_model.yaml` 的 `execution_model`（解除硬编码，见「模型配置」），派发时按「各编辑器派发 subagent 命令表」传入
+- **运行模型**：读 `configs/subagent_model.yaml` 的 `execution_model`（解除硬编码，见“模型配置”），派发时按「各编辑器派发 subagent 命令表」传入
 
-### 执行型 agent 定义文件（reflow-worker）
+### 执行型 agent 定义文件
 
 所有说明性内容集中在本文档，**系统提示词（agent 正文）不塞注释**：
 
 - **位置 / 格式**：`.github/agents/reflow-worker.agent.md`，GitHub Copilot `.agent.md` 格式（frontmatter `name` / `description` / `tools` / `user-invocable`；正文 = 系统提示词）
-- **能力**：系统提示词覆盖——从根源替代宿主通用提示词（「创造性思考 / 探索工作区」等），内联覆盖声明对抗系统层不可靠
+- **能力**：系统提示词覆盖——从根源替代宿主通用提示词（“创造性思考 / 探索工作区”等），内联覆盖声明对抗系统层不可靠
 - **模型**：frontmatter **不写 `model`**（因人而异），统一读 `configs/subagent_model.yaml` 的 `execution_model` 并**照原样**填入派发参数（权威见「各编辑器派发 subagent 命令表」）；如需 agent 自带模型，个人自行在 frontmatter 填 `model`
 - **兜底**：纪律母版「一、执行型定位」与其同源，派发时随 prompt 整体追加（编辑器无 agent 机制 / 未 adapt 时起效）
 - **迁移**：其它编辑器从该文件 adapt（见下方「agent 定义适配」）
 
-### 研究型 agent 定义文件（term-researcher / wiki-researcher）
+### 研究型 agent 定义文件
 
 > 与 reflow-worker 定位相反——**研究型（查证/查询），非任务处理型**：允许推理/判断/多步查证，但输出受控（页面原文只进一次性上下文、绝不返回，只返回每词/每问一行压缩总结 + 写盘）。
 > 两者查询链同源（缓存 → 过期判定 → 主动刷新 → 降级链），仅产物契约与派发入口不同：
@@ -79,13 +79,13 @@
 
 - **位置 / 格式**：`.github/agents/term-researcher.agent.md`、`.github/agents/wiki-researcher.agent.md`（同 Copilot `.agent.md` 格式）
 - **工具**：`tools: [read, search, edit, execute/runInTerminal, mc-wiki-fetch-mcp/*, minecraft-wiki-mcp/*]`
-  - `execute/runInTerminal` 用于运行**白名单命令**（`refresh_cache.py --check-page` / `fetch_wiki.py`，见 agent 正文「终端工具边界」）
+  - `execute/runInTerminal` 用于运行**白名单命令**（`refresh_cache.py --check-page` / `fetch_wiki.py`，见 agent 正文“终端工具边界”）
   - MCP 工具用 `<server>/*` 全量语法（VS Code custom agents：tools 可含 MCP 工具，见官方文档）；server 名 = `.vscode/mcp.json` 的 `servers` 键
 - **模型**：**用主模型（当前选择），不用 `execution_model`**——研究型需要思考，no-think 仅用于 reflow-worker 执行型；frontmatter 不写 `model` 即用当前选择，如需指定可自行填
 - **纪律**：**不追加执行型纪律母版**（`_discipline.md` 与 reflow-worker 同源、面向执行型）；研究型纪律（查询链/输出受控）由 agent 正文承载
 - **迁移**：其它编辑器从这些文件 adapt（正文原样复用；工具映射需含对应编辑器的网络/检索工具 + 终端/命令执行工具——后者用于跑三条白名单命令）
 
-### agent 定义适配（迁移其它编辑器）
+### agent 定义适配
 
 从 `.github/agents/reflow-worker.agent.md`（GitHub Copilot 格式）adapt 到目标编辑器的 agent 定义，**正文（系统提示词）原样复用**：
 

@@ -4,7 +4,7 @@
 多语言扩展（短期已落地）：norm 按拉丁语系归一化（NFKD 去重音 é→e + 小写 + 去非字母数字撇号，
 覆盖 en/fr/de/es 等）；**text_width（视觉宽度）已上移至 shared/srt_common.py**（Unicode 块通用，
 全角=1.0 / 拉丁=0.4 / 数字=0.5 / 空格=0.4，含假名/谚文/扩展表意），本模块 re-export 供
-check-r03 / reflow / presplit 机械化断句复用。中期/长期扩展见 srt_reflow.py 顶部 docstring「多语言扩展」。
+check-r03 / reflow / presplit 机械化断句复用。中期/长期扩展见 srt_reflow.py 顶部 docstring“多语言扩展”。
 """
 import re
 import unicodedata
@@ -18,7 +18,7 @@ LATIN_KEEP_RE = re.compile(r"[^a-z0-9']")
 def norm(s):
     """归一化（拉丁语系源语言）：NFKD 分解去重音（é→e）→ 小写 → 去非字母数字撇号。
 
-    多语言扩展：本函数按「拉丁语系」归一化，覆盖 en/fr/de/es/pt 等拉丁源语言；将来支持
+    多语言扩展：本函数按“拉丁语系”归一化，覆盖 en/fr/de/es/pt 等拉丁源语言；将来支持
     CJK/西里尔/阿拉伯等非拉丁源语言时，需按 Unicode 脚本分类分流（如 CJK 保留对应码块）。
     """
     s = unicodedata.normalize("NFKD", s)

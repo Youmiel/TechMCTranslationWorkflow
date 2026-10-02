@@ -14,7 +14,7 @@ Wiki 页面缓存（.cache/wiki/）只检查过期并告警，**不自动抓取*
     python scripts/refresh_cache.py --ttl 14     # 过期天数（默认7天）
     python scripts/refresh_cache.py --check-page "红石比较器" "活塞"   # 单页过期判定（读缓存前用）
 
-单页判定（--check-page）是「按需刷新」的入口：查缓存前先判定该页是否过期，
+单页判定（--check-page）是“按需刷新”的入口：查缓存前先判定该页是否过期，
 过期即用 `fetch_wiki.py --refresh <页面>` 主动刷新后重读（见 wiki-tools Skill）。
 过期判定 = front matter `fetched`（缺失回退文件 mtime）距今 > TTL。
 """

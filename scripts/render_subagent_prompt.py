@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """subagent prompt 渲染脚本（会话外组装落盘）。
 
-把「任务模板 + 纪律母版 + 产物格式约定 + 先验知识 + 块数据引用 + 写盘约定」渲染成最终
+把“任务模板 + 纪律母版 + 产物格式约定 + 先验知识 + 块数据引用 + 写盘约定”渲染成最终
 subagent prompt，落盘 `_work/<视频名>/prompts/<task>-chunk_<k>.txt`。
 
 核心动机：完整 prompt 文本**不进主会话历史**——主 agent 只发本脚本命令（短）+ 派发时只给
-引用路径（见 subagent-dispatch「派发引用 prompt」），subagent 自行 read。模板正文零改动
+引用路径（见 「subagent-dispatch#派发引用 prompt」），subagent 自行 read。模板正文零改动
 （`<k>`/`<视频名>` 正则替换），纪律母版读 `subagent-dispatch/_discipline.md`（单一权威），
 术语直读 02_terms.md 全文。
 
@@ -37,7 +37,7 @@ from shared.srt_common import HARD_MAX, SOFT_MAX, MAX_LINE  # noqa: E402
 # 值占位符：模板里写占位符，渲染时从共享层常量填入真实值。
 # 为什么需要它（两条路都不能走）：
 #   - 模板里直接写数字 → 那是第 2 份副本，改常量后必然漂移（2026-09-27 行宽 26→27 即此因）；
-#   - 模板里写「见 HARD_MAX」→ **subagent 没有主 agent 上下文**，无法解析常量名，它必须拿到真实值
+#   - 模板里写“见 HARD_MAX”→ **subagent 没有主 agent 上下文**，无法解析常量名，它必须拿到真实值
 #     （subagent 提示词禁止引用主 agent 的参数名；渲染脚本的占位符是唯一例外通道）。
 VALUE_PLACEHOLDERS = {
     "<行宽硬限>": f"{HARD_MAX:g}",
@@ -45,7 +45,7 @@ VALUE_PLACEHOLDERS = {
     "<折行宽度>": f"{MAX_LINE:g}",
 }
 
-# 模板尾部「渲染步骤」说明区的起点（渲染时剥离——该区块给主会话/维护者看：
+# 模板尾部“渲染步骤”说明区的起点（渲染时剥离——该区块给主会话/维护者看：
 # 声明本任务按什么顺序、用哪些内容拼接，不是 subagent 执行内容）。含前置分隔线，一并剥离避免残留孤立 `---`；
 # 后续各项为历史格式兼容标记。
 FILL_MARKERS = (
@@ -195,7 +195,7 @@ def extract_breaks(breaks_path):
     text = read(breaks_path)
     if "## 断句点清单" not in text:
         return "（r01_breaks.md 无断句点清单）"
-    # 空隙点清单：截到下一个 `## ` 节前（否则「参考断句点」的 ### 标题会被误当成空隙点）
+    # 空隙点清单：截到下一个 `## ` 节前（否则“参考断句点”的 ### 标题会被误当成空隙点）
     body = text.split("## 断句点清单", 1)[1]
     body = re.split(r"(?m)^## ", body, 1)[0]
     blocks = re.split(r"(?m)^### ", body)
@@ -232,7 +232,7 @@ def extract_breaks(breaks_path):
     out = "\n".join(items)
 
     # 说话人话轮参考点（**结构提示，非硬约束**）——归一化抹平 cue 边界后，这是补标点判断话轮切换的唯一线索
-    TURN_SECTION = "## 参考断句点（说话人话轮）——"        # 用带「——」的完整标题，避免被正文引用行提前命中
+    TURN_SECTION = "## 参考断句点（说话人话轮）——"        # 用带“——”的完整标题，避免被正文引用行提前命中
     if TURN_SECTION in text:
         turn_raw = text.split(TURN_SECTION, 1)[1]
         turn_raw = re.split(r"(?m)^## ", turn_raw, 1)[0]
@@ -359,7 +359,7 @@ def render(task, video_dir, chunk, prior_files, chunks_dir, skill=None):
     cfg = resolve_cfg(task, skill)
     video_name = os.path.basename(os.path.normpath(video_dir))
 
-    # 1. 模板正文（剥离尾部「组装与派发」说明区）
+    # 1. 模板正文（剥离尾部“组装与派发”说明区）
     template_path = os.path.join(SKILLS_DIR, cfg["skill"], cfg["template"])
     text = read(template_path)
     for marker in FILL_MARKERS:

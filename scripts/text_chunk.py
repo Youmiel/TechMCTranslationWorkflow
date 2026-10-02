@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """通用文本分块脚本（SRT 与非 SRT 统一）——替代 srt_chunk.py 作为新项目的分块入口。
 
-设计（通用文本分块格式，见 docs/PRODUCT_FORMATS.md「通用文本分块」）：
+设计（通用文本分块格式，见 docs/PRODUCT_FORMATS.md「PRODUCT_FORMATS.md#通用文本分块」）：
 - 输入任意文本：SRT（按 cue）或非 SRT 产物（r01/r02/r03 等 txt/md，按语义单位）
 - 每块 = 元数据头 + OWNED 分区（本块负责产出）+ CONTEXT 分区（前后只读衔接）
-- 块边界永远在「单位」边界，不切开任何单位；单位 = cue（srt）/ 语义块（text）
+- 块边界永远在“单位”边界，不切开任何单位；单位 = cue（srt）/ 语义块（text）
 - SRT 分块两种模式：
   - 默认：每 N 个 cue 一块（translate 合并/断句用）
-  - --gaps：按空隙点（gap>5s）分组成「空隙组」，组内再按 N cue 分片（reflow 从 01 分块用；
-    块边界优先在空隙点=语义硬边界，组内分片=窗口控制）；块标识「块G-片P」，同组片合并无缝
-- 超长单位自动细分（--max-chars）为「组-片」，同组片合并时无缝拼接（解决 r01 块0 拆 0a..0f 场景）
+  - --gaps：按空隙点（gap>5s）分组成“空隙组”，组内再按 N cue 分片（reflow 从 01 分块用；
+    块边界优先在空隙点=语义硬边界，组内分片=窗口控制）；块标识“块G-片P”，同组片合并无缝
+- 超长单位自动细分（--max-chars）为“组-片”，同组片合并时无缝拼接（解决 r01 块0 拆 0a..0f 场景）
 - 确定性：同样输入同样输出；块头为机器可解析元数据行（text_merge.py 靠它归位）
 
 用法（命令根 = Project_Main/）:
@@ -34,10 +34,10 @@ from pathlib import Path
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from shared.srt_common import LONG_GAP_MS
+from shared.srt_common import LONG_GAP_MS, UNAMBIGUOUS_TERMINATOR_CLASS
 
 TS_RE = re.compile(r"(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})")
-SENT_ZH = re.compile(r"([^。？！]*[。？！])")          # 中文按 。？！ 切句
+SENT_ZH = re.compile(r"([^" + UNAMBIGUOUS_TERMINATOR_CLASS + r"]*[" + UNAMBIGUOUS_TERMINATOR_CLASS + r"])")   # 按句末标点切句（本处无小数点/缩写守卫，故只用无需消歧的字符）
 
 
 def parse_srt(path):
@@ -75,7 +75,7 @@ def _is_marker(text):
 
 
 def detect_gap_groups(units, gap_ms=LONG_GAP_MS, breaks=None):
-    """按空隙点把 SRT cue 分成「空隙组」。
+    """按空隙点把 SRT cue 分成“空隙组”。
 
     `breaks` 省略 → 按 `gap_ms` 自行探测（旧行为，兼容）；传入 → **用给定空隙点集**
     （`[(a_idx, b_idx), ...]`，来自 `r00_gaps_active.tsv` 的生效集——人工裁决后
@@ -168,7 +168,7 @@ def parse_units(path, type_, unit):
 
 
 def subdivide_group(gid, texts, max_chars):
-    """把一个组的所有原子单位细分为「组-片」列表。返回 ([(gid, part, text), ...], 细分计数)。
+    """把一个组的所有原子单位细分为“组-片”列表。返回 ([(gid, part, text), ...], 细分计数)。
     同组片合并时无缝拼接（见 text_merge.py）；part 在该组内全局递增。
     细分计数 = 被字符硬切的原子单位数（同组多句不算细分，只有单句超长硬切才计）。"""
     parts = []
@@ -222,9 +222,9 @@ def main():
     ap.add_argument("--owned", type=int, default=None, help="每块负责的单位数 N（srt 默认 100、text 默认 1）")
     ap.add_argument("--ctx", type=int, default=None, help="块前后只读上下文单位数 M（srt 默认 6、text 默认 1）")
     ap.add_argument("--gaps", action="store_true",
-                    help="srt 类型：按空隙点（gap>5s）分组成「空隙组」，组内再按 --owned 分片（reflow 从 01 分块用；块边界优先在空隙点）")
+                    help="srt 类型：按空隙点（gap>5s）分组成“空隙组”，组内再按 --owned 分片（reflow 从 01 分块用；块边界优先在空隙点）")
     ap.add_argument("--gaps-file", dest="gaps_file", default=None,
-                    help="【推荐】生效空隙点 tsv（`r00_gaps_active.tsv`，来自 srt_reflow_gap_scan.py）——"
+                    help="[推荐]生效空隙点 tsv（`r00_gaps_active.tsv`，来自 srt_reflow_gap_scan.py）——"
                          "用人工已裁决的生效集分块，取代自行探测（`status=excluded` 的项自动跳过，"
                          "排除源切分缺陷空隙后无需再去掉 --gaps 开关）。传它即隐含 --gaps")
     ap.add_argument("--max-chars", type=int, default=6000,
@@ -232,7 +232,7 @@ def main():
     ap.add_argument("--order", choices=("en-zh", "zh-en"), default="zh-en",
                     help="双语行语言顺序（默认 zh-en：中文行在前）")
     ap.add_argument("--inherit", default=None,
-                    help="【已弃用 deprecated】旧块级流水线：继承 <父块目录> 的块边界，内容换成 <--content> 结果目录的对应块。"
+                    help="[已弃用 deprecated]旧块级流水线：继承 <父块目录> 的块边界，内容换成 <--content> 结果目录的对应块。"
                          "新方案改为从 01 分块（--type srt --gaps）+ 块级独立流转，不再需要继承；此参数仅兼容旧流程，后续删除")
     ap.add_argument("--content", action="append", default=None,
                     help="--inherit 模式的内容源：上一级 subagent 结果目录（chunk_<k>.txt，保留组-片前缀）；可多次给出（r03 用双内容：r01 英文块 + r02 中文块对照）")
@@ -259,9 +259,9 @@ def main():
 
     os.makedirs(args.out, exist_ok=True)
 
-    # 展开为「最小单位」序列：text 按组聚合后细分（同组全局 part 编号）；
+    # 展开为“最小单位”序列：text 按组聚合后细分（同组全局 part 编号）；
     # srt 默认每 cue 一个最小单位；--gaps 时按空隙组分片（组-片标识）
-    # items 统一存 (组标识, part, 行文本)；text 行文本自带「组-片\t」前缀
+    # items 统一存 (组标识, part, 行文本)；text 行文本自带“组-片\t”前缀
     items = []  # (组标识, part, 行文本)
     n_split = 0
     n_gap_groups = 0
@@ -316,7 +316,7 @@ def main():
             n_split += cnt
 
     # 分块：
-    #   srt --gaps：块边界 = 「空隙组-片」边界（片边界即块边界，不再按 N 重切）
+    #   srt --gaps：块边界 = “空隙组-片”边界（片边界即块边界，不再按 N 重切）
     #   srt 无 --gaps / text：每 N 个最小单位一块
     chunk_gids = {}  # k -> [组-片标识...]（--gaps 模式用）
     gap_mode = bool(args.gaps or args.gaps_file)
@@ -385,7 +385,7 @@ def main():
                   args.unit if type_ == "text" else "cue", owned_desc(owned, k + 1), len(before), len(after))]
 
         if type_ == "text":
-            # text 类型：单元间空行分隔，单元首行 = 「组-片\t」前缀，内容可多行（r03 markdown）
+            # text 类型：单元间空行分隔，单元首行 = “组-片\t”前缀，内容可多行（r03 markdown）
             if before:
                 lines.append("## BEFORE")
                 for line in before:

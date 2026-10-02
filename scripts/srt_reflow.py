@@ -8,7 +8,7 @@
   attach-en r04_draft.srt + r03（目录或文件） -> 双语 SRT（zh-en 默认，中文行在前、英文行 = r03 英文片段）
   check-r03 r03（文件或目录）+ 01 + r02 -> 写时即合规预检（锚定唯一性 / 拆句互斥 / 行宽 ≤27（软 22） / ZH 忠实），违规退出码 1
             r03 为目录时走块级：check-r03 r03_results/ 01 r02_results/ --chunks chunks/（锚定缩块内、ZH 忠实缩块内）
-            统一反馈：默认只输出「问题数 + 分类 + 提示」；--expand 展开每处明细；--chunk <k> 只校验单块并默认展开
+            统一反馈：默认只输出“问题数 + 分类 + 提示”；--expand 展开每处明细；--chunk <k> 只校验单块并默认展开
   check-duration r04_draft.srt + r03 -> 回填后时长复核（长句碎片/独立短句/阅读失配），长句碎片退出码 1
   join-r03  r03_results/ -> r03_plan.md（按块序拼接 + 结构校验：缺块/重复 S<n>/可解析，供人工审核/审计；回填非必需，零 token）
 

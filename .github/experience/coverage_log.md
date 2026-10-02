@@ -4,13 +4,13 @@
 > 可复用结论**提炼**到 `source_experience.md`（收敛型经验沉淀）；本文件只留流水，
 > 不再堆入查询数字表格与长"发现"段。永久指南见 `SOURCE_COVERAGE.md`。
 > 结论列保持**一句话**（修复链/过程细节不入表）；先提炼进 `source_experience.md`，本表只留要点与指针。
-> **视频列写法**：`<视频 ID> 〈标题〉`（ID 必写、前置；见 `maintain-knowledge`「来源规范」）。
+> **视频列写法**：`<视频 ID> <标题>`（ID 必写、前置；见 `maintain-knowledge`“来源规范”）。
 
 | 日期 | 视频 | 领域 | 一句话关键结论 | 指针 |
 |------|------|------|----------------|------|
 | 2026-07-31 | wG5Zqi1DD1I Solving Minecraft's Storage Problem | 存储 | TechMC 术语表为主源；Mojang 表盲区（快照新特性）由 Wiki 兜底 | source_experience.md |
 | 2026-08-01 | wG5Zqi1DD1I Solving Minecraft's Storage Problem（审核循环修订） | 存储 | main storage→全物品仓库（TechMC 专有名词）纠正直译；filter→分类器 | source_experience.md |
-| 2026-08-01 | 76uNUrHFxJE The Minecraft World Border - Technical Analysis | 世界边界/活塞机制 | TechMCDocs 为主源；world border 取 Mojang 官方译名「世界边界」 | source_experience.md |
+| 2026-08-01 | 76uNUrHFxJE The Minecraft World Border - Technical Analysis | 世界边界/活塞机制 | TechMCDocs 为主源；world border 取 Mojang 官方译名“世界边界” | source_experience.md |
 | 2026-08-03 | YXFAM1heNOU We Caged 52 Withers to Make This Farm | 凋灵笼/黑曜石农场 | Wiki 补机制术语；proper_nouns/storage 术语表直接覆盖人名与全物品仓库 | source_experience.md |
 | 2026-08-04 | 6sPS4yqC72I SciCraft Getting Command Blocks In Survival | 1.12.2 黑科技/落沙/命令方块 | 1.12.2_magic.csv 主源；ASR 114 条（人名/落沙/命令主题误识别密集） | source_experience.md |
 | 2026-08-05 | kxHpyV95rB0 How to Trap the Ender Dragon Forever in Survival Minecraft | 末影龙 AI 寻路机制 | node/pathfind 无公开源→视频内定义+上下文推断+用户确认；Mojang 表覆盖末影龙/末地水晶等标准名 | source_experience.md |
@@ -26,11 +26,11 @@
 | 2026-09-10 | p-k5MPhBSjk I Made the World's Smallest Minecraft Server（**reflow2 首跑**·时间轴源头固化；旧 reflow 产物已备份 `_oldflow_backup_20260825`） | 世界生成/嵌入式服务器 | reflow2 首跑全链贯通（280 cue / 210 E / 198 Z 锚定对齐零失败），4 处行宽经 r02 精简清零 | source_experience.md |
 | 2026-09-13 | ZXGpmaIcMMo A Closer Look at Minecraft's Storage Blocks（PRR 5）（reflow2） | 存储元件（投掷器/发射器/漏斗/物品分类器） | 541 cue 全绿；拆段缺句末标点致跨句粘连（脚本已修）；充能三级辨析新建知识卡 | source_experience.md |
 | 2026-09-16 | edkkLsir9M8 Minecraft Redstone Is Easier Than You Think（PRR 1）（reflow2） | 红石基础元件（红石粉/火把/拉杆/按钮/压力板/游戏刻） | 155 cue 全绿；修切句器小数点与拆段句末标点两处脚本坑；原字幕 meme 缺字由用户补齐 | source_experience.md |
-| 2026-09-17 | LyU6a4PuDjo What You Don't Know About Minecraft's Diodes（PRR 2）（reflow2） | 中继器/比较器（红石元件、信号机制、容器检测） | 350 cue 全绿（原字幕高质量、0 处 ASR 修正）；13 处词级改动复用 align 即收敛；power level/signal strength 统一「信号强度」 | source_experience.md |
+| 2026-09-17 | LyU6a4PuDjo What You Don't Know About Minecraft's Diodes（PRR 2）（reflow2） | 中继器/比较器（红石元件、信号机制、容器检测） | 350 cue 全绿（原字幕高质量、0 处 ASR 修正）；13 处词级改动复用 align 即收敛；power level/signal strength 统一“信号强度” | source_experience.md |
 | 2026-09-17 | xh511sviyXc Minecraft's Observers are More Powerful Than You Think（PRR 3）（reflow2） | 侦测器/方块更新类型（红石机制） | 136 cue 全绿（原字幕 0 处 ASR 修正）；分号断段改脚本（分号不作跨拼合点）；加括号译注→回退一轮 | source_experience.md |
 | 2026-09-18 | f7N4bmqWUco Minecraft's Pistons are probably The BEST Addition To The Game（PRR 4）（reflow2） | 活塞 / 黏性活塞、黏液块、蜂蜜块（元件、36 号方块、半连接性、游戏刻阶段） | 213 cue 全绿（原字幕人工级质量、0 处 ASR 修正）；块边界落在句中致跨块句 → 重分块（--owned 199）贴句末后归零；6 条社区俗称经用户裁定；12 处行宽超限经 r02 补逗号三轮收敛至 0 | source_experience.md |
 | 2026-09-18 | ZXGpmaIcMMo A Closer Look at Minecraft's Storage Blocks（PRR 5）（reflow2 独立重译，不参考旧产物） | 存储元件（投掷器/发射器/漏斗/物品分类器） | 541 cue 全绿；术语 112 条几乎全由本地库 + Mojang 覆盖（仅 19 条 L3 走一次查证）；用户新裁数字体例（数值/分数阿拉伯、千分位不加逗号）与 spout→输出口、dropper elevator→投掷器上传链；`n slots` 实为 9 槽纠正；跨块句按 01 cue 精确切分 | source_experience.md |
-| 2026-09-21 | mv3OAZGKfs4 Shulker reactors - a new shulker farm paradigm!（reflow2） | 潜影贝反应堆 / 复制机制数学建模 | 151 cue 全绿；术语 41 条中 32 条由本地库直接覆盖（潜影贝农场已有姊妹视频积累）、仅 9 条走 L3；两处源/脚本盲区致静默错误：5.2s「假空隙」（源字幕切分缺陷）被当成真实停顿一路放大到注记归属错位、整句方括号作者旁注被 `is_pure_marker` 剔除而无声丢失内容 | source_experience.md |
+| 2026-09-21 | mv3OAZGKfs4 Shulker reactors - a new shulker farm paradigm!（reflow2） | 潜影贝反应堆 / 复制机制数学建模 | 151 cue 全绿；术语 41 条中 32 条由本地库直接覆盖（潜影贝农场已有姊妹视频积累）、仅 9 条走 L3；两处源/脚本盲区致静默错误：5.2s“假空隙”（源字幕切分缺陷）被当成真实停顿一路放大到注记归属错位、整句方括号作者旁注被 `is_pure_marker` 剔除而无声丢失内容 | source_experience.md |
 | 2026-09-22 | aZP9LXhakZY The Scaffolding Shulker Farm V3（reflow2；3 块 / 396 cue） | 潜影贝农场（繁育舱·盔甲架保护与检测·实体挤压与船吸击杀·传送移除模拟） | 396 cue 全绿；术语 70 条中 41 条由 L1 shulker_farm.csv/Mojang 直接覆盖、33 条走 L3（`Dark` 判为人名非冠词）；用户裁定 8 处（`the Border region` 非世界边界、`drowned`=沉没非溺尸、`restock`=补充潜影贝、`block up a few spots`=堵住几个点位等）；`align/` 一次成型、三次定点修正后行宽清零 | source_experience.md |
 | 2026-09-23 | ZklTeTqGDkg One video, two farms - Introducting shuffling shulker reactors!（reflow2；2 块 / 120 cue） | 潜影贝农场（轮换式反应堆：活塞版 / 脚手架版·产贝室·关卡时机） | 120 cue 全绿；37 E / 35 Z；术语 31 条仅 9 条走 L3（shulker_farm.csv 第三次复用）；两处 suspect 空隙**相反裁决**（[Music] 打断同一句→排除 / 音乐后真实分段→保留）；用户裁定 cinematic→展示视频、chamber→产贝室、sugar cane pattern→类似甘蔗农场的排布、corridor→通道；片头语气词删后段合并需人工拆回 | source_experience.md |
 | 2026-09-30 | h1eUsp29rpY Big Trees are broken [1.12]（reflow2；**首次单块骨架** / 367 cue） | 1.12.2 单机黑科技（跨世界机制·异步侦测器链·WorldGenBigTree 大树生成） | 367 cue 全绿；145 E / 130 Z；术语 21 条中 9 条由 `1.12.2_magic.csv` 直接命中、13 条视频专属经用户裁定入库（大橡树／红石充能标志／和平难度速通／配置好的世界／因计划刻不同步导致的崩溃 等）；**改单块骨架根除跨块句**（双块时尾部 E 句被 clamp 致 c301–302 无 E 覆盖）；`check_words` 互补判定改位置感知（多重集差在高频词处假阳性打回）；审核裁定作者名 Myren（非 Marin）、Coolmann 拼写、`async client`→异步侦测器链、`instant falling` 与 `instant tile tick` 同段分别译 | source_experience.md |

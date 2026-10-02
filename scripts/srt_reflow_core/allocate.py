@@ -3,12 +3,12 @@
 
 时间分配的三个分支（reflow 主流程按序选择）：
 1. allocate_unit_cues  —— 单元级 cue 锚定：每单元命中自身英文 cue 区间（贴原轴节奏，默认首选）
-2. allocate_by_reading —— 阅读感知插值：cue 锚定成功但「分配时长 < 中文阅读所需×READING_MISMATCH_RATIO」时，
+2. allocate_by_reading —— 阅读感知插值：cue 锚定成功但“分配时长 < 中文阅读所需×READING_MISMATCH_RATIO”时，
    放弃 cue 时长改按中文阅读速度在整句区间内按比例重分配（倒装语序 / 中英时长差异大时，S6 实证），
    切分点就近吸附真实 cue 边界（≤ snap_ms），无则 100ms 取整预测点。
 3. allocate_by_ratio   —— 字数比例兜底：单元文本未命中（文本不一致）时按中文长度比例分配（同吸附规则）。
 
-时长阈值与 reflow-redstone SKILL 一致：单句时长通常 ≥1s（MIN_FRAG_MS，<1s 为「长句碎片」须回报 Agent）；
+时长阈值与 reflow-redstone SKILL 一致：单句时长通常 ≥1s（MIN_FRAG_MS，<1s 为“长句碎片”须回报 Agent）；
 中文阅读速度默认 5 字/秒（--cjk-speed 可调，0=禁用阅读校验）。
 """
 from .io import norm, fmt, text_width
@@ -25,7 +25,7 @@ def cjk_reading_ms(text, speed=CJK_SPEED):
 
     默认 5 字/秒（字幕阅读含理解停顿，保守取值）；speed<=0 返回 0（禁用阅读校验）。
     视觉宽度用 io.text_width（全角=1.0 / 拉丁=0.4 / 数字=0.5 / 空格=0.4）——含英文/数字的单元
-    （如「在 1994 年」「Ticketmaster」）按实际视觉宽度计，而非纯中文字数。
+    （如“在 1994 年”“Ticketmaster”）按实际视觉宽度计，而非纯中文字数。
     """
     if speed <= 0:
         return 0
@@ -42,7 +42,7 @@ def needs_reading_interp(segs, speed, ratio=READING_MISMATCH_RATIO,
        单元时长 < 阅读所需 × ratio（默认 0.7）**且** 失配 ≥ min_gap_ms（默认 300ms）——
        轻微差异（如 3271ms vs 所需 3290ms）不触发，避免时间轴过度偏离 cue 锚定。
 
-    例：13 字单元「亚利桑那州立大学的电气工程硕士学位」阅读需 2.6s，若英文 cue 只分到 0.8s：
+    例：13 字单元“亚利桑那州立大学的电气工程硕士学位”阅读需 2.6s，若英文 cue 只分到 0.8s：
     0.8s < 1s（碎片，a 触发）且 0.8 < 2.6×0.7 失配 1.82s ≥ 300ms（b 触发）→ 插值（S6 实证）。
     """
     if speed <= 0:
@@ -103,7 +103,7 @@ def split_shared_cue_bounds(units, unit_cues, cues, cue_offsets):
     """相邻单元共享 cue → 中间按两侧字符比例估算切分点，返回每单元 [start, end]（毫秒 int）。
 
     共用核心：回填 allocate_unit_cues 与 check-r03 预估 estimate_unit_durations 都调用——
-    保证「预估时长」与「回填实际分配」同构（S6b 预估 782ms ≈ 实际 783ms 的根基），避免两套逻辑漂移。
+    保证“预估时长”与“回填实际分配”同构（S6b 预估 782ms ≈ 实际 783ms 的根基），避免两套逻辑漂移。
     纯计算、不写告警、不做首末裁剪/重叠兜底（由调用方按需处理）。
     """
     bounds = []
