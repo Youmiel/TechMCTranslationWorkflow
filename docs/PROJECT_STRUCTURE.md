@@ -58,7 +58,7 @@ Project_Main/
 | `.github/skills/` | Skill 定义 | 工作流/机制说明 SKILL.md（如 translate-redstone、reflow-redstone、**reflow2**、redstone-conventions、segment-subtitles、wiki-tools）+ 任务文件（`task-*.md`） |
 | `.github/agents/` | agent 定义（系统提示词覆盖，Copilot `.agent.md` 格式） | `reflow-worker`（执行型）、`term-researcher` / `wiki-researcher`（研究型）；适配其它编辑器见 `docs/EDITOR_COMPAT.md` |
 | `.github/experience/` | Agent 运行经验 | `asr_fixes.md`、`coverage_log.md`、`source_experience.md`、`glossary_categories.yaml`、`trap_words.md` |
-| `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`dictionary_lookup.py`、`srt_*`、`srt_reflow_*`、`srt_reflow2_*`、`text_chunk.py`/`text_merge.py`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py` 等；不含 CLI 的共享模块在 `shared/`、`srt_reflow_core/`、`mojang_glossary/`）；一次性脚本不在此列 |
+| `scripts/` | 正式辅助脚本 | **通用、可复用、经校验**的脚本（`glossary_*`、`dictionary_lookup.py`、`srt_*`、`srt_reflow_*`、`srt_reflow2_*`、`text_chunk.py`/`text_merge.py`、`fetch_wiki.py`、`refresh_cache.py`、`check_index_stale.py`、`setup_editors.py` 等；不含 CLI 的共享模块在 `shared/`（`srt_common.py` 字幕公共层、`request_identity.py` 请求身份、`glossary_sources.py` **术语源适配层**）、`srt_reflow_core/`、`mojang_glossary/`）；一次性脚本不在此列 |
 | `configs/` | 配置 | 本地个性化配置（**全部 Git 忽略**，靠 `docs/examples/configs/` 模板分发）：`context_window.json` / `request_identity.yaml` / `subagent_model.yaml` |
 | `docs/` | 项目文档 | 本文档及 SETUP / EDITOR_COMPAT / PIPELINE_ISOLATION / **SYMBOLS（符号分工）** / PRODUCT_FORMATS（通用，含 PRODUCT_FORMATS_TRANSLATE / _REFLOW / _REFLOW2 工作流分文件）/ SOURCE_COVERAGE / WIKI_CACHE_FORMAT |
 

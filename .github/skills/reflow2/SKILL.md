@@ -55,7 +55,7 @@ description: Minecraft 红石技术视频字幕的“时间轴源头固化”工
 **中断恢复路由**：检查 `<工作目录>/` 最完整产物，从产出该产物的角色名继续：
 
 - 无任何产物 → 从头（[阶段〇](../redstone-preprocess/SKILL.md#阶段〇字幕机械修复)）
-- 仅 `00_subtitle_snapped.srt` → [阶段一](../redstone-preprocess/SKILL.md#阶段一领域预判与准备)（领域预判）
+- 仅 `00_subtitle_snapped.srt` → [阶段一](../redstone-preprocess/SKILL.md#阶段一加载集判定与准备)（加载集判定）
 - 仅 `01_subtitle_asr_fixed.srt` → [阶段二术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)
 - 有 `02_terms.md` → [阶段二术语确认](../redstone-preprocess/SKILL.md#23-术语确认)
 - 有 `reflow2/r00_gaps.md`/`r01_breaks.md` → 分块
@@ -96,9 +96,9 @@ description: Minecraft 红石技术视频字幕的“时间轴源头固化”工
 
 按 [redstone-preprocess#阶段〇字幕机械修复](../redstone-preprocess/SKILL.md#阶段〇字幕机械修复) 原样执行（→ `00_subtitle_snapped.srt`）。
 
-### 阶段一：领域预判与准备
+### 阶段一：加载集判定与准备
 
-按 [redstone-preprocess#阶段一领域预判与准备](../redstone-preprocess/SKILL.md#阶段一领域预判与准备) 原样执行。
+按 [redstone-preprocess#阶段一加载集判定与准备](../redstone-preprocess/SKILL.md#阶段一加载集判定与准备) 原样执行。
 
 ### 阶段二：术语扫描与知识补齐
 

@@ -73,7 +73,7 @@ PHASE_HEADING_SETS = {
 FROZEN_ANCHORS = {
     ".github/skills/redstone-preprocess/SKILL.md": (
         "阶段〇字幕机械修复",
-        "阶段一领域预判与准备",
+        "阶段一加载集判定与准备",
         "阶段二术语扫描与知识补齐",
         "21-术语扫描",
         "22-集中补齐",
@@ -104,7 +104,7 @@ FROZEN_ANCHORS = {
         "共享-cue-与整条归属",
     ),
     ".github/skills/term-registration/SKILL.md": ("同步步骤",),
-    ".github/skills/use-glossary/SKILL.md": ("术语源优先级", "类别预判"),
+    ".github/skills/use-glossary/SKILL.md": ("术语源优先级", "加载集判定"),
     ".github/skills/maintain-knowledge/SKILL.md": ("经验提炼规则",),
     ".github/skills/wiki-tools/SKILL.md": ("缓存过期与主动刷新",),
 }

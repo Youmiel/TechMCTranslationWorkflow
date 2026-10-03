@@ -83,15 +83,13 @@
 | armor stand | elmerstand / I'm a stand | 盔甲架 |
 | pufferfish | puff fish / buffer fish | 河豚 |
 | powder snow | out of snow / out of the snow | 细雪 |
-| minecart | main car | 矿车 |
-| comparator | comparative | 比较器（comparative cooldown clock → comparator cooldown clock） |
+| comparator | comparative / compar | 比较器 |
 | lava cauldron | lava quadrant | 装有熔岩的炼药锅 |
 | despawn | spawn | 消失（"items will eventually despawn" 被听成 spawn） |
-| minecart | mine guards / mine car / Minecraft / my car / cars / micro | 矿车 |
+| minecart | mine guards / mine car / Minecraft / my car / cars / micro / main car | 矿车 |
 | shulker bullet | Bulls / bolts / Ebola | 潜影弹 |
 | peeking | peaking | 开壳（潜影贝） |
 | game tick | game decks / game takes / takes | 游戏刻 |
-| comparator | comparative / compar | 比较器 |
 | schematic | scam | 投影/原理图 |
 | scaffolding-based | scaffolding by | 脚手架式（农场） |
 | tileability | title ability | 可堆叠性 |
@@ -141,21 +139,12 @@
 | piston block 36 | eight plus block 36 | 活塞 |
 | lava pocket | liquid pocket | 岩浆池 |
 | flying machine | pingu freedom of flying machine | 飞行器 |
-| intensive | intenensive | 常见拼写错位 |
-| simple | simle | 常见拼写错位 |
-| design | deisgn | 常见拼写错位 |
-| successfully | sucessfully | 常见拼写错位 |
-| success | sucess | 常见拼写错位 |
-| equilibrium | equilibirum | 常见拼写错位 |
-| eighth | eigth | 常见拼写错位 |
-| single-cell | sincle-cell | 常见拼写错位 |
-| efficiency | efficinecy | 常见拼写错位 |
 | palette of blocks | palace down there / palette of blogs | 方块调色板 |
 | node | note / notes / endnote / i know / red nose / a no | 节点（末影龙寻路机制主题高发） |
 | pathfind / pathfinding | path finds / pat find / path find / pathf finding | 寻路（末影龙寻路机制；潜影弹寻路 bullet pathfinding） |
-| island | iceland | 岛（末地岛） |
 | place blocks | play blocks | 放置方块 |
 | y level | by level | Y 坐标层 |
+| equilibrium | equilibirum | 常见拼写错位（实测语料未出现，保留待验） |
 | valid path | pallet path | 有效路径（语义+音近） |
 | dirt | third | 泥土（音近） |
 | blocks | logs | 方块（语义+音近，dirt blocks 语境） |
@@ -165,7 +154,7 @@
 | chute | shoots / shoes / shoot | 滑道 |
 | bogged sheep | bog sheep | 沼骸（"bogged, sheep" 逗号被吞，常与 sheep 并列） |
 | X in Y（分数口语） | X and Y / 1 and N / 1 and two | 口语 "in" 被听成 "and"（1 in 3 / 1 in N 等） |
-| hopper | Harpers | 漏斗 |
+| hopper | Harpers / hopp / hoer / Hop / oppers / hop | 漏斗 |
 | trapdoor | trapo | 活板门 |
 | AFK | FK | 挂机（"FK" 漏掉 A） |
 
@@ -194,9 +183,7 @@
 | my old mate | me old mate | 口语语法 |
 | design in snapshot | design snapshot | ASR 漏介词 in |
 | cut it | carry | 剪辑用语（"我要切掉这段"） |
-| though | through | 连词 though（"The biomes themselves, though"） |
 | dropper | droper / the dro / a dro | — |
-| hopper | hopp / hoer / Hop / oppers / hop | — |
 | hitbox | hit boox | — |
 | scheduled tick | shedule ticks | — |
 | quasi connectivity | quaza connectivity | — |

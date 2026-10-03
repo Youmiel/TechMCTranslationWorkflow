@@ -1,12 +1,13 @@
-# 术语表分类预判规则
+# 术语表分类参考
 #
-# Agent 通过视频标题/简介 + SRT 前 20 句的关键词密度判断技术领域。
-# 命中任一关键词 ≥2 次即加载对应分类的术语表。
+# ⚠️ 已被命中数驱动方案取代（2026-10-04）
+#   加载集判定改用 python scripts/glossary_load_plan.py <字幕.srt>：
+#   常驻集无条件加载 + 用字幕扫全量表按「命中不同词形数 ≥ 阈值」列候选 → 用户门禁。
+#   本文件的 keywords **不再驱动加载**（实测只有 69% 视频有 keywords 命中）。
+#   keywords 保留作人工参考；新词可继续追加，但不会再影响加载集。
 #
 # 维护方式：Agent 协助维护（不可删除/改结构，只能追加 keywords）
-#   1. 阶段〇预判时，若无分类命中 ≥2 次 → Agent 列出候选词请用户确认分类
-#   2. 用户确认后 → Agent 将新关键词追加到对应分类的 keywords 列表
-#   3. 用户也可手动编辑此文件
+# 用户也可手动编辑此文件
 #
 # 用法：
 #   - .cache/glossary/<category>.csv — 上游术语缓存
@@ -47,11 +48,10 @@ categories:
     label: "1.12.2 版本特有机制"
     keywords: [async observer, chunk manipulation, chunk swap, falling swap, instant falling, instant tile tick, word tear, crossworld, cluster]
 
-# 始终加载的默认分类
-always_load:
-  - general
+# 始终加载的默认分类（已并入 glossary_load_plan.py 的常驻集，此处留空）
+always_load: []
 
-# 无法判断时的兜底组合
+# 兜底组合（已废弃，留作参考）
 fallback:
   - general
   - mechanical

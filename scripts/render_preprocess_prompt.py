@@ -33,6 +33,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from shared.glossary_sources import iter_terms  # noqa: E402  （术语源适配层，单一权威）
+
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(PROJECT_ROOT, ".github", "skills")
 DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md")
@@ -147,18 +150,53 @@ def parse_asr_fixes(path):
 
 
 def load_glossary(csv_paths):
-    """读领域术语集 csv（英文=Full Form (English) 列、中文=Chinese 列）→ `英文 = 中文` 注入行。"""
+    """读领域术语集 csv → 注入行 `英文 = 缩写 = 译名`。
+
+    表头差异（L1 项目库 6 列 / L1.5 Mojang 2 列 / L2 社区宽表）统一交给
+    `glossary_sources.iter_terms` 适配——**按列名取，位置仅作兜底**。
+
+    旧实现按**固定列位**取值（`rec[2]`/`rec[7]`，且 `len(rec) < 8` 直接跳过），
+    只对 L2 社区表有效：**L1 项目库整表被静默丢弃**（实测 484 行 → 0 行），
+    导致阶段〇 ASR 纠错从未拿到过项目自己裁定的译名。
+
+    缩写列（`short_form` / `Short Form`）有则一并注入：实测仅 +6% 字符，
+    而 `MSPT`/`CCE`/`DPE` 这类缩写正是 ASR 最易错、最需消歧的词形。
+
+    **L1.5（Mojang 官方通用词）默认跳过**：该层含 `water`/`sand`/`thing` 类
+    通用词（blocks 1197 + items 667 + entities 218 + misc 230），注入既稀释
+    注意力又可能诱发误纠（把本身正确的词「纠」成表内的词）——
+    与 `use-glossary`「L1.5 按需、默认不注入」的设计一致。
+
+    返回 `(rows, skipped)`：`skipped` 为被跳过的 L1.5 路径（供调用方报告，
+    避免"静默跳过"重演旧实现的教训）。
+    """
     rows = []
+    skipped = []
     for path in csv_paths:
-        with open(path, encoding="utf-8-sig", newline="") as f:
-            for rec in csv.reader(f):
-                if len(rec) < 8:
-                    continue
-                en = (rec[2] or "").strip()
-                zh = (rec[7] or "").strip()
-                if en and zh:
-                    rows.append(f"- {en} = {zh}")
-    return rows
+        if is_mojang_layer(path):
+            skipped.append(path)
+            continue
+        for terms, zh, shorts in iter_terms(path):
+            if not zh:
+                continue
+            abbr = "/".join(shorts) if shorts else ""
+            for t in terms:
+                rows.append(f"- {t} = {abbr} = {zh}" if abbr else f"- {t} = {zh}")
+    return rows, skipped
+
+
+def is_mojang_layer(path):
+    """判定是否 L1.5（Mojang 官方通用词层）。
+
+    判据：路径位于 `.cache/mojang/`；**`redstone.csv` 除外**——它在
+    `glossary_lookup.discover_sources` 中被归为 L1（红石专属 ~72 条、全量加载），
+    与 Mojang 的通用词（`water`/`sand`）性质不同。
+
+    注意：必须用 `abspath` —— 相对路径 normpath 后开头无斜杠，
+    按 `"/.cache/mojang/" in p` 判定会漏（曾致护栏静默失效）。
+    """
+    p = os.path.normpath(os.path.abspath(path)).replace("\\", "/")
+    return "/.cache/mojang/" in p and not p.endswith("/redstone.csv")
 
 
 def collect_priors(cfg, video_dir, chunk, scan_path, glossary_paths, asr_fixes_paths, chunk_files):
@@ -177,12 +215,22 @@ def collect_priors(cfg, video_dir, chunk, scan_path, glossary_paths, asr_fixes_p
         )
 
     if "glossary" in priors and glossary_paths:
-        rows = load_glossary(glossary_paths)
+        rows, skipped = load_glossary(glossary_paths)
+        if skipped:
+            print("ℹ L1.5 Mojang 官方层默认不注入（用 --glossary 显式传入时不生效，"
+                  "如需请改 is_mojang_layer）："
+                  + "、".join(os.path.basename(s) for s in skipped))
         if rows:
-            parts.append(
-                "### 领域术语集（阶段〇判定分类，ASR 解码候选空间 / 术语译名参考）\n\n"
-                + "\n".join(rows)
-            )
+            # 防误纠约束只给**会改文本**的任务（`task-en-preprocess`）；
+            # `task-term-recognition` 只检出术语、不动原文，约束无意义。
+            if cfg["template"] == "task-en-preprocess.md":
+                head = ("### 术语词集（供 ASR 纠错参考，勿据此改动本身正确的词）\n\n"
+                        "> - 仅当某词**在语境中不成立**才替换\n"
+                        "> - 词集是**候选空间**，不是「替换目标清单」\n"
+                        "> - 通用英文词不在本表内（拼写错误自行纠正，勿查表）\n\n")
+            else:
+                head = "### 领域术语集（术语译名参考）\n\n"
+            parts.append(head + "\n".join(rows))
 
     if "asr" in priors:
         global_lines = parse_asr_fixes(ASR_FIXES_GLOBAL)
@@ -293,7 +341,8 @@ def main():
     ap.add_argument("--chunk", type=int, help="块号（1 起）")
     ap.add_argument("--all", action="store_true", help="渲染全部块")
     ap.add_argument("--scan", default=None, help="scan_terms.txt 路径（term-recognition；默认 <video>/scan_terms.txt）")
-    ap.add_argument("--glossary", action="append", default=[], help="领域术语集 csv（可多次；en-preprocess 必需）")
+    ap.add_argument("--glossary", nargs="+", default=[],
+                    help="领域术语集 csv（空格分隔多个；en-preprocess 必需）")
     ap.add_argument("--asr-fixes", action="append", default=[], help="本视频局部 asr_fixes 文件（默认 <video>/asr_fixes.md）")
     ap.add_argument("--chunks-dir", default=None, help="chunks 目录（默认 <video>/<任务 chunks_key>）")
     args = ap.parse_args()

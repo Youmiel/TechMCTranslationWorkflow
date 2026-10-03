@@ -3,7 +3,7 @@
 按用途分组，文件名前缀标识类别（`glossary_` 术语词表、`srt_` 字幕工具（两工作流共用 + 通用）、`text_` 通用文本分块/合并（长视频机制）、`srt_reflow_` 回填工作流专用）；独立工具保留原名。
 
 **目录约定**：本目录只放**可运行的工具**（有 CLI 入口）；不含 CLI 的**共享模块放语义文件夹**——
-`shared/`（跨工具共享：`srt_common.py` 字幕公共层——含**跨语言通用标点角色表**、`request_identity.py` 请求身份）、
+`shared/`（跨工具共享：`srt_common.py` 字幕公共层——含**跨语言通用标点角色表**、`request_identity.py` 请求身份、`glossary_sources.py` **术语源适配层**）、
 `srt_reflow_core/`（reflow 实现包，含断句引擎 `punct.py`）、`mojang_glossary/`（Mojang 词表实现包）。
 导入方式：工具内 `from shared.srt_common import ...`（**绝对导入**——包存在顶层/包内两种导入路径，
 相对导入 `..shared` 在顶层路径下会越界；`scripts/__init__.py` 已把 `scripts/` 追加进 `sys.path` 兜底）。
@@ -14,8 +14,6 @@
   但顶层裸露的可执行语句会让 `import` 产生副作用（argparse 报错并 `sys.exit(2)`，或直接执行完整
   计算并打印）。模块级只留 import / 常量 / `def`；被模块级函数引用的 argparse 派生变量，优先把
   该函数一并收进 `main` 内。
-- **行尾用 LF**（仓库约定；`core.autocrlf=input`）。写成 CRLF 会让 `git diff` 显示“全部行改动”
-  而无法审查真实改动——批量改动后请检查 `git diff --stat` 是否与预期行数相称。
 
 ## 术语词汇表工具
 
@@ -24,7 +22,18 @@
 | `glossary_split.py` | 将上游合并术语 CSV 按类别拆分到 `.cache/glossary/` | `python scripts/glossary_split.py [--check\|--help]` |
 | `glossary_fetch_mojang.py` | 从 Mojang 官方 API 下载最新翻译词汇表 | `python scripts/glossary_fetch_mojang.py [--check]` |
 | `glossary_lookup.py` | 按 L1→L1.5→L2 查术语中文译名（只读） | `python scripts/glossary_lookup.py <term> [<term> ...]` |
+| `glossary_hit_rate.py` | **术语表命中率回测（长期维护、可定期重跑）**：以历史视频为语料统计每张表该不该加载。两个口径——**离线全量重扫**（拿当前全部词汇表重新匹配完整字幕，**不受历史 `--categories` 限制 → 零命中即真零**）与**历史 `scan_terms.txt` 对照**（未加载的表必显示 0% → 假零）；另有预判命中（yaml keywords）与噪声观测；输出**常驻候选**（净命中率 ≥80% 且噪声率 <30%，分层：L1/L2 可直接用、L1.5 不据此常驻）。`--root` 支持**视频目录**与**平铺 `.srt`** 两种语料形态；**语料 <10 个视频时告警并标注不可信**（防语料被清理后误判）。复算步骤见 `maintain-knowledge` | `python scripts/glossary_hit_rate.py --root _input [--root <目录> ...] [--out <报告>] [--history <趋势文件>] [--min-videos N] [--predict-cues N] [--offline-cues N] [--no-offline] [--top N] [--stopwords <文件>]` |
+| `glossary_load_plan.py` | **术语表加载集判定 + 用户门禁**：常驻集（清单与词数用 `--list-resident` 查，勿写死）无条件加载；**用字幕逐表扫全部非 L1.5 表 → 命中词条数 ≥ 阈值（默认 3）者列为候选** → 报用户门禁裁定（剔除不要的表）。产出 `glossary_load_plan.md`（含**探测全貌**：未达阈值表 + 常驻命中对照，供调阈值）与**追加式** `glossary_gate_log.md`（探测范围 → 用户决策）。`--list-resident` 不需要字幕 | `python scripts/glossary_load_plan.py <字幕.srt> [--threshold N] [--out <报告>] [--json]` / `<字幕> --record "[表1,表2]"`（无参 = 候选全保留）/ `--list-resident` |
+| `asr_bench.py` | **ASR 修正能力实测脚手架**：从历史配对（原始 ASR + `01_subtitle_asr_fixed.srt`）生成**隔离测试材料**（只给英文原文，不给词表），供评估“LLM 无词表时能修多少 ASR 误听”。**自动过滤 cue 数不对齐的样本**（参考稿有合并/拆分 → 按行号对照会错位）。`merge` 汇总产出 | `python scripts/asr_bench.py gen [--videos N] [--chunk-cues N]` / `merge` |
+| `asr_fixes_audit.py` | **`asr_fixes` 审计（证据驱动）**：**唯一可删类 = 拼写错误**（普通英文词错拼，与术语无关）；其余全部**保留**——映射的价值不止“补模型不知道的词”，还有**提供精确词形 + 抑制乱猜**（对照实验见 `_work/_abc_experiment.md`）。另出**多词长术语**（边界锚定，尤其要留）、**重复条目**、**高风险变体**（变体是 ≤5 字母合法词，易反向误纠）。**只报告不自动删** | `python scripts/asr_fixes_audit.py [--out <报告>] [--expand]` |
+| `asr_fixes_scope.py` | **`asr_fixes` 归档筛选清单**：按“变体在几个视频的原始 ASR 里出现”分组，出**可勾选** Markdown（`- [x]` = 归档到该视频局部表）。**判据有已知局限**：只出现在单视频 ≠ 视频专属（可能别的视频还没遇到该话题）→ **需人工筛**。`--apply` 只打印方案不改文件 | `python scripts/asr_fixes_scope.py [--out <清单>]` / `--apply` |
+| `asr_bench_b.py` | **ASR 对照实验材料生成**：B 组（仅注入常驻集词表）/ C 组（词表 + `asr_fixes` 映射，`--with-fixes`）。与既有无词表组**逐字对齐**（唯一变量 = 注入内容），配合 `asr-fixer-b` agent 派发 | `python scripts/asr_bench_b.py gen [--with-fixes] [--videos N] [--only <视频,视频>]` |
 | `dictionary_lookup.py` | 查 `_repos/storage-archive` 存储科技术语词典（词→英文定义/条目，L2 社区源；与 glossary_lookup 正交：定义 vs 译名） | `python scripts/dictionary_lookup.py query <term>` / `scan <srt>` / `list` |
+
+> `shared/glossary_sources.py` — **术语源适配层（单一权威）**：三套词汇表表头差异（L1 项目库 `term_en,term_zh` / L1.5 Mojang `en_us,zh_cn` / L2 社区 `Full Form (English),Chinese` + `Short Form`）在此统一；按**列名**取、位置仅兜底，并提供 `split_terms`（`;` 同义词与 `(aka X)` 别名展开）与缩写过滤（长度 <3 且无数字的缩写丢弃，防 `BE`/`AT` 命中 `be`/`at`）。
+> **历史教训**：`render_preprocess_prompt.load_glossary` 曾按**固定列位**取值（`rec[2]`/`rec[7]` + `len(rec) < 8` 跳过），只对 L2 有效——**L1 项目库整表被静默丢弃**（实测 484 行 → 0 行），阶段〇 ASR 纠错从未拿到项目自定译名。改适配层后 L1 正常注入（289 行 → 427 行）。
+>
+> **新增词汇表时**：只需在 `glossary_sources.EN_CANDIDATES`/`ZH_CANDIDATES`/`SHORT_CANDIDATES` 补该表的列名即可被全部消费方识别，**不要在各工具里另写解析**。
 
 > `mojang_glossary/` 是 `glossary_fetch_mojang.py` 的实现包（内部逻辑），**非独立工具，勿直接调用**；`__init__.py`、`LICENSE` 非工具。
 

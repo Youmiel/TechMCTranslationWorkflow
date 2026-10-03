@@ -44,6 +44,14 @@ import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from shared.glossary_sources import (  # noqa: E402
+    EN_CANDIDATES, ZH_CANDIDATES,
+    find_col as find_col,
+    find_short_col as find_short_col,
+    split_terms as split_terms,
+)
+
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 同词多源时取层级最高的优先级（与 use-glossary 四级查找一致）
@@ -67,48 +75,6 @@ def discover_sources():
             if fn.endswith(".csv"):
                 sources.append(("L2", os.path.join(gl_dir, fn)))
     return sources
-
-
-def find_col(fieldnames, candidates, fallback_index):
-    for c in fieldnames or []:
-        if c.strip().lower() in candidates:
-            return c
-    if fieldnames:
-        return fieldnames[fallback_index]
-    return None
-
-
-def find_short_col(fieldnames):
-    """只在表头存在短式列时返回其列名，否则 None（不回落，避免误用其它列）。"""
-    for c in fieldnames or []:
-        if c.strip().lower() in ("short form", "short_form"):
-            return c
-    return None
-
-
-def split_terms(raw):
-    """把术语单元格拆成多个词形：
-    - 按 `;` 分同义词
-    - 展开 `(aka X)` 别名（主词 + 别名各自成词形）
-    - 去首尾空白、去尾部 `*`
-    """
-    out = []
-    if not raw:
-        return out
-    for part in str(raw).split(";"):
-        part = part.strip()
-        if not part:
-            continue
-        m = re.match(r"^(.*?)\s*\((?:aka|aka\.)\s*(.*?)\)\s*$", part, re.IGNORECASE)
-        if m:
-            main, aka = m.group(1).strip(), m.group(2).strip()
-            if main:
-                out.append(main)
-            if aka:
-                out.append(aka)
-        else:
-            out.append(part)
-    return [t.rstrip("*").strip() for t in out if t.rstrip("*").strip()]
 
 
 def build_term_index(sources, l2_categories=None, levels=None):

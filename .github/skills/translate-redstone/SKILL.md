@@ -47,7 +47,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 1. **阶段〇 字幕机械修复**（`redstone-preprocess`）——纯脚本、零知识；结构清理 + 时间轴吸附（可选），**文本逐条未改**
    - 输入：`_input/` 原始字幕（+ 可选音频/视频）
    - 产物：`<工作目录>/00_subtitle_snapped.srt`（**全工作流时间轴新基准**）
-2. **阶段一 领域预判与准备**（`redstone-preprocess`）——加载领域知识/预判，无落盘产物
+2. **阶段一 加载集判定与准备**（`redstone-preprocess`）——定常驻+候选+用户门禁，无落盘产物（除门禁报告）
 3. **阶段二 术语扫描与知识补齐**（`redstone-preprocess`）
    - 输入：`<工作目录>/00_subtitle_snapped.srt`
    - 产物：
@@ -74,7 +74,7 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 **中断恢复路由**：检查 `_work/<视频名>/` 最完整产物，**从产出该产物的阶段开头继续**（假设该阶段异常中断、产物可能不完整）：
 
 - 无任何产物 → 从头开始（[阶段〇](#阶段〇字幕机械修复)）
-- 仅 `00_subtitle_snapped.srt` → [阶段一](#阶段一领域预判与准备)（领域预判）
+- 仅 `00_subtitle_snapped.srt` → [阶段一](#阶段一加载集判定与准备)（加载集判定）
 - 仅 `01_subtitle_asr_fixed.srt` → [阶段二 §2.1 术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) 开头（重新第一次遍历，确保 01 完整）
   - 有 `_en_chunks/` + 部分 `_en_results/` → 补派缺失块后 `srt_join_parts.py` 合并
 - 有 `02_terms.md` → [阶段二 §2.3 术语确认](../redstone-preprocess/SKILL.md#23-术语确认) 开头（重新术语确认；[术语入库](../redstone-preprocess/SKILL.md#24-术语入库) 照做）
@@ -135,9 +135,9 @@ description: 用于Minecraft红石技术视频字幕的精细翻译。每次处�
 
 按 [redstone-preprocess#阶段〇字幕机械修复](../redstone-preprocess/SKILL.md#阶段〇字幕机械修复) 原样执行（结构清理 + 时间轴吸附 → `00_subtitle_snapped.srt`）。
 
-### 阶段一：领域预判与准备
+### 阶段一：加载集判定与准备
 
-按 [redstone-preprocess#阶段一领域预判与准备](../redstone-preprocess/SKILL.md#阶段一领域预判与准备) 原样执行（刷新缓存 / 类别预判 / 红石补充加载 / 知识地图 / SOURCE_COVERAGE / asr_fixes）。
+按 [redstone-preprocess#阶段一加载集判定与准备](../redstone-preprocess/SKILL.md#阶段一加载集判定与准备) 原样执行（刷新缓存 / 术语表加载集判定 + 用户门禁 / 红石补充加载 / 知识地图 / SOURCE_COVERAGE / asr_fixes）。
 
 ---
 

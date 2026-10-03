@@ -42,7 +42,7 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 **全流程各阶段（子 skill）的输入与产物**：
 
 1. **阶段〇 字幕机械修复**（`redstone-preprocess`）——纯脚本、零知识 → `<工作目录>/00_subtitle_snapped.srt`（时间轴新基准）
-2. **阶段一 领域预判与准备 + 阶段二 术语补齐**（`redstone-preprocess`）——输入 `<工作目录>/00_subtitle_snapped.srt` → 产物 `<工作目录>/01_subtitle_asr_fixed.srt`、`<工作目录>/02_terms.md`
+2. **阶段一 加载集判定与准备 + 阶段二 术语补齐**（`redstone-preprocess`）——输入 `<工作目录>/00_subtitle_snapped.srt` → 产物 `<工作目录>/01_subtitle_asr_fixed.srt`、`<工作目录>/02_terms.md`
 3. **阶段三 语义回填**（本工作流，产物在 `<工作目录>/reflow/`）
    - 输入：`01` + `02`
    - **`context_estimate.py` 只定 `--owned`（每块 cue 数）；执行一律 subagent**（块数由空隙组 × 组内分片决定，见 「redstone-conventions#长视频分块」）。产物统一块级，按角色名序：
@@ -122,9 +122,9 @@ description: Minecraft 红石技术视频字幕的语义回填（reflow）工作
 
 按 [redstone-preprocess#阶段〇字幕机械修复](../redstone-preprocess/SKILL.md#阶段〇字幕机械修复) 原样执行（结构清理 + 时间轴吸附 → `00_subtitle_snapped.srt`）。
 
-### 阶段一：领域预判与准备
+### 阶段一：加载集判定与准备
 
-按 [redstone-preprocess#阶段一领域预判与准备](../redstone-preprocess/SKILL.md#阶段一领域预判与准备) 原样执行。
+按 [redstone-preprocess#阶段一加载集判定与准备](../redstone-preprocess/SKILL.md#阶段一加载集判定与准备) 原样执行。
 
 ### 阶段二：术语扫描与知识补齐
 

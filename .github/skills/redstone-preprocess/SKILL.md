@@ -1,6 +1,6 @@
 ---
 name: redstone-preprocess
-description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ 领域预判与准备（阶段一）+ 术语扫描与知识补齐（阶段二），产出干净时间轴（00）、ASR 修正字幕（01）与确认术语表（02）。
+description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ 加载集判定与准备（阶段一）+ 术语扫描与知识补齐（阶段二），产出干净时间轴（00）、ASR 修正字幕（01）与确认术语表（02）。
 ---
 
 # 红石字幕翻译前置（redstone-preprocess）
@@ -33,7 +33,7 @@ description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ �
 
 > **为什么在最前**：输入（YouTube 自动字幕）带两类与内容无关的缺陷——**结构**（重叠/倒序 cue）与**时间轴**（按显示节奏生成、边界落在词与词之间）。两者都不需要领域知识，越早修，下游（空隙探测 / 分块 / 补标点 / 锚定）越不会吃进坏边界。
 >
-> **与术语扫描的分界（必须遵守）**：本阶段**绝不动文本**——ASR 误识别修正需要领域预判加载的词汇表 / `asr_fixes` 作先验（见 [阶段一](#阶段一领域预判与准备) 第 6 步），属语义判断，留 [阶段二](#阶段二术语扫描与知识补齐) 的术语扫描。
+> **与术语扫描的分界（必须遵守）**：本阶段**绝不动文本**——ASR 误识别修正需要门禁加载的词汇表 / `asr_fixes` 作先验（见 [阶段一](#阶段一加载集判定与准备) 第 6 步），属语义判断，留 [阶段二](#阶段二术语扫描与知识补齐) 的术语扫描。
 
 1. **跑机械修复**：`python scripts/srt_mech_fix.py <原始ASR.srt> -o 00_subtitle_snapped.srt [--audio <音频> | --video <视频>]`
    - **结构清理**：重叠/倒序 cue 顺延（只调 `start`，`end` 更可信）；异常时长仅告警不自动改（改时长会破坏语义边界）
@@ -45,14 +45,16 @@ description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ �
 
 > 报告默认落 `<工作目录>/speech_align/mech_fix_report.md`（不依赖 cwd）。
 
-## 阶段一：领域预判与准备
+## 阶段一：加载集判定与准备
 
 1. **刷新本地知识**：`python scripts/refresh_cache.py`（统一入口：Mojang/TechMC 自动刷新，**Wiki 只告警不自动抓取**——Wiki 过期页由查证/查询时主动刷新（`--check-page` 判定 → `fetch_wiki.py --refresh`），见 [wiki-tools](../wiki-tools/SKILL.md)；或按需 `glossary_split.py --check`、`glossary_fetch_mojang.py`）
-2. **类别预判**：按 [use-glossary#类别预判](../use-glossary/SKILL.md#类别预判)——读 `.github/experience/glossary_categories.yaml`，扫描标题 / 简介 + 前 ~20 句关键词，命中 ≥2 次加载对应分类。
-   - **产出领域判断并向用户报告确认**
-   - **无法确定 / 拿不准时必须列出候选请用户选择，不得静默跳过**（见 [use-glossary#无法判断时的处理](../use-glossary/SKILL.md#无法判断时的处理)）
-   - 确认后如有该分类未收录的高频词，回填 yaml `keywords`
-3. **红石专属补充加载**：`.cache/mojang/redstone.csv`（~100 条，全量）；`.cache/mojang/<类别>.csv`（非红石 ~1400 条不预加载，L1 未命中 grep 按需查）
+2. **定加载集（常驻 + 命中数候选 + 用户门禁）**：跑 `python scripts/glossary_load_plan.py <字幕.srt>`（用 `00_subtitle_snapped.srt`）；实际常驻表用 `--list-resident` 查
+   - 脚本自动：**常驻集无条件加载** + 用字幕扫全部非 L1.5 表 → **命中词条数 ≥3 的表列为候选**（附命中数、命中样例、未达阈值全貌）
+   - **必须把报告报用户门禁确认**，由用户剔除非必要表；裁定后跑 `--record "<剔除的表>"`（候选全保留则 `--record`）
+   - 门禁**自动写日志** `glossary_gate_log.md`（探测范围 → 用户决策，供调阈值）
+   - **不读 `glossary_categories.yaml` 判类别**（其 keywords 覆盖面与字幕实际用语脱节）；报告见 [use-glossary#加载集判定](../use-glossary/SKILL.md#加载集判定)
+   - **不得静默跳过门禁**
+3. **L1.5 按需查询**：`.cache/mojang/redstone.csv`（归 L1，已入常驻集）；`.cache/mojang/blocks.csv`、`items.csv`、`entities.csv`、`misc.csv`（归 L1.5，**不注入 ASR 通道**——含 `water`/`thing` 类通用词会稀释注意力并诱发误纠）→ **L1 未命中时按需 grep 查询**，不整体加载
 4. **加载知识地图**：读 `indexes/knowledge/` + `indexes/repos/_manifest.md`（机制知识卡 `knowledge/02_mechanic/`、外部仓库经索引定位）
 5. 读 `docs/SOURCE_COVERAGE.md`（各数据源擅长/不擅长）
 6. 读全局 `.github/experience/asr_fixes.md` + 本视频局部 `_work/<视频名>/asr_fixes.md`（准备 ASR 解码）
@@ -73,7 +75,14 @@ description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ �
 > 6. 校验
 > 7. 汇总
 
-1. **加载领域知识**：加载阶段一判定的分类术语文件（L2 按文件名、L1 全量），建立术语映射表
+1. **加载术语表（两个通道不同，勿混）**：
+   - **ASR 纠错通道**（阶段一第 2 步产出）：显式清单 = **常驻集 + 门禁后保留的候选**，
+     经 `render_preprocess_prompt.py --glossary <csv...>` 注入（见下方第一次遍历）；
+     只注 **L1 + L2**，**L1.5 不注**（含通用词，稀释注意力且诱发误纠）
+   - **术语扫描通道**（阶段二第 3 步 `glossary_lookup.py scan`）：**L1 始终全量**（无参数可限），
+     **L2 按 `--categories <文件名>` 显式指定** = 门禁后保留的 L2 表（附常驻 `general`）
+   - **门禁只影响注入面，不改变扫描通道的 L1 全量行为**——L1 表短且库小，全量无害；
+     L2 宽表才是需要门禁筛的对象
 2. **第一次遍历（英文预整理，分块派 subagent）**，产出 `01_subtitle_asr_fixed.srt`：
    - **定 N + 分块（派发必经第一步，勿整条读字幕）**：
      1. `python scripts/context_estimate.py <00_subtitle_snapped.srt> --no-amplification` 定 `--owned`
@@ -90,14 +99,14 @@ description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ �
   - 跨视频通用 → 全局表
   - 视频专属 → 局部 `asr_fixes.md`
    - **跨行合并成整句 / 合并时间戳是阶段三的重活，此处不做**（translate 走两遍式断句；reflow 走回填的空隙探测 + 补标点）
-3. **机械查找**：`python scripts/glossary_lookup.py scan <01> --categories <L2 集合> --levels L1,L2 --out scan_terms.txt`，命中项无论像不像术语一律按登记译名处理
+3. **机械查找**：`python scripts/glossary_lookup.py scan <01> --categories <门禁后的 L2 表名> --levels L1,L2 --out scan_terms.txt`，命中项无论像不像术语一律按登记译名处理（L1 始终全量；L1.5 默认不扫）
 4. **术语识别（派 subagent）**：
    1. **定 N**：`python scripts/context_estimate.py <01> --no-amplification`（**预测阈值，不使用放大倍数参数**）
    2. **分块**：`python scripts/text_chunk.py <01> --type srt --owned <N> --ctx <M> --out _term_chunks/`
    3. **渲染派发 prompt**：`python scripts/render_preprocess_prompt.py task-term-recognition --video <工作目录> --all --scan <scan_terms.txt>`（自动注入 scan 命中项按块过滤 + 领域术语集 + ASR 修正映射）
    4. **逐块派 subagent**：任务文件 = `term-scan/task-term-recognition`，结果写 `_work/<视频名>/_term_results/chunk_<k>.txt`（执行一律 subagent，见 「redstone-conventions#长视频分块」）
 5. **主会话汇总**：按 `term_en` 合并去重；`[ASR 推测]`/`[推断]`/`[待审核]` 行保留**首次时间戳**（格式 `HH:MM:SS`，取字幕时间码精确值）；L3 未命中进 [集中补齐](#22-集中补齐)
-6. **非预期命中记录**：scan 命中项/查词/知识卡若来自**未预判分类**的词汇表 → 记录该分类 + 命中词，阶段末回填 yaml `keywords`（见 [use-glossary#运行中反哺](../use-glossary/SKILL.md#运行中反哺)）
+6. **未加载表漏刷回记**：译/扫/查词时命中**未加载表**里的词且确实需要 → 报用户补充加载，并记入 `glossary_gate_log.md` 备注（供调阈值，见 [use-glossary#运行中反哺加载集修正](../use-glossary/SKILL.md#运行中反哺加载集修正)）
 
 > subagent 任务规则见 `term-scan/task-en-preprocess`（第一次遍历）与 `term-scan/task-term-recognition`（术语识别）（现成任务文件；prompt 由 `scripts/render_preprocess_prompt.py` 渲染，派发配方见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）。
 
