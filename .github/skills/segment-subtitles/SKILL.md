@@ -129,7 +129,7 @@ ASR 可能完全无标点，**合并的唯一判据是语义完整性**——一
 
 ## 输出与校验
 
-- **译文引号用 `「」`**：字幕译文（含 `ref_translations/` 样本、`s04_draft.srt` / `r04_*.srt` 产物）中对话引号一律用 `「」`（中文习惯、排版美观）；文档正文则按 [SYMBOLS](../../../docs/SYMBOLS.md)（`「」` 引具名对象、`“”` 指称概念）
+- **标点随语言**：中文译文用中文标点（对话引号 `「」`）——字幕译文中对话引号一律 `「」`（中文习惯、排版美观）；文档正文则按 [SYMBOLS](../../../docs/SYMBOLS.md)（`「」` 引具名对象、`“”` 指称概念）；撇号 / 破折号 / 冒号随语言，且不得用以承担语气（原则见 [SYMBOLS#标点随语言](../../../docs/SYMBOLS.md#标点随语言)）
 - 断句定稿写入 `s03_plan.md`（格式见 [translate-redstone#阶段三正式翻译](../translate-redstone/SKILL.md#阶段三正式翻译) · 产物契约）
 - 每次合并/分割后**立即校验**（**必须通过**才能进入下一步）：
   1. 时间不重叠 + 边界归属 + 段序：`python scripts/srt_check_segments.py <s03_plan.md 或 draft.srt> --orig <01_subtitle_asr_fixed.srt>`（检查相邻段 `end_i ≤ start_{i+1}` 不重叠、时间边界 ⊆ 原边界集、不逆序、cue 覆盖完整；默认只给问题数，`--expand` 看每条明细）

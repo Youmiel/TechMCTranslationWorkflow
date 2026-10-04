@@ -5,7 +5,6 @@ spawn tower,,服务器出生点附近的塔形地标/设施。,来源：6sPS4yqC
 node,,末影龙寻路系统的基本单元：龙用于创建飞行路径的坐标点。视频原文定义：a coordinate that the dragon uses to create paths。,[推断：视频上下文定义] 来源：kxHpyV95rB0 视频 c17 附近；2026-08-05 用户确认,节点,
 pathfind;pathfinding,,（末影龙）在寻路节点之间规划飞行路径的行为/机制。视频原文：how dragon path finds。,[推断：视频上下文定义] 来源：kxHpyV95rB0 视频 c13；2026-08-05 用户确认,寻路,
 pulling piston,,拉动活塞：黏性活塞收回时拉动方块的角色。,[推断：视频上下文] 来源：22UL5d4G3mY 视频；2026-08-07 测试工作流阶段一 §1.3,拉动活塞,
-backwards wire component,,视频内定义的组件：为反向延伸的两个触发输入提供延迟，使引擎能一次移动一格,[推断：视频上下文] 来源：22UL5d4G3mY 视频 c63 附近；2026-08-10 用户审核无意见确认,反向布线组件,
 pull,,名词用法：活塞拉动次数（如 five pulls）,[推断：与 pulling piston 同族] 来源：22UL5d4G3mY 视频；2026-08-10 用户审核无意见确认,拉动,
 omega long pulse extender,,输出时间很长的脉冲延长器（ASR 误听 an ilmango um）,来源：uVOFckoMdIU 视频 00:24:31；2026-08-12 用户确认,超长脉冲延长器,
 geode perimeter,,围绕紫晶洞修建的空置域（用于紫晶农场）。,[推断：geode=紫晶洞+perimeter=空置域] 来源：QSDpdXT9SPs 视频 c232-c233；2026-08-13 用户确认,紫晶洞空置域,
