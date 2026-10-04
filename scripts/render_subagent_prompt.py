@@ -28,11 +28,14 @@ sys.stdout.reconfigure(encoding="utf-8")
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(PROJECT_ROOT, ".github", "skills")
 DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md")
+# 陷阱词清单（触发层，与术语词汇表正交）——解析见 shared/traps.py
+TRAP_WORDS_PATH = os.path.join(PROJECT_ROOT, ".github", "experience", "trap_words.md")
 
 SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 from shared.srt_common import HARD_MAX, SOFT_MAX, MAX_LINE  # noqa: E402
+from shared.traps import load_traps  # noqa: E402
 
 # 值占位符：模板里写占位符，渲染时从共享层常量填入真实值。
 # 为什么需要它（两条路都不能走）：
@@ -88,7 +91,7 @@ TASKS = {
             "format_file": "docs/PRODUCT_FORMATS_REFLOW.md",
             "inputs": ["reflow/r01_results/chunk_<k>.txt"],
             "output": "reflow/r02_results/chunk_<k>.txt",
-            "prior": ["humanizer", "terms"],
+            "prior": ["humanizer", "terms", "traps"],
         },
         {
             "skill": "reflow2",
@@ -98,7 +101,7 @@ TASKS = {
             "format_file": "docs/PRODUCT_FORMATS_REFLOW.md",
             "inputs": ["reflow2/r01_results/chunk_<k>.txt"],
             "output": "reflow2/r02_results/chunk_<k>.txt",
-            "prior": ["humanizer", "terms"],
+            "prior": ["humanizer", "terms", "traps"],
         },
         {
             "skill": "translate-redstone",
@@ -108,7 +111,7 @@ TASKS = {
             "format_file": "docs/PRODUCT_FORMATS_TRANSLATE.md",
             "inputs": ["_merge_results/chunk_<k>.txt"],
             "output": "_trans_results/chunk_<k>.txt",
-            "prior": ["humanizer", "terms"],
+            "prior": ["humanizer", "terms", "traps"],
         },
     ],
     "task-merge": {
@@ -312,6 +315,14 @@ def collect_priors(cfg, video_dir, chunk, prior_files):
             )
         else:
             parts.append("### 术语表\n\n（未找到 02_terms.md）")
+
+    if "traps" in cfg["prior"]:
+        traps = load_traps(TRAP_WORDS_PATH)
+        if traps:
+            parts.append(
+                "### 陷阱词（看似普通、实有约定译名；标准译名列标 **禁译** 的一律不得使用）\n\n"
+                + traps
+            )
 
     for pf in prior_files:
         parts.append("### 本块特殊说明（主会话复核结论）\n\n" + read(pf))

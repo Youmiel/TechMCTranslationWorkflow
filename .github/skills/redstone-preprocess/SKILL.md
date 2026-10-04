@@ -115,7 +115,7 @@ description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ �
 4. **术语识别（派 subagent）**：
    1. **定 N**：`python scripts/context_estimate.py <01> --no-amplification`（**预测阈值，不使用放大倍数参数**）
    2. **分块**：`python scripts/text_chunk.py <01> --type srt --owned <N> --ctx <M> --out _term_chunks/`
-   3. **渲染派发 prompt**：`python scripts/render_preprocess_prompt.py task-term-recognition --video <工作目录> --all --scan <scan_terms.txt>`（自动注入 scan 命中项按块过滤 + 领域术语集 + ASR 修正映射）
+   3. **渲染派发 prompt**：`python scripts/render_preprocess_prompt.py task-term-recognition --video <工作目录> --all --scan <scan_terms.txt>`（自动注入 scan 命中项按块过滤 + 陷阱词清单 + 领域术语集 + ASR 修正映射）
    4. **逐块派 subagent**：任务文件 = `term-scan/task-term-recognition`，结果写 `_work/<视频名>/_term_results/chunk_<k>.txt`（执行一律 subagent，见 「redstone-conventions#长视频分块」）
 5. **主会话汇总**：按 `term_en` 合并去重；`[ASR 推测]`/`[推断]`/`[待审核]` 行保留**首次时间戳**（格式 `HH:MM:SS`，取字幕时间码精确值）；L3 未命中进 [集中补齐](#22-集中补齐)
 6. **未加载表漏刷回记**：译/扫/查词时命中**未加载表**里的词且确实需要 → 报用户补充加载，并记入 `glossary_gate_log.md` 备注（供调阈值，见 [use-glossary#运行中反哺加载集修正](../use-glossary/SKILL.md#运行中反哺加载集修正)）

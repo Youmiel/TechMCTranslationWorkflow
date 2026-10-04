@@ -53,4 +53,4 @@ license: CC BY-NC-SA
 ### 来源与关联
 
 - 来源：wiki `红石电路/充能与激活`（2026-08-29 版）+ 用户裁定（2026-09-13，ZXGpmaIcMMo PRR 5 审核）
-- 关联：`.github/experience/trap_words.md`（mechanical 分类）、`.github/experience/source_experience.md`、`knowledge/01_terminology/redstone_concepts.csv`
+- 关联：`.github/experience/trap_words.md`（general 分类）、`.github/experience/source_experience.md`、`knowledge/01_terminology/redstone_concepts.csv`

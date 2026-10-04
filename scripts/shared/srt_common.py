@@ -124,7 +124,9 @@ UNAMBIGUOUS_TERMINATOR_CLASS = "".join(
 STITCH_RE = re.compile(r"【延伸句】.*?[" + TERMINATOR_CLASS + r"]|【承接句】.*?(?:[" + TERMINATOR_CLASS + r"]|(?=\n)|$)", re.DOTALL)
 # 预分句用：只剔除标记前缀本身、保留补全内容（内容为本块真实句子，需参与 E/Z 锚定）——
 # 与 STITCH_RE 连内容剥离（校验视角）不同；见 strip_stitch_prefix docstring（uVOFckoMdIU S94 事故修复）
-STITCH_PREFIX_RE = re.compile(r"[(?:承接句|延伸句)]")
+# 注：必须用 `【(?:...|...)】` 精确匹配标记——写成字符类 `[(?:承接句|延伸句)]` 会删掉正文中
+# 每个「延/接/句/承/伸」与 `( ) ? : |`（2026-10-05 LyU6a4PuDjo 丢字事故）
+STITCH_PREFIX_RE = re.compile(r"【(?:承接句|延伸句)】")
 
 
 def parse_time(s):

@@ -57,6 +57,7 @@
 - 当视频属 **1.12.2 单机黑科技**时 → 先加载 `.cache/glossary/1.12.2_magic.csv`，因为该分类专收 1.12.2 特有机制的既有译名（如异步侦测器链、瞬时计划刻、区块装饰、同步锁方法等方向）；Mojang 官方表对这类黑科技概念**零覆盖**，勿浪费时间在 L1。（案例：h1eUsp29rpY 21 条术语中 9 条由该分类直接命中，其余走视频自陈定义 + 用户裁定）
 - 当视频属非 Minecraft 领域（人物传记/科普/纪实）时 → 跳过项目术语表与知识库加载（不适用），技术事实与专名拼写以维基百科等权威网络源为准，且**专名密集时先按权威源建立正确拼写清单再翻译**，因为项目资产只覆盖 Minecraft 技术域、ASR 对专名误识别密集且大小写不可信。（案例：Terry Davis/TempleOS 传记，行数 119,667、ASU 电气工程硕士等从维基词条确认，J Operating System/LoseThos/HolyC 均由词条校正）
 - 当术语在三级路由（knowledge → .cache → Wiki）均无权威源、属社区/视频机制专属时 → 以视频内原文定义 + 上下文推断 + 用户确认作锚，因为此类术语常由机制命名、无官方译名，用户确认是最可靠锚点（与数电常识/官方表固定译名形成对照）。（案例：uVOFckoMdIU 潜影贝农场主题 supercharger/social aggro/trash mob/aggro engine 等 16 条社区术语全用户确认；duplication mechanic 用 Wiki 机制确认；f7N4bmqWUco 活塞门类俗称 hipster door / flush 2x2 / Jeb door / vault door 与 updater block、0t、活塞方块流、物品实体对齐 共 8 条经用户裁定为 2×1 下吸门 / 2×2 内吸门 / Jeb 门 / 漏斗门 / 更新方块 / 0t / 活塞方块流 / 物品实体对齐）
+- 当 L3 待查项是**方块 / 物品 / 实体的官方名**（Beehive / Copper bulb / Item frame / respawn anchor / ocelot…）时 → 先跑 `python scripts/glossary_lookup.py query <词...>` 查 `.cache/mojang/` 的 `blocks.csv` / `items.csv` / `entities.csv`（**L1.5**），因为机械扫描 `glossary_lookup scan` 只走 L1/L2、L1.5 一律落 L3——但本地已有官方译名，无需查 Wiki。（案例：LyU6a4PuDjo 37 条 L3 中 12 条（蜂箱/蜂巢/铜灯/物品展示框/雕纹书架/重生锚/豹猫/唱片机…）实为 L1.5 命中）
 
 ## 译名与语境裁定
 

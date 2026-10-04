@@ -127,11 +127,6 @@ WARN_GROUPS = {"F"}
 # 豁免：自有“阶段 X”体系、与工作流编号空间无关的文件（不进 A 组检查）
 PHASE_TOKEN_EXEMPT_FILES = (".github/skills/video-abstract/SKILL.md",)
 
-# 豁免：P 组引用块检查（**待办**：小节含义/分类名规范未定，定了就删本行）
-# trap_words.md 的小节下 `>` 中文名来自 glossary_categories.yaml 的 label（零消费方的双源），
-# 其去留取决于分类名权威的裁定（见 docs/SYMBOLS.md 维护节）。
-BQ_EXEMPT_FILES = (".github/experience/trap_words.md",)
-
 # ---- 正则 ----
 # 阶段令牌：捕获 `阶段` 后紧跟的“编号性”字符（数字 / 汉字数字 / 分数 / 加号 / 单个 ABC）
 PHASE_TOKEN_RE = re.compile(r"阶段\s*([0-9零〇一二三四五六七八九十百½¼¾+]+|[ABC])(?![0-9零〇一二三四五六七八九十])")
@@ -595,7 +590,7 @@ def check_p(rel, text, problems):
     - P2：正文中 `>` 块首行无句末标点、非 ⚠️、无出处
     豁免：H1 后导语、`> ⚠️`、代码围栏内（格式骨架示例）。
     """
-    if Path(rel).suffix != ".md" or rel in BQ_EXEMPT_FILES:
+    if Path(rel).suffix != ".md":
         return
     lines = text.split("\n")
     head_lv, head_txt = 0, ""

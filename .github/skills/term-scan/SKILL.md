@@ -72,7 +72,7 @@ description: 阶段二术语扫描（redstone-preprocess [术语扫描](../redst
 ## 术语识别
 
 > 任务规则见 `task-term-recognition.md`（命中项强制查词 / trap_words / ASR 推测 / 补变体 / 排误报 / L3 标记）。
-> - prompt 由 `render_preprocess_prompt.py task-term-recognition` 渲染（自动注入 scan 命中项按 OWNED cue 过滤 + 领域术语集 + ASR 修正映射）
+> - prompt 由 `render_preprocess_prompt.py task-term-recognition` 渲染（自动注入 scan 命中项按 OWNED cue 过滤 + 陷阱词清单 + 领域术语集 + ASR 修正映射）
 > - 派发见 redstone-preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)；先验知识注入顺序见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)
 
 ## 集中补齐

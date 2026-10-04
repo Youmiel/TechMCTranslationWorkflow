@@ -73,7 +73,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > 1. 读模板正文（`<k>` / `<视频名>` 占位替换）
 > 2. 逐字追加纪律母版（`_discipline.md` 单一权威）
 > 3. 注入产物格式约定
-> 4. 注入先验知识（术语直读 02_terms.md / humanizer-inject / 空隙断句标记）
+> 4. 注入先验知识（术语直读 02_terms.md / 陷阱词清单 / humanizer-inject / 空隙断句标记）
 > 5. 生成块数据引用
 >
 > **完整 prompt 文本不进主会话历史**，主 agent 只发渲染命令 + 派发引用。任务**特有规则直接内联**在任务文件（不建独立规则文件）；**通用纪律**由 `_discipline.md` 单一权威；**产物格式约定**（格式查找路径）由渲染脚本注入（见下）。
@@ -109,13 +109,13 @@ subagent prompt = 任务文件内容（含任务特有规则）
 > - 无外部格式权威的任务（如 `task-summary`）此项省略
 > **`## 先验知识` 内部顺序**：**高优先级靠前、紧贴对应任务规则**，不得打乱。
 > - **事实源 = 各渲染脚本 `TASKS[task]["priors"]` 的列表序**
->   - `task-translate` = `["humanizer","terms"]`
+>   - `task-translate` = `["humanizer","terms","traps"]`
 >   - `task-punctuate` = `["breaks"]`
 >   - `task-split` = `["breaks"]`
 >   - `task-match` = `[]`
 >   - `task-consistency` = `[]`（块内对立扫描不需中文译名，也不需空隙断句标记）
 >   - `task-en-preprocess`（`render_preprocess_prompt.py`）= `["asr_trigger","asr","glossary"]`（触发清单 → 映射表 → 词集，皆紧贴对应规则）
->   - `task-term-recognition`（同上）= `["scan","glossary","asr"]`
+>   - `task-term-recognition`（同上）= `["scan","glossary","traps","asr"]`（命中项查词 → trap_words 强制 → ASR 推测，按任务规则序）
 > - 整体拼接按“纪律 → 格式 → 知识 → 数据”序
 > - 需主会话判断的额外先验（块边界情况、前文摘要等）用 `--prior-file` 传文件追加到 `## 先验知识`
 

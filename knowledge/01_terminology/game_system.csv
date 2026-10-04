@@ -23,3 +23,4 @@ tick phases,,服务端每游戏刻的方块运算阶段（随机刻、计划刻�
 blast resistance,,方块在爆炸中吸收并阻止爆炸破坏传播的强度,来源：zh wiki 方块基本属性页；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:03:45,爆炸抗性,
 fluid tick,,流体按速率扩散所依赖的计划刻系统（与方块计划刻成对）,来源：_repos/gtmc-articles/（基础概念与结构）；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:13:35,流体计划刻,
 block state;blockstates,,方块存储的属性集合（如朝向、开关等）,来源：zh wiki 方块实体页；视频 〈Minecraft's Pistons are probably The BEST Addition To The Game | PRR 4〉（f7N4bmqWUco） 00:14:19,方块状态,
+gametick,,Minecraft 时间单位，1 游戏刻 = 1/20 秒；红石延迟以游戏刻计,zh wiki 红石术语表（教程）；What You Don't Know About Minecraft's Diodes - PRR 2（LyU6a4PuDjo）,游戏刻,

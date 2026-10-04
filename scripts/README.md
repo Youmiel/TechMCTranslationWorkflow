@@ -5,7 +5,7 @@
 
 **目录约定**：本目录（`scripts/`）只放**工作流与维护会用到的工具**（有 CLI 入口）；
 不含 CLI 的**共享模块放语义文件夹**——
-`shared/`（跨工具共享：`srt_common.py` 字幕公共层——含**跨语言通用标点角色表**、`asr_common.py` ASR 修正链路公共层、`request_identity.py` 请求身份、`glossary_sources.py` **术语源适配层**）、
+`shared/`（跨工具共享：`srt_common.py` 字幕公共层——含**跨语言通用标点角色表**、`asr_common.py` ASR 修正链路公共层、`request_identity.py` 请求身份、`glossary_sources.py` **术语源适配层**、`traps.py` **陷阱词清单解析层**）、
 `srt_reflow_core/`（reflow 实现包，含断句引擎 `punct.py`）、`mojang_glossary/`（Mojang 词表实现包）。
 **`_dev/`**（开发分析工具，**非工作流依赖**——见下方专节）。
 导入方式：工具内 `from shared.srt_common import ...`（**绝对导入**——包存在顶层/包内两种导入路径，
@@ -35,6 +35,8 @@
 > **新增词汇表时**：只需在 `glossary_sources.EN_CANDIDATES`/`ZH_CANDIDATES`/`SHORT_CANDIDATES` 补该表的列名即可被全部消费方识别，**不要在各工具里另写解析**。
 
 > `mojang_glossary/` 是 `glossary_fetch_mojang.py` 的实现包（内部逻辑），**非独立工具，勿直接调用**；`__init__.py`、`LICENSE` 非工具。
+
+> `shared/traps.py` — **陷阱词清单解析层**：读 `.github/experience/trap_words.md` 的 `## <分类名>` 段，供两个渲染脚本把清单整体注入翻译任务与术语识别任务的 prompt。
 
 ## ASR 修正工具
 

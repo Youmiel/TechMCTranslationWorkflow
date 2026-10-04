@@ -31,6 +31,6 @@ description: 术语识别任务——对字幕块做术语识别（命中项强�
 > **渲染步骤说明**（渲染时剥离）：最终 prompt 由 `scripts/render_preprocess_prompt.py task-term-recognition` 按序组装——
 > 1. `纪律母版` = subagent-dispatch 纪律母版（整体追加）
 > 2. `产物格式约定` = 无外部格式权威（输出格式已内联于本文件「输出」节）
-> 3. `## 先验知识` = scan 命中项（按 OWNED cue 过滤，紧贴任务规则 1）+ 领域术语集 + ASR 修正映射
+> 3. `## 先验知识` = scan 命中项（按 OWNED cue 过滤，紧贴任务规则 1）+ 陷阱词清单（紧贴任务规则 2）+ 领域术语集 + ASR 修正映射（紧贴任务规则 3）
 > 4. `## 本块数据` = 数据文件引用：`_term_chunks/chunk_<k>.txt`
 > 5. `写盘/报告约定` = 写入 `_term_results/chunk_<k>.txt` + 报告 `已写入 chunk_<k>.txt`

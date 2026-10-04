@@ -35,11 +35,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from shared.glossary_sources import iter_terms  # noqa: E402  （术语源适配层，单一权威）
+from shared.traps import load_traps  # noqa: E402  （陷阱词清单解析）
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKILLS_DIR = os.path.join(PROJECT_ROOT, ".github", "skills")
 DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md")
 ASR_FIXES_GLOBAL = os.path.join(PROJECT_ROOT, ".github", "experience", "asr_fixes.md")
+# 陷阱词清单（任务规则 2 `trap_words` 强制的清单来源）
+TRAP_WORDS_PATH = os.path.join(PROJECT_ROOT, ".github", "experience", "trap_words.md")
 
 # ASR 触发清单小节头（可执行方案 §五 5.2）。**纪律必须显式**——清单是前置必做项，
 # 缺失纪律会被当作“参考信息”而跳过；“不改变规则 1”一句是防**注意力隧道**（只看清单、
@@ -69,7 +72,8 @@ TASKS = {
         "inputs": ["_term_chunks/chunk_<k>.txt"],
         "output": "_term_results/chunk_<k>.txt",
         "chunks_key": "_term_chunks",
-        "priors": ["scan", "glossary", "asr"],
+        # 顺序 = 任务规则序：命中项查词（1）→ trap_words 强制（2）→ ASR 推测（3）
+        "priors": ["scan", "glossary", "traps", "asr"],
     },
     "task-en-preprocess": {
         "skill": "term-scan",
@@ -277,6 +281,14 @@ def collect_priors(cfg, video_dir, chunk, scan_path, glossary_paths, asr_fixes_p
             else:
                 head = "### 领域术语集（术语译名参考）\n\n"
             parts.append(head + "\n".join(rows))
+
+    if "traps" in priors:
+        traps = load_traps(TRAP_WORDS_PATH)
+        if traps:
+            parts.append(
+                "### 陷阱词清单（规则 2：下列词含词形变体，强制查词，不论是否已登记入 L1）\n\n"
+                + traps
+            )
 
     if "asr" in priors:
         global_lines = parse_asr_fixes(ASR_FIXES_GLOBAL)

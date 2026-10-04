@@ -27,3 +27,4 @@ hex-to-binary transmission,,十六进制转二进制的信号传输方案（用�
 redstone coder,,红石编码器：将按钮/输入编码为红石信号组合的装置（ASR 原文 red coder）,来源：uVOFckoMdIU 视频 00:21:58；2026-08-12 用户确认,红石编码器,
 on-off panel,,合成器开关面板：可单独或组合开启各类型合成器。,[推断：on-off+panel=面板（_repos/techmc-glossary/ storage 类）] 来源：QSDpdXT9SPs 视频 c123；2026-08-13 用户确认,开关面板,
 redcoder,,用红石信号解码/选择模式的装置（ASR 误听 red coder）,来源：uVOFckoMdIU 视频 00:21:58；2026-08-14 用户确认；_repos/techmc-glossary/（computational 类）相关,红石信号解码器,
+7 segment display,,用七段数码管显示数字的红石显示装置,zh wiki 红石计算器（教程）；What You Don't Know About Minecraft's Diodes - PRR 2（LyU6a4PuDjo）,七段数码管,

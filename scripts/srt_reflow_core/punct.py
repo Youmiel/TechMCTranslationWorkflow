@@ -56,10 +56,16 @@ from shared.srt_common import (
 #     不断顿号 = 低软 4.0 + 超软 4.2 + 逗号×3(15.0) = 23.2（用户要的结果）
 #     顿号断开 = 超软 2.0 + 逗号×2(10.0) + 顿号 → 需顿号代价 > 13.2 才落败 → 取 18.0（留余量）
 #   注意：顿号**仍可断**（超硬限时它是唯一出路）——完全禁止会使并列项长句切不动、直接超硬限。
+# 开括号前的断点角色（非字符角色，split_atomic 在 depth==0 遇开括号时产出）：
+# 把整个括注后移 = 保持括号完整的首选切法，代价应低于
+# 「括号内标点 + BRACKET_BREAK_PENALTY」（如括号内逗号 = 5.0 + 6.0 = 11.0）。
+BRACKET_OPEN_ROLE = "bracket_open"
+
 DEFAULT_BREAK_COST = {
     TERMINATOR: 0.0,
     STRONG: 2.0,
     RPAREN: 3.0,      # 比 strong 高：括注后是否可断需语义判断，宽度应作主导
+    BRACKET_OPEN_ROLE: 3.0,   # 开括号前断开（括注整体后移）——同 rparen 级
     CLAUSE: 5.0,
     LIST: 18.0,       # 最后手段：优先保住并列成分完整，切不动时才用
 }
@@ -257,6 +263,12 @@ def split_atomic(text, profile):
     while i < n:
         ch = text[i]
         if ch in profile.open_chars:
+            # 开括号前可断（把整个括注后移）——“优先保持括号完整”的首选切点：
+            # 无此断点时，括号内逗号是唯一出路（`…中继器（当然，除非你布线更巧妙）。`
+            # 会被切成 `…中继器（当然，` + `除非你布线更巧妙）。`，用户 2026-10-05 指出）
+            if depth == 0 and buf:
+                segs.append(("".join(buf), BRACKET_OPEN_ROLE, False))
+                buf = []
             depth += 1
         elif ch in profile.close_chars:
             depth = max(0, depth - 1)
@@ -325,8 +337,8 @@ def split_by_nearby_punct(segs, widths, profile=None):
     if n == 1:
         return [(full, None)]
     if len(atoms) < n:
-        # 原子段比目标片数还少（副语言断点素材极稀疏）→ 无可依标点，退回均分
-        return _even_split(full, n)
+        # 原子段比目标片数还少（副语言断点素材极稀疏）→ 无可依标点，退回按宽度比例的词边界切分
+        return _even_split(full, n, widths)
 
     cost = profile.break_cost if profile is not None else DEFAULT_BREAK_COST
     ends, acc = [], 0
@@ -351,9 +363,12 @@ def split_by_nearby_punct(segs, widths, profile=None):
             if ends[k] <= prev or atoms[k][1] is None:
                 continue                              # 越界 / 无标点的原子段尾不作候选
             bucket = int(abs(ends[k] - t) / tol)      # 距离分桶：同桶内比标点强度
-            legal.append((bucket, cost.get(atoms[k][1], 0.0), ends[k]))
+            # 同桶同强度时按**距目标最近**取（旧写法直接比 ends[k]，会取最早的断点：
+            # `Well, if you said 3 repeaters on 8, 8 and 4 gameticks, you'd be correct.`
+            # 目标 ≈29 字符却切在 `Well,`(5)——用户 2026-10-05 指出）
+            legal.append((bucket, cost.get(atoms[k][1], 0.0), abs(ends[k] - t), ends[k]))
         if legal:
-            cut = min(legal)[2]
+            cut = min(legal)[3]
         else:
             hi = ends[max_idx] if max_idx >= 0 else total_len
             cut = _nearest_word_cut(full, t, prev, max(hi, prev + 1))
@@ -366,7 +381,9 @@ def split_by_nearby_punct(segs, widths, profile=None):
         start = c
     while len(frags) < n:
         frags.append("")
-    return [(f, None) for f in frags[:n]]
+    # 片段去首尾空白：切点落在“标点 + 空格”之后时，后片会带前导空格
+    # （双语行显示为 “ are often overlooked, …”，用户 2026-10-05 指出）
+    return [(f.strip(), None) for f in frags[:n]]
 
 
 def split_secondary(text, widths, profile=None):
@@ -391,17 +408,36 @@ def _nearest_word_cut(full, t, lo, hi):
     return min(cands, key=lambda p: (abs(p - t), p))
 
 
-def _even_split(full, n):
-    """无标点可用时的兜底：按**词边界**均分 n 片（不劈词；片数不足时补空串）。"""
+def _even_split(full, n, widths=None):
+    """无标点可用时的兜底：按**词边界**切 n 片（不劈词；片数不足时补空串）。
+
+    有 `widths`（目标语言各单元宽度）时按**宽度比例**定词数切点——与
+    `split_by_nearby_punct` 的目标位置口径一致，避免“中文段长、英文片却等长均分”
+    的失衡（用户 2026-10-05 指出：`what do you think happens when I input a | pulse …`
+    按均分劈在 `a | pulse` 短语中间）。
+    """
     words = re.findall(r"\S+", full)
-    out = []
     if not words:
         return [("", None)] * n
+    m = len(words)
+    if widths and len(widths) == n and sum(widths) > 0:
+        total_w, cum, cuts = float(sum(widths)), 0.0, []
+        for w in widths[:-1]:
+            cum += w
+            cuts.append(m * cum / total_w)
+        out, prev = [], 0
+        for i, c in enumerate(cuts):
+            c = max(prev + 1, min(int(round(c)), m - (n - i - 1)))
+            out.append(" ".join(words[prev:c]))
+            prev = c
+        out.append(" ".join(words[prev:]))
+        return [(s, None) for s in out]
+    out = []
     for i in range(n):
         if i == n - 1:
-            out.append(" ".join(words[len(words) * i // n:]))
+            out.append(" ".join(words[m * i // n:]))
         else:
-            out.append(" ".join(words[len(words) * i // n:len(words) * (i + 1) // n]))
+            out.append(" ".join(words[m * i // n:m * (i + 1) // n]))
     while len(out) < n:
         out.append("")
     return [(s, None) for s in out[:n]]
