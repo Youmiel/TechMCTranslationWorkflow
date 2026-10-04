@@ -16,7 +16,7 @@
 
 ## 用法（命令根 = Project_Main/）
 
-  python scripts/asr_check_trigger.py --video <工作目录> [--chunk <k>] [--expand]
+  python scripts/asr_check_trigger.py --video <工作目录> [--chunk <k>] [--expand] [--stats]
 
 默认只报未处理项数量（按块统计）；`--expand` 展开明细；`--chunk <k>` 单块
 （单块模式默认展开该块详情）。
@@ -36,8 +36,22 @@
   的 `_y_layer_step0_misrefix.py`，在 `Project_Main/` 下执行），
   确有实例再开 A/B（`scripts/_dev/asr_bench_b.py gen` 基础设施已具备）
 - 完整判据与背景见：`References/ASR修正-实测资料/pre-implementation/Y_LAYER_VERIFICATION.md`
+
+## 🚨 观测指标（`--stats`）：注意力偏离 / 发现能力退化
+
+清单机制把“发现”从注意力驱动改为清单驱动，代价是**两个新风险**（可执行方案 §八）：
+
+| 风险 | 判据（`--stats` 给出） | 阈值 |
+|---|---|---|
+| **清单挤占上下文** | 单块 OWNED 清单**行数** + **字符数** | 无硬阀值，**趋势**为准（对比历史） |
+| **发现能力退化** | `[ASR 推测]` 条数（联想通道产物） | 不应**降至零**或显著下降 |
+| **注意力隧道** | `[ASR 推测]` 与清单项的比例 | 若 `[ASR 推测]` 为零且清单非空 → 疑隧道 |
+
+> 本项**只报观测值、不拦**（与覆盖率闸门正交）——目的是让“发生”**能立刻看见**，
+> 而非靠事后回忆。触发重议的条件见 `deferred-features.md`（repo 记忆）。
 """
 import argparse
+import collections
 import os
 import re
 import sys
@@ -264,6 +278,70 @@ def counts_by_chunk(rows):
     return counts
 
 
+def collect_stats(video_dir):
+    """观测指标：清单长度分布 + 各类决策计数（不拦，只报）。"""
+    tpath = os.path.join(video_dir, TRIGGERS_NAME)
+    items = parse_triggers(tpath) if os.path.exists(tpath) else []
+    by_cue, _ranges = cue_index(os.path.join(video_dir, CHUNKS_DIR))
+
+    # 清单行（数据行）——行字符数是“挤占上下文”的真实口径
+    raw_lines = [ln for ln in read(tpath).splitlines()
+                 if ln.strip() and not ln.startswith("#")] if os.path.exists(tpath) else []
+
+    # 逐块 OWNED：项数 + 行字符数（按 cue 号映射回原始行长）
+    line_len = {}
+    for ln in raw_lines:
+        s = ln.rstrip()
+        cue_s = s.split("\t", 1)[0] if "\t" in s else s.split(None, 1)[0]
+        m = re.match(r"^c(\d+)$", cue_s.strip())
+        if m:
+            line_len.setdefault(int(m.group(1)), len(s) + 1)  # +1 行尾换行
+    per_chunk = {}
+    for cue, _ts, _layer, _v, _c in items:
+        k = by_cue.get(cue, (None, None))[1]
+        n, c = per_chunk.get(k, (0, 0))
+        per_chunk[k] = (n + 1, c + line_len.get(cue, 0))
+
+    # 决策来源计数（含 [ASR 推测] 作为发现能力指标）
+    src_cnt = collections.Counter()
+    rdir = os.path.join(video_dir, RESULTS_DIR)
+    if os.path.isdir(rdir):
+        for fn in sorted(f for f in os.listdir(rdir) if f.endswith(".asr.tsv")):
+            for _cue, _orig, source in parse_asr_tsv(os.path.join(rdir, fn)):
+                src_cnt[source or "（空）"] += 1
+    return {
+        "items": len(items),
+        "lines": len(raw_lines),
+        "chars": sum(len(x) + 1 for x in raw_lines),
+        "by_layer": collections.Counter(i[2] for i in items),
+        "per_chunk": per_chunk,
+        "sources": src_cnt,
+    }
+
+
+def print_stats(video_dir):
+    s = collect_stats(video_dir)
+    print("—— 观测指标（不拦，仅供趋势对比）——")
+    print(f"清单：{s['items']} 项 / {s['chars']} 字符"
+          + (f"（层 {' '.join(f'{k}={v}' for k, v in sorted(s['by_layer'].items()))}）"
+             if s["by_layer"] else ""))
+    if s["per_chunk"]:
+        print("  注入本块的量（按块 OWNED 过滤后）：" + "；".join(
+            f"块{'?' if k is None else '%03d' % k} {n} 项/{c} 字符"
+            for k, (n, c) in sorted(s["per_chunk"].items(),
+                                    key=lambda x: (x[0] is None, x[0] or 0))))
+    else:
+        print("  （无块信息：_en_chunks/ 缺失或清单为空）")
+    if s["sources"]:
+        print("决策来源：" + "；".join(f"{k} {v}" for k, v in s["sources"].most_common()))
+    # 发现能力提示
+    spec = s["sources"].get("[ASR 推测]", 0)
+    if s["items"] and spec == 0:
+        print("  !! 清单非空但 [ASR 推测] = 0 → 疑注意力隧道（只看清单、未联想清单外）")
+    elif spec == 0:
+        print("  提示：[ASR 推测] = 0（本视频联想通道无产出）")
+
+
 def label(k):
     return "未归属块" if k is None else "块 %03d" % k
 
@@ -285,6 +363,8 @@ def main():
     ap.add_argument("--video", required=True, help="视频工作目录（相对 Project_Main，如 _work/<视频名>）")
     ap.add_argument("--chunk", type=int, help="只校验该块")
     ap.add_argument("--expand", action="store_true", help="展开问题项明细")
+    ap.add_argument("--stats", action="store_true",
+                    help="另报观测指标（清单长度分布 / 决策来源 / 发现能力），不拦退出码")
     args = ap.parse_args()
 
     video_dir = args.video if os.path.isabs(args.video) \
@@ -295,6 +375,8 @@ def main():
         return 1
 
     expand = args.expand or args.chunk is not None  # 单块模式默认展开
+    if args.stats:
+        print_stats(video_dir)
     print("ASR 触发清单校验（%s）：清单 %d 项；决策文件 %s"
           % ("块 %03d" % args.chunk if args.chunk else "全部块",
              stats["items"], "、".join(stats["files"]) or "无"))

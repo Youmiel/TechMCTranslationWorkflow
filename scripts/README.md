@@ -44,7 +44,7 @@
 | 脚本 | 用途 | 用法 |
 |------|------|------|
 | `asr_trigger.py` | **ASR 触发清单生成器（第一次遍历的必跑前置）**：用确定性判据（映射**整串精确匹配**，大小写不敏感 + 空白折叠 + **扫全文**）产出待判清单，subagent 只做语境判定。**分层**：多词 / 单字非停用词 / 单字停用词（噪声层默认不列）。**检出必带绑定**（变体 → 完整正确词形；注入裸词条实测会丢词）。**无状态**：只读当前视频字幕 + 正式资产（`asr_fixes.md`），不碰其它视频/历史语料统计。设计与实测依据见 `Project_Plan/2026-10-04_ASR检测层-可执行方案.md`（工作区根目录） | `python scripts/asr_trigger.py scan <字幕.srt> [--video <工作目录>] [--out <tsv>] [--local-fixes <局部asr_fixes.md>] [--layers M,S] [--no-stopwords]` |
-| `asr_check_trigger.py` | **触发清单覆盖率闸门**：清单每项是否在 `_en_results/chunk_*.asr.tsv` 被消化（修正 `[ASR]` / 放行 `[放行]`）。**三级判据**（纯字符串 + 结构，零语义）：已决策（同 cue + 原词列互为包含，容忍 subagent 写上下文片段）/ 改后未登记（输出 SRT 已无该变体，提示级）/ **未处理（打回）**。来源口径不符为提示级——已消化就不拦，混为一谈会误伤已完成的工作 | `python scripts/asr_check_trigger.py --video <工作目录> [--chunk <k>] [--expand]` |
+| `asr_check_trigger.py` | **触发清单覆盖率闸门**：清单每项是否在 `_en_results/chunk_*.asr.tsv` 被消化（修正 `[ASR]` / 放行 `[放行]`）。**三级判据**（纯字符串 + 结构，零语义）：已决策（同 cue + 原词列互为包含，容忍 subagent 写上下文片段）/ 改后未登记（输出 SRT 已无该变体，提示级）/ **未处理（打回）**。来源口径不符为提示级——已消化就不拦，混为一谈会误伤已完成的工作。**`--stats`** 另报观测指标（清单字符数按块分布 / 决策来源分布 / 发现能力），**不拦退出码**——用于监测「清单挤占上下文」与「发现能力退化」两个风险 | `python scripts/asr_check_trigger.py --video <工作目录> [--chunk <k>] [--expand] [--stats]` |
 
 > `shared/asr_common.py` — **ASR 修正链路公共层（单一权威）**：映射表解析 + 归一化 + **停用词表** + SRT 读取。
 > 停用词表原只存于 `glossary_hit_rate.py`，ASR 触发清单的噪声层过滤**复用同一张表** → 两处各存一份必然漂移，故迁入本模块；`glossary_hit_rate.load_stopwords` 保留同名薄壳。
@@ -124,6 +124,7 @@
 | 脚本 | 用途 | 用法 |
 |------|------|------|
 | `srt_reflow2_etimeline.py` | **时间轴源头固化**：每块 r01（衔接归位后）按句末标点切 E 句（复用 `split_en`），每 E 句在块内 OWNED cue 区间锚定（与消费端 `io.build_full` 同构：norm 去空格、无缝拼接；相邻 E 句共享 cue 按字符占比切分）→ `en_timeline/`（`E<n>\t<start> --> <end>\t<c<cues>>\t<文本>`，**只读真值锚**）；内嵌方括号标记剥离后锚；退出码 1 = 有 E 句锚定失败（MISS） | `python scripts/srt_reflow2_etimeline.py <chunks/> <r01_results/> --srt <01> -o reflow2/en_timeline/` |
+| `srt_reflow2_check_consistency.py` | **一致性复核产物校验**：逐块查 `consistency/` 形态与句号引用——块覆盖与 `en_timeline` 一致、首行固定注释行、疑点行 4 字段 TSV、`无矛盾` 与疑点行互斥、引用 E 号存在且文本有效（`MISS` / 空不参与）；字段超长仅告警。**不判断矛盾是否判对**（内容真伪脚本无法验） | `python scripts/srt_reflow2_check_consistency.py reflow2/consistency/ [--etimeline <目录>] [--expand] [--chunk k]` |
 | `srt_reflow2_zsent.py` | **切 Z 句**（切 Z 句与对齐的前半）：每块 r02 按中文句末标点切 Z 句（复用 `split_zh`）→ `zh_sentences/`（每行 `Z<n> <整句>`，**Z 每次从 r02 重算**） | `python scripts/srt_reflow2_zsent.py <r02_results/> -o reflow2/zh_sentences/` |
 | `srt_reflow2_stitch.py` | **跨块句衔接归位**（补标点的校验项，文档设计落地）：块边界常落句中，补标点在两侧各补全同一句 → 本脚本**只在一侧留无标记完整句、另一侧不留文本**（保留前块、后块整句删除）；单边标记/内容不等 → 只删标记保留句并告警。归位后 `check_words` 走“跨块互补”判定放行 | `python scripts/srt_reflow2_stitch.py reflow2/r01_results/ [--dry-run]` |
 | `srt_reflow2_backfill.py` | **继承回填**：读 `zh_sentences/`（Z 文本）+ `align/`（Z组=E组，`task-match` LLM 产物）+ `en_timeline/`（E 固化时间）——**先做“跨块句衔接归位”**（合并被块边界劈成两半的同一句：判据 = 两侧 EN 归一化后相等 / 前句末尾悬空成分 + 后句碎片；ZH 互补拼接、EN 去重、时间并集），再每 Z 组继承 E 组覆盖时间（源头固化、天然零重叠）；Z 超宽按**标点功能角色表**拆子段 + 按阅读速度比例在 E 区间内细分（复用 `allocate._allocate_by_weight`：吸附真实 cue 边界，无则取整预测点）——拼合 = 代价最小化（分号由硬断降为强优先，可被宽度否决）；同步生成 `r04_bilingual.srt`（`--order` 控制行序）+ `r04_alerts.md`；退出码 1 = 对齐不完整 | `python scripts/srt_reflow2_backfill.py <zh_sentences/> <align/> <en_timeline/> -o reflow2/r04_draft.srt [--alert reflow2/r04_alerts.md] [--bilingual reflow2/r04_bilingual.srt] [--order zh-en]` |
@@ -138,7 +139,7 @@
 |------|------|------|
 | `context_estimate.py` | **确定性 token 估算 + 分块建议**：按窗口配置与分块比例给出 `--owned` 建议值；放大协调 = 单块输入上限 `min(输入阈值, 输出阈值 ÷ amplification)`；`--no-amplification` 关闭；输出每 cue 平均字符与建议 `--owned`（长视频分块的**前置判断**依据，见 `redstone-conventions#长视频分块`） | `python scripts/context_estimate.py <文件> [--window N] [--split-ratio R] [--no-amplification] [--owned N]` |
 | `render_preprocess_prompt.py` | **preprocess 阶段二执行型块级任务 prompt 渲染**（会话外落盘 `prompts/`）：接入 `task-term-recognition` / `task-en-preprocess`；按任务注入先验知识（触发清单 / asr_fixes 映射 / 领域术语集，按 OWNED cue 过滤）；**`task-en-preprocess` 缺触发清单直接报错**。独立于 `render_subagent_prompt.py`（后者管 reflow/reflow2/translate 阶段三）。**集中补齐查证（`task-term-resolve`）不走本脚本**——研究型单次任务，任务文件即 prompt | `python scripts/render_preprocess_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--scan <scan_terms.txt>] [--glossary <csv...>] [--asr-fixes <局部文件>]` |
-| `render_subagent_prompt.py` | **reflow/reflow2/translate 阶段二执行型块级任务 prompt 渲染**：接入 `task-punctuate`/`task-translate`/`task-split`/`task-match`（reflow，**reflow2 同名任务 `--skill reflow2`**）+ `task-merge`/`task-translate`/`task-humanize`（translate，**`--skill translate-redstone`**）；读模板 + 纪律母版 `_discipline.md` + 产物格式约定 + 先验知识 → `prompts/<task>-chunk_<k>.txt`；完整 prompt 不进主会话历史 | `python scripts/render_subagent_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--chunks-dir <chunks目录>] [--skill <skill>] [--prior-file <文件>]` |
+| `render_subagent_prompt.py` | **reflow/reflow2/translate 阶段二执行型块级任务 prompt 渲染**：接入 `task-punctuate`/`task-translate`/`task-split`/`task-match`（reflow，**reflow2 同名任务 `--skill reflow2`**）+ `task-consistency`（reflow2）+ `task-merge`/`task-translate`/`task-humanize`（translate，**`--skill translate-redstone`**）；读模板 + 纪律母版 `_discipline.md` + 产物格式约定 + 先验知识 → `prompts/<task>-chunk_<k>.txt`；完整 prompt 不进主会话历史 | `python scripts/render_subagent_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--chunks-dir <chunks目录>] [--skill <skill>] [--prior-file <文件>]` |
 
 
 ## 数据源与缓存维护
@@ -166,7 +167,7 @@
 
 ## 验证脚本统一反馈约定
 
-所有校验闸门脚本（`srt_check_width` / `srt_check_segments` / `srt_check_plan_words` / `srt_check_terms` / `srt_reflow_check_*` / `check-r03` / `check_param_sync` / `check_phase_sync` / `asr_check_trigger`）统一反馈策略，控制上下文占用：
+所有校验闸门脚本（`srt_check_width` / `srt_check_segments` / `srt_check_plan_words` / `srt_check_terms` / `srt_reflow_check_*` / `srt_reflow2_check_consistency` / `check-r03` / `check_param_sync` / `check_phase_sync` / `asr_check_trigger`）统一反馈策略，控制上下文占用：
 
 - **默认（不带展开参数）**：只输出“问题数目 + 提示”——各问题定位一行统计（块/段/空隙点/检查组 + 数量），**不输出错误内容、不输出上下文**（行号/片段/原文）。
 - **`--expand`**：展开每处问题的详细内容 + 上下文（文件:行号 + 片段，供 Agent 直接定位编辑；主会话收集 task-fix 错误清单时用）。

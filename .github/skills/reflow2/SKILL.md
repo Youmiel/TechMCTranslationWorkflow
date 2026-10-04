@@ -46,6 +46,7 @@ description: Minecraft 红石技术视频字幕的“时间轴源头固化”工
    - 分块 → `reflow2/chunks/`
    - 补标点：归一化 → `r01_normalized/`；处理 → `r01_results/`
    - **源头固化** → `en_timeline/`（★E 句 + 固化时间，只读真值锚）
+   - 一致性复核 → `consistency/`（E 句块内对立扫描，疑点清单交人工裁决）
    - 翻译 → `r02_results/`
    - 切 Z 句与对齐 → `zh_sentences/`、`align/`
    - 继承回填 → `r04_draft.srt`、`r04_bilingual.srt`、`r04_alerts.md`
@@ -63,6 +64,7 @@ description: Minecraft 红石技术视频字幕的“时间轴源头固化”工
 - 有 `reflow2/r01_normalized/` → 补标点 处理
 - 有 `reflow2/r01_results/` → 补标点 校验（补标点后校验）
 - 有 `reflow2/en_timeline/` → 源头固化 校验
+- 有 `reflow2/consistency/` → 一致性复核 校验
 - 有 `reflow2/r02_results/` → 切 Z 句与对齐
 - 有 `reflow2/zh_sentences/` + `reflow2/align/` → 继承回填
 - 有 `reflow2/r04_draft.srt` → 继承回填（重新回填）
@@ -114,13 +116,14 @@ description: Minecraft 红石技术视频字幕的“时间轴源头固化”工
 - 分块
 - 补标点
 - 源头固化
+- 一致性复核
 - 翻译
 - 切 Z 句与对齐
 - 继承回填
 
 ### 阶段五：人工审核循环
 
-按 [redstone-review](../redstone-review/SKILL.md) 执行。**审核对象：对齐方案 + 最终 SRT**——重点核对 `align/` 的 Z↔E 语义对应是否判对（继承时间正确性的根基）+ `r04_draft.srt` 阅读节奏。**审核中发现 AI 味 / 翻译腔 → 回 r02 改整句**（脚本重切 Z、重对齐、重继承），红石术语译名不受影响。
+按 [redstone-review](../redstone-review/SKILL.md) 执行。**审核对象：对齐方案 + 最终 SRT + 机制断言疑点清单**（`reflow2/consistency/`）——重点核对 `align/` 的 Z↔E 语义对应是否判对（继承时间正确性的根基）+ `r04_draft.srt` 阅读节奏 + 疑点清单逐项**回看视频画面 / 音频**裁决。**审核中发现 AI 味 / 翻译腔 → 回 r02 改整句**（脚本重切 Z、重对齐、重继承），红石术语译名不受影响；**疑点裁定改英文侧 → 回补标点 重跑下游**。
 
 ### 阶段六：数据源效果总结
 

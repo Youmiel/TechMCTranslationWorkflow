@@ -163,6 +163,16 @@ TASKS = {
             "prior": [],
         },
     ],
+    "task-consistency": {
+        "skill": "reflow2",
+        "template": "task-consistency.md",
+        "role": "机制断言自洽性复核",
+        "format_section": "consistency/chunk_<k>.txt",
+        "format_file": "docs/PRODUCT_FORMATS_REFLOW2.md",
+        "inputs": ["reflow2/en_timeline/chunk_<k>.txt"],
+        "output": "reflow2/consistency/chunk_<k>.txt",
+        "prior": [],
+    },
 }
 
 

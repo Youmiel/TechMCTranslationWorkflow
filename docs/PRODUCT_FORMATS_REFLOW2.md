@@ -5,19 +5,20 @@
 > - 阶段〇、一、二产物 `01` / `02`、块骨架格式 → [PRODUCT_FORMATS](PRODUCT_FORMATS.md)
 > - `r01_normalized/` [格式](PRODUCT_FORMATS_REFLOW.md#r01_normalizedchunk_ktxt)、`r01_results/` [格式](PRODUCT_FORMATS_REFLOW.md#r01_resultschunk_ktxt)、`r02_results/` [格式](PRODUCT_FORMATS_REFLOW.md#r02_resultschunk_ktxt) → [PRODUCT_FORMATS_REFLOW](PRODUCT_FORMATS_REFLOW.md)（reflow2 仅目录为 `reflow2/`，另加 `srt_reflow2_stitch.py` 跨块句衔接归位）
 >
-> 本文件只列 reflow2 **专有产物**（源头固化链：`en_timeline` → `zh_sentences` → `align` → 继承回填 r04）。产物统一块级，目录 `<工作目录>/reflow2/`。
+> 本文件只列 reflow2 **专有产物**（源头固化链：`en_timeline` → `consistency` → `zh_sentences` → `align` → 继承回填 r04）。产物统一块级，目录 `<工作目录>/reflow2/`。
 
 ## 产物速查
 
 | 产物 | 生成者 | 消费/校验脚本 |
 |------|--------|----------------|
 | `en_timeline/chunk_<k>.txt` | 脚本 `srt_reflow2_etimeline.py`（E 句 + 固化时间，只读真值锚） | 脚本 `srt_reflow2_backfill.py`（继承时间）、task-match LLM（句子匹配输入） |
+| `consistency/chunk_<k>.txt` | Agent（机制断言自洽性复核 subagent，`reflow2/task-consistency`） | 脚本 `srt_reflow2_check_consistency.py`（形态 + 句号引用）、人工审核 |
 | `r01_results/`（衔接归位后） | 补标点 subagent → 脚本 `srt_reflow2_stitch.py`（跨块句衔接归位：只在一侧留完整句） | 脚本 `srt_reflow2_etimeline.py`（E 句固化）、翻译 subagent |
 | `zh_sentences/chunk_<k>.txt` | 脚本 `srt_reflow2_zsent.py`（Z 句文本列表） | task-match LLM（句子匹配输入）、脚本 `srt_reflow2_backfill.py` |
 | `align/chunk_<k>.txt` | Agent（句子匹配 subagent，`reflow2/task-match`） | 脚本 `srt_reflow2_backfill.py`（继承时间） |
 | `r04_draft.srt` / `r04_bilingual.srt` / `r04_alerts.md` | 脚本 `srt_reflow2_backfill.py` | `srt_check_segments.py`、`srt_check_width.py --order zh-en` |
 
-> 块级产物（`en_timeline` / `zh_sentences` / `align` / `r01_results`）的**块数 = 空隙组数 × 组内片数**。
+> 块级产物（`en_timeline` / `consistency` / `zh_sentences` / `align` / `r01_results`）的**块数 = 空隙组数 × 组内片数**。
 > 表内 `r01_results/` 的**格式**复用 reflow 文件同名节（见页首链接）——reflow2 只是多一道 `srt_reflow2_stitch.py` 衔接归位。
 
 ## `reflow2/en_timeline/chunk_<k>.txt`
@@ -30,6 +31,21 @@
   - `(global)` 尾注 = 块内未命中走全局兜底（跨块补全句）
 - 定位：**纯脚本内部产物**（机器消费）——E 句 = 只读真值锚，下游通过对齐继承时间，**永不重编号**；不面向人工复核格式（人读需结合 align 理解对应）
 - 消费：task-match LLM（句子匹配输入，E 文本在 tab 末段）、`srt_reflow2_backfill.py`（继承时间）
+
+## `reflow2/consistency/chunk_<k>.txt`
+
+- 命名：`<工作目录>/reflow2/consistency/chunk_<k>.txt`
+- 生成：Agent（机制断言自洽性复核 subagent，`reflow2/task-consistency`；各块独立文件）——LLM 只做**块内**机制断言对立扫描
+- 格式：首行固定注释行 `# 机制断言自洽性复核（块内对立扫描）`；其余为**疑点行或 `无矛盾`**（二者互斥、必居其一）：
+  - 疑点行 = 4 字段 tab 分隔：`<E<n>>`（断言 A 句号）/ `<E<m>>`（断言 B 句号；单句内部矛盾时与 A 相同）/ `<对立主题>`（≤20 字）/ `<冲突说明>`（≤60 字，引原文锚词）
+  - `无矛盾` = 单独一行、不含制表符
+- 约束：
+  - **只查块内**——不跨块比较、不读本块数据以外的文件
+  - **不是事实核查**——只判断两句断言能否同时成立，不判断哪句符合游戏机制、不查资料、不提议改法
+  - **例外情形不报**——一句给通用规则、另一句描述该规则的特例 / 附加机制 / 附加条件时，两者可同真
+  - 句号一律照抄 `en_timeline` 已有号（不重编号、不写时间戳 / cue 号）；`MISS` / 空文本句不参与复核
+  - 产物只是**疑点清单**：脚本不自动改、subagent 不提议改法，裁决归人工审核
+- 消费：脚本 `srt_reflow2_check_consistency.py`（形态 + 句号引用合法性）、人工审核（阶段五）
 
 ## `reflow2/zh_sentences/chunk_<k>.txt`
 

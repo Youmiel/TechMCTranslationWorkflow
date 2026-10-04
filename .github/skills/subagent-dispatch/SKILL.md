@@ -15,7 +15,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 >
 > 原则：**粗粒度、少打扰**——派发是执行机制，是否派由任务性质决定，**不需逐步骤报告**（考量沿用 [PIPELINE_ISOLATION.md §3](../../../docs/PIPELINE_ISOLATION.md)）。
 
-**一律派 subagent**（reflow 阶段三 补标点/翻译/分句、preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) 第一次遍历 + 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
+**一律派 subagent**（reflow 阶段三 补标点/翻译/分句、reflow2 一致性复核、preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) 第一次遍历 + 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
 
 **查证（preprocess [集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐)）→ 研究型 agent 分批派发**：L3 术语查证待查列表按 **30 条/块** 拆 `term_pending_<i>.md`，逐块派 `term-researcher`（研究型 agent）。
 - **非任务处理 agent**：允许推理 / 判断 / 多步查证，但页面原文只进一次性上下文、只返回每词一行压缩总结
@@ -79,6 +79,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > **完整 prompt 文本不进主会话历史**，主 agent 只发渲染命令 + 派发引用。任务**特有规则直接内联**在任务文件（不建独立规则文件）；**通用纪律**由 `_discipline.md` 单一权威；**产物格式约定**（格式查找路径）由渲染脚本注入（见下）。
 > **渲染脚本覆盖范围**：
 > - reflow 阶段三：`scripts/render_subagent_prompt.py` 接入 `task-punctuate` / `task-translate` / `task-split` / `task-match`
+> - reflow2 阶段三：同一脚本接入 `task-consistency`（`--skill reflow2`）+ 同名任务的 reflow2 版
 > - translate 阶段三：同一脚本接入 `task-merge` / `task-humanize` / `task-translate`
 >   - **同名任务多 skill**：派发时 `--skill translate-redstone` 取 translate 版，默认 reflow 版
 > - preprocess 阶段二：**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）
@@ -112,6 +113,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 >   - `task-punctuate` = `["breaks"]`
 >   - `task-split` = `["breaks"]`
 >   - `task-match` = `[]`
+>   - `task-consistency` = `[]`（块内对立扫描不需中文译名，也不需空隙断句标记）
 >   - `task-en-preprocess`（`render_preprocess_prompt.py`）= `["asr_trigger","asr","glossary"]`（触发清单 → 映射表 → 词集，皆紧贴对应规则）
 >   - `task-term-recognition`（同上）= `["scan","glossary","asr"]`
 > - 整体拼接按“纪律 → 格式 → 知识 → 数据”序
