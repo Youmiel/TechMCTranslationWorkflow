@@ -34,8 +34,8 @@
 | 有局部 `asr_fixes.md` | 18 个 |
 
 用法（命令根 = Project_Main/）：
-  python scripts/asr_bench.py gen [--videos N] [--chunk-cues 400]
-  python scripts/asr_bench.py merge       # 合并子代理产出
+  python scripts/_dev/asr_bench.py gen [--videos N] [--chunk-cues 400]
+  python scripts/_dev/asr_bench.py merge       # 合并子代理产出
 """
 import argparse
 import csv
@@ -45,7 +45,7 @@ import re
 import sys
 from collections import Counter
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WORKSPACE = os.path.dirname(BASE)
 WORK = os.path.join(BASE, "_work", "_asr_bench")
 

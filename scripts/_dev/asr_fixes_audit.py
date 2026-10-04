@@ -44,17 +44,19 @@
 输出报告（UTF-8 落盘，默认 `_work/_asr_fixes_audit.md`）。
 
 用法（命令根 = Project_Main/）：
-  python scripts/asr_fixes_audit.py
-  python scripts/asr_fixes_audit.py --out _work/_asr_fixes_audit.md
-  python scripts/asr_fixes_audit.py --expand
+  python scripts/_dev/asr_fixes_audit.py
+  python scripts/_dev/asr_fixes_audit.py --out _work/_asr_fixes_audit.md
+  python scripts/_dev/asr_fixes_audit.py --expand
 """
 import argparse
 import os
 import re
 import sys
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 兄弟开发脚本（同目录）+ scripts/（生产脚本与 shared/）
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(BASE, "scripts"))
 
 import glossary_lookup as GL                        # noqa: E402
 import glossary_load_plan as GLP                    # noqa: E402

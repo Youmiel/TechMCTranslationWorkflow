@@ -51,7 +51,9 @@
 |------|--------|----------------|
 | `00_subtitle_snapped.srt` | `scripts/srt_mech_fix.py`（机械修复：结构清理 + 可选时间轴吸附） | 自身不变量自检；作为 `01` 的 `--cue-exact` 基准；阶段二 术语扫描分块输入 |
 | `01_subtitle_asr_fixed.srt` | Agent（英文预整理 subagent 分块派发 + `srt_join_parts.py` 合并） | `srt_check_segments.py --cue-exact`（基准 = `00_subtitle_snapped.srt`）；reflow gap/breaks/words |
+| `asr_trigger/triggers.tsv` | `scripts/asr_trigger.py scan`（纯脚本、无状态） | 渲染脚本 `render_preprocess_prompt.py`（按块 OWNED 过滤注入）；`asr_check_trigger.py` |
 | `_en_results/chunk_<k>.srt` | Agent（英文预整理 subagent） | `srt_join_parts.py`、`srt_check_segments.py --cue-exact` |
+| `_en_results/chunk_<k>.asr.tsv` | Agent（英文预整理 subagent） | `asr_check_trigger.py`（清单覆盖率）、主会话汇总登记 |
 | `02_terms.md` | Agent（用户确认） | 翻译固定译名、ASR 修正组装 |
 | `term_pending.md` / `term_pending_<i>.md` | Agent（主会话汇总后写；按 30 条/块拆分） | `term-researcher`（分批派发输入） |
 | `term_resolve_<i>.md` | Agent（`term-researcher` 研究型 agent） | [术语确认](../.github/skills/redstone-preprocess/SKILL.md#23-术语确认)、阶段六 coverage_log |
@@ -240,6 +242,28 @@
   - `[Music]` 等纯方括号标记 cue（去括号后无文本）**保留原样**，勿手动删——下游 `gap_scan`/`breaks`/`check_breaks` 动态识别跳过，reflow 核心 `io.parse_srt` 亦剔除
   - **内嵌非语音事件标记**（DownSub/YouTube 自动字幕的 `[laughter]`/`[clears throat]` 等，夹在语音文本中）由第一次遍历 subagent **语义识别并剔除**（不进 01 词序列；剔除后空文本 cue 保留时间码）——与纯标记 cue 不同，内嵌标记**无法硬编码枚举/规则探测**，靠 agent 语义判断（见 `term-scan/task-en-preprocess` 规则 4）
 - 校验：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig 00_subtitle_snapped.srt --cue-exact`
+
+### `asr_trigger/triggers.tsv`
+
+- 命名：`<工作目录>/asr_trigger/triggers.tsv`
+- 生成：`python scripts/asr_trigger.py scan <00_subtitle_snapped.srt> --video <工作目录>`（**纯脚本、无状态**；分块后、渲染前必跑）
+- 格式：`#` 起始为注释头，数据行 `c<idx>\t<时间码> | <层> | <变体> | <正确词形> | <标签>`
+  - `层`：`M` 多词（误报 3%）/ `S` 单字非停用词（高价值）/ `X` 单字停用词（误报 96%，**默认不列**；`--layers M,S,X` 可对照评测）
+  - `正确词形` = **绑定**（可能多个，`/` 分隔 = 多义条目）；`标签` 现为 `mapping`（`ambiguous` 追加）
+- 约束：
+  - **匹配 = 整串精确 + 大小写不敏感 + 空白折叠 + 扫全文**（cue 空格连接，实测有跨 cue 断裂实例）；**不得模糊匹配**
+  - **必须含绑定**（变体 → 完整正确词形）——注入裸词条实测会丢词
+  - **只标记不替换**：脚本产出清单，文本改不改由 subagent 语境判定
+- 消费：`render_preprocess_prompt.py` 按块 OWNED 过滤注入（**缺此产物直接报错**，不得缺省）；`asr_check_trigger.py` 校验每项是否被消化
+
+### `_en_results/chunk_<k>.asr.tsv`
+
+- 命名：`<工作目录>/_en_results/chunk_<k>.asr.tsv`
+- 生成：Agent（英文预整理 subagent，见 `term-scan/task-en-preprocess`）
+- 格式：`c<idx>\t<时间码>\t<原词>\t<新词>\t<来源>`；无改动 → 空文件（照常写盘）
+- `来源` 枚举：触发清单修正 `[ASR]` / 触发清单放行 `[放行]`（`新词` 列写 `-`）/ 映射命中 `[ASR]` / 联想 `[ASR 推测]` / 未定 `[待审核]`
+  - `[ASR]` / `[放行]` 是 `asr_check_trigger.py` 的判据字面量，见 `docs/SYMBOLS.md`
+- 校验：`python scripts/asr_check_trigger.py --video <工作目录> [--chunk <k>] [--expand]`——清单每项须被消化；**未处理项退出码 1 = 打回**，来源口径不符与“改后未登记”为提示级
 
 ### `02_terms.md`
 

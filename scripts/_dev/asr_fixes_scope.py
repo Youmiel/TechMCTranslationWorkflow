@@ -22,16 +22,18 @@
 “别的视频还没遇到该话题”。故单视频类**必须人工筛**，脚本不自动归档。
 
 用法（命令根 = Project_Main/）：
-  python scripts/asr_fixes_scope.py
-  python scripts/asr_fixes_scope.py --out _work/_asr_scope.md
-  python scripts/asr_fixes_scope.py --apply      # 按清单的 [x] 执行归档
+  python scripts/_dev/asr_fixes_scope.py
+  python scripts/_dev/asr_fixes_scope.py --out _work/_asr_scope.md
+  python scripts/_dev/asr_fixes_scope.py --apply      # 按清单的 [x] 执行归档
 """
 import argparse
 import os
 import re
 import sys
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 兄弟开发脚本（同目录）+ scripts/（生产脚本与 shared/）
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(BASE, "scripts"))
 
 import asr_bench as AB                              # noqa: E402
@@ -81,7 +83,7 @@ def scan(corpus):
 def write_checklist(buckets, out, n_corpus):
     L = ["# asr_fixes 归档筛选清单", "",
          "> **勾选 `[x]` = 归档**（移到该视频的局部 `asr_fixes.md`）；不勾 = 保留在全局表。",
-         "> 筛完保存，然后跑 `python scripts/asr_fixes_scope.py --apply` 执行。",
+         "> 筛完保存，然后跑 `python scripts/_dev/asr_fixes_scope.py --apply` 执行。",
          "",
          f"- 语料：**{n_corpus}** 个视频的原始 ASR",
          f"- 条目：**{sum(len(b) for b in buckets.values())}** 个正确词",
@@ -190,7 +192,7 @@ def main():
     print(f"已写入 {args.out}")
     print(f"  语料 {len(corpus)} 视频；单视频候选 {len(buckets['single'])}；"
           f"跨视频 {len(buckets['cross'])}；未出现 {len(buckets['unknown'])}")
-    print(f"  筛完保存 → python scripts/asr_fixes_scope.py --apply")
+    print(f"  筛完保存 → python scripts/_dev/asr_fixes_scope.py --apply")
 
 
 if __name__ == "__main__":

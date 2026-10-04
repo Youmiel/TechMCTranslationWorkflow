@@ -22,14 +22,14 @@
   `render_preprocess_prompt.parse_asr_fixes`）
 
 用法（命令根 = Project_Main/）：
-  python scripts/asr_bench_b.py gen [--videos N] [--only <视频,视频>] [--with-fixes]
+  python scripts/_dev/asr_bench_b.py gen [--videos N] [--only <视频,视频>] [--with-fixes]
 """
 import argparse
 import os
 import re
 import sys
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(BASE, "scripts"))
 
 import glossary_load_plan as GLP                    # noqa: E402

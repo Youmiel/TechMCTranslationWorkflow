@@ -41,6 +41,16 @@ SKILLS_DIR = os.path.join(PROJECT_ROOT, ".github", "skills")
 DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md")
 ASR_FIXES_GLOBAL = os.path.join(PROJECT_ROOT, ".github", "experience", "asr_fixes.md")
 
+# ASR 触发清单小节头（可执行方案 §五 5.2）。**纪律必须显式**——清单是前置必做项，
+# 缺失纪律会被当作“参考信息”而跳过；“不改变规则 1”一句是防**注意力隧道**（只看清单、
+# 不看清单外）的兔底。
+ASR_TRIGGER_HEAD = (
+    "### ASR 触发清单（脚本检出，逐项判定；★ 不得跳过）\n\n"
+    "> - 每项**必须**给出决策：按正确词形修正，或明确放行\n"
+    "> - 两项均须登记进 `chunk_{k}.asr.tsv`（放行用 `[放行]`）\n"
+    "> - 本清单是**额外线索**，不改变规则 2（未命中怪词仍照常联想）\n"
+)
+
 # 模板尾部“渲染步骤”说明区的起点（渲染时剥离——该区块给主会话/维护者看：
 # 声明本任务按什么顺序、用哪些内容拼接，不是 subagent 执行内容）。含前置分隔线，一并剥离避免残留孤立 `---`。
 FILL_MARKERS = (
@@ -69,7 +79,11 @@ TASKS = {
         "inputs": ["_en_chunks/chunk_<k>.txt"],
         "output": "_en_results/chunk_<k>.srt",
         "chunks_key": "_en_chunks",
-        "priors": ["asr", "glossary"],
+        # 顺序 = 优先级：触发清单（确定性、必须逐项处理）→ 映射表 → 领域词集
+        "priors": ["asr_trigger", "asr", "glossary"],
+        # 必跑前置产物：缺则报错（缺清单不得静默降级为“免检”）
+        "require_trigger": True,
+        "triggers_key": os.path.join("asr_trigger", "triggers.tsv"),
     },
 }
 
@@ -121,6 +135,30 @@ def parse_scan_terms(scan_path):
             parts = [p.strip() for p in rest.split(" | ")]
             if len(parts) >= 4:
                 items.append((int(m.group(1)), ln))
+    return items
+
+
+def parse_triggers(path):
+    """解析 `asr_trigger/triggers.tsv`。
+
+    每行 `c<idx>\t<时间码> | <层> | <变体> | <正确词形> | <标签>`；`#` 开头为注释头。
+    **整行原样返回**（含时间码与层）——注入时保留**绑定**（变体 → 完整正确词形）是铁律
+    （裸词条注入实测会丢词）；时间码供 subagent 照抄登记。
+    """
+    if not path or not os.path.exists(path):
+        return []
+    items = []
+    for ln in read(path).splitlines():
+        s = ln.rstrip("\n")
+        if not s.strip() or s.startswith("#"):
+            continue
+        if "\t" in s:
+            cue_s, _rest = s.split("\t", 1)
+        else:
+            cue_s, _rest = s.split(None, 1)
+        m = re.match(r"^c(\d+)$", cue_s.strip())
+        if m:
+            items.append((int(m.group(1)), s))
     return items
 
 
@@ -205,6 +243,14 @@ def collect_priors(cfg, video_dir, chunk, scan_path, glossary_paths, asr_fixes_p
     video_name = os.path.basename(os.path.normpath(video_dir))
     priors = cfg["priors"]
 
+    if "asr_trigger" in priors:
+        tpath = os.path.join(video_dir, cfg["triggers_key"])
+        owned = parse_owned_cues(chunk_files[chunk]) if chunk in chunk_files else set()
+        hits = [ln for cue, ln in parse_triggers(tpath) if cue in owned]
+        # **不省略小节**（无命中也出标题）——省略会被读作“本次免检”
+        body = "\n".join(hits) if hits else "（本块 OWNED 无触发项）"
+        parts.append(ASR_TRIGGER_HEAD.format(k=f"{chunk:03d}") + "\n" + body)
+
     if "scan" in priors and scan_path and os.path.exists(scan_path):
         owned = parse_owned_cues(chunk_files[chunk])
         hits = [ln for cue, ln in parse_scan_terms(scan_path) if cue in owned]
@@ -286,6 +332,16 @@ def collect_data(cfg, video_dir, chunk, chunks_dir):
 def render(task, video_dir, chunk, scan_path, glossary_paths, asr_fixes_paths, chunks_dir):
     cfg = TASKS[task]
     video_name = os.path.basename(os.path.normpath(video_dir))
+
+    # 0. 必跑前置产物校验（缺则报错，不得静默降级——“缺清单”不得被读作“免检”）
+    need = []
+    if cfg.get("require_trigger"):
+        need.append((os.path.join(video_dir, cfg["triggers_key"]),
+                     "asr_trigger.py scan"))
+    for path, how in need:
+        if not os.path.exists(path):
+            raise SystemExit("错误：缺前置产物 %s\n请先跑：python scripts/%s\n"
+                             "（ASR 触发清单是逐项必做项，不得缺省）" % (path, how))
 
     # 1. 模板正文（剥离尾部“组装与派发”说明区）
     template_path = os.path.join(SKILLS_DIR, cfg["skill"], cfg["template"])

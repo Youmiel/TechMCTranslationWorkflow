@@ -20,19 +20,45 @@ description: 阶段二术语扫描（redstone-preprocess [术语扫描](../redst
 
 | 任务 | 任务文件 | 派发 | 产物（`_work/<视频名>/`） |
 |------|----------|------|------|
-| 第一次遍历（ASR 修正 + 游离单词归位） | `task-en-preprocess.md` | `render_preprocess_prompt.py task-en-preprocess` → 块级派发 | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
+| 第一次遍历（ASR 修正 + 游离单词归位） | `task-en-preprocess.md` | `asr_trigger.py scan` → `render_preprocess_prompt.py task-en-preprocess` → 块级派发 → `asr_check_trigger.py` 校清单 | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
 | 术语识别 | `task-term-recognition.md` | `render_preprocess_prompt.py task-term-recognition` → 块级派发 | `_term_results/chunk_<k>.txt` |
 | L3 术语查证（[集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐)） | `task-term-resolve.md` | **任务文件即完整 prompt**，分批双引用派发 `term-researcher` | `term_resolve_<i>.md` |
 | Wiki 查询（非术语，翻译过程任意阶段） | `../wiki-tools/task-wiki-query.md` | **任务文件即完整 prompt**，双引用派发 `wiki-researcher` | `wiki_resolve_<i>.md` |
 
 ## ASR 语义解码
 
-> subagent 侧任务规则 / 时间戳纪律 / 输出契约见 `task-en-preprocess.md`（注入素材：asr_fixes 全局 + 局部 + 领域术语集，由渲染脚本按任务注入）。
-> - 主会话编排见 redstone-preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)：分块 → 渲染 → 派发 → `srt_join_parts.py` 合并 → `srt_check_segments --cue-exact` → 汇总
+> subagent 侧任务规则 / 时间戳纪律 / 输出契约见 `task-en-preprocess.md`。
+> - **注入素材**：ASR 触发清单（脚本检出、按块 OWNED 过滤——`asr_trigger.py scan` 产出，渲染脚本强制要求其存在）+ asr_fixes 全局/局部映射 + 领域术语集
+> - 主会话编排见 redstone-preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)：扫清单 → 分块 → 渲染 → 派发 → `srt_join_parts.py` 合并 → `srt_check_segments --cue-exact` → `asr_check_trigger.py` 校清单覆盖率 → 汇总
+- **清单驱动 vs 注意力驱动**：清单由**确定性判据**产出（映射整串精确匹配，大小写不敏感 + 空白折叠 + 扫全文），
+  subagent 只做**语境判定**（改 / 放行）；**清单外的怪词仍走联想通道**（清单是额外线索，不是范围上限——防“注意力隧道”）
 - **ASR 分层登记**（subagent 只产出 `.asr.tsv` 清单，登记由主会话 / 确认后做）：
+  - 触发清单命中 → `[ASR]`；触发清单判定不该改 → `[放行]`（**必须登记**，否则 `asr_check_trigger.py` 打回）
   - 跨视频通用 → 全局表
   - 视频专属 → `_work/<视频名>/asr_fixes.md`（必要时入术语库）
   - 规则见 [term-registration#ASR 映射登记](../term-registration/SKILL.md#asr-映射登记)
+
+### S 层不再细分同形异义
+
+> 已验证 · 不实现。
+
+方案初稿曾设想给常见内容词（`note`→node / `minecraft`→minecart 这类）加“需语境”标注。
+**实测否定**：误纠实例 = **0**（223 条决策 / 7 视频）；候选判据误伤真命中 **76%**；
+且同形异义是**单次出现的属性**、非变体类别（同一串 `light` 两种语境处置相反）——
+判定所需的语境，清单注入**已把原句给到 subagent**。
+
+→ **当前结论：S 层全部列出、不加标注**。报告 = `References/ASR修正-实测资料/pre-implementation/Y_LAYER_VERIFICATION.md`。
+
+**⚡ 何时回来重议**（任一出现）：
+
+- **发现真实误纠**（定稿里正确词被改坏）→ 重跑第 0 步探针确认，再开 A/B（`scripts/_dev/asr_bench_b.py gen` 已具备）
+- **S 项挤占上下文**（项数/字符数显著增长）→ 降噪开始有边际价值
+- **出现“出现级”判据**（按单次出现的上下文区分，而非给变体分类）→ 变体级已否定，出现级未被证否
+- **语料规模显著扩大**（远超当前 8 视频）→ “零误纠”是未观察到，非永远不会
+
+> 注意：若缺口出现在**检出**侧（该改的没改 = 漏检），Y 类标注**帮不上**
+> ——标注只影响“判定”（模型误解语境），不影响“注意”（模型没注意到）。
+> 漏检应走阶段一的清单触发思路（扩充映射表触发面），不是回到 Y。
 
 ## 机械查找
 

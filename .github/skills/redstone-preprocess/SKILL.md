@@ -69,11 +69,12 @@ description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ �
 > 主会话只做：
 > 1. 定 N（`context_estimate.py`）
 > 2. 分块（`text_chunk.py`）
-> 3. 渲染 prompt（`render_preprocess_prompt.py`）
-> 4. 派发
-> 5. 合并
-> 6. 校验
-> 7. 汇总
+> 3. **扫 ASR 触发清单**（`asr_trigger.py scan`，纯脚本、无状态）
+> 4. 渲染 prompt（`render_preprocess_prompt.py`）
+> 5. 派发
+> 6. 合并
+> 7. 校验（含 `asr_check_trigger.py` 清单覆盖率）
+> 8. 汇总
 
 1. **加载术语表（两个通道不同，勿混）**：
    - **ASR 纠错通道**（阶段一第 2 步产出）：显式清单 = **常驻集 + 门禁后保留的候选**，
@@ -87,15 +88,26 @@ description: 红石字幕翻译前置——字幕机械修复（阶段〇）+ �
    - **定 N + 分块（派发必经第一步，勿整条读字幕）**：
      1. `python scripts/context_estimate.py <00_subtitle_snapped.srt> --no-amplification` 定 `--owned`
      2. `python scripts/text_chunk.py <00_subtitle_snapped.srt> --type srt --owned <N> --ctx <M> --out _en_chunks/`
+   - **扫 ASR 触发清单（分块后、渲染前，必跑）**：
+     `python scripts/asr_trigger.py scan <00_subtitle_snapped.srt> --video <工作目录>`
+     → 产出 `asr_trigger/triggers.tsv`（变体 → 完整正确词形 + 层级，纯脚本、无状态、零算法风险）
+     - 把“发现怪词”从**注意力驱动**改为**清单驱动**——实测该环节是主瓶颈（缺失项中 69.8% 属“长文本里没注意到”）
+     - **必须带绑定**（`变体 → 正确词形`）；注入裸词条会退化（实测会丢词）
+     - 无此产物时渲染脚本**直接报错**（不得缺省——“缺清单”会被读作“免检”）
+     - 分层：M 多词（误报 3%）/ S 单字非停用词（高价值）；X（单字停用词）默认不列（误报 96%）
    - **派发**：
-     1. 渲染：`python scripts/render_preprocess_prompt.py task-en-preprocess --video <工作目录> --all --glossary <L1/L2 csv...>`（渲染脚本自动注入 asr_fixes 全局+局部 + 领域术语集；见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）
+     1. 渲染：`python scripts/render_preprocess_prompt.py task-en-preprocess --video <工作目录> --all --glossary <L1/L2 csv...>`（渲染脚本自动注入 ASR 触发清单（按块 OWNED 过滤）+ asr_fixes 全局+局部 + 领域术语集；见 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方)）
      2. 逐块派 subagent：任务文件 = `term-scan/task-en-preprocess`，结果写 `_work/<视频名>/_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv`（ASR 修正清单）
    - **合并**：`python scripts/srt_join_parts.py _en_results/ --out 01_subtitle_asr_fixed.srt --chunks _en_chunks/`（各块 SRT 片段按块序拼接 + 全局段号重排；cue 数 = OWNED cue 数强制校验）
    - **立即校验时间轴**：`python scripts/srt_check_segments.py 01_subtitle_asr_fixed.srt --orig 00_subtitle_snapped.srt --cue-exact`
      - 01 只改文本、**时间码逐条照抄 00**、不增删 cue
      - 时间轴错位立即回本步修正（否则一路传最终稿）；默认只给问题数，`--expand` 看明细，缺失 cue 定位用 `--missing-ctx 1`
+   - **校验清单覆盖率（闸门）**：`python scripts/asr_check_trigger.py --video <工作目录>`
+     - 清单每项必须有决策（修正 `[ASR]` 或放行 `[放行]`）；**未处理项退出码 1 = 打回**
+     - 单块修复后只查该块：`--chunk <k>`（默认展开详情）；`--expand` 展开明细
+     - 来源口径不符（如仍写 `[ASR 推测]`）与“改后未登记”为**提示级**，不拦
    - **字幕缺失定位（--missing-ctx）**：cue 数不一致（字幕缺失/多余）时脚本默认只报缺失/多余总数；追加 `--missing-ctx 1` 输出每条缺失 cue 的标号+时间+文本+上下句（agent 直接定位、无需自写定位脚本；默认关闭，防输出过多挤爆上下文）
-   - **ASR 推测登记**：汇总各块 `.asr.tsv`（映射命中 `[ASR]` / 联想 `[ASR 推测]` / 未定 `[待审核]`）。
+   - **ASR 推测登记**：汇总各块 `.asr.tsv`（触发清单 `[ASR]`/`[放行]` / 映射命中 `[ASR]` / 联想 `[ASR 推测]` / 未定 `[待审核]`）。
   - 跨视频通用 → 全局表
   - 视频专属 → 局部 `asr_fixes.md`
    - **跨行合并成整句 / 合并时间戳是阶段三的重活，此处不做**（translate 走两遍式断句；reflow 走回填的空隙探测 + 补标点）

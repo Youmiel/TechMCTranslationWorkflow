@@ -52,6 +52,11 @@ from collections import Counter, defaultdict
 sys.stdout.reconfigure(encoding="utf-8")
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(BASE, "scripts"))
+
+from shared.asr_common import STOP_HARD, STOP_SOFT  # noqa: E402
+from shared.asr_common import load_stopwords as _load_stopwords  # noqa: E402
+
 YAML_PATH = os.path.join(BASE, ".github", "experience", "glossary_categories.yaml")
 
 SUBTITLE_PRIORITY = ("00_subtitle_snapped.srt", "01_subtitle_asr_fixed.srt")
@@ -60,26 +65,9 @@ SUBTITLE_PRIORITY = ("00_subtitle_snapped.srt", "01_subtitle_asr_fixed.srt")
 # 取 10 是因为命中率按「命中视频数 ÷ 总视频数」算——分母太小则单视频权重过大。
 MIN_VIDEOS = 10
 
-# 硬停用词：连接词 / 限定词 / 代词 / 介词 / 助动词 / 系动词
-# 判据：这类词在口语字幕里必然是普通语法词，不可能单独作技术术语出现。
-STOP_HARD = frozenset("""
-a an the and or but nor so yet
-for of to in on at by with from as if then than that this these those
-it its is are was were be been being am do does did done have has had having
-will would shall should can could may might must
-i you he she they we me him her them us my your his their our
-not no yes ok okay
-""".split())
-
-# 软停用词：抽象名词 / 方位词 / 泛用形容词——**可能**是真术语（如 up/down/block/full），
-# 故只单独计数、不剔除，供人工复核。
-STOP_SOFT = frozenset("""
-up down out off over under left right top bottom front back side
-full empty empty-ish new old high low big small long short
-line lines point points level levels value values size state power
-bit bits byte bytes number numbers many most some any all both each every
-more much very just only also
-""".split())
+# 停用词表（`STOP_HARD` / `STOP_SOFT` / `load_stopwords`）已迁至
+# `shared/asr_common.py` 作单一权威——ASR 触发清单的 X 层过滤复用同一张表
+# （可执行方案 §三 判据 4），两处各存一份必然漂移。
 
 
 # ---------------- 语料发现 ----------------
@@ -272,23 +260,12 @@ def gather_pred(videos, cats, limit=20, threshold=2):
 
 
 def load_stopwords(path):
-    """外置停用词表：每行一词（`#` 注释）。返回 (hard, soft)。"""
-    hard, soft = set(STOP_HARD), set(STOP_SOFT)
-    if not path or not os.path.exists(path):
-        return hard, soft
-    section = "hard"
-    for ln in open(path, encoding="utf-8"):
-        s = ln.strip()
-        if not s:
-            continue
-        if s.startswith("#"):
-            if "soft" in s.lower():
-                section = "soft"
-            elif "hard" in s.lower():
-                section = "hard"
-            continue
-        (hard if section == "hard" else soft).add(s.lower())
-    return hard, soft
+    """外置停用词表：每行一词（`#` 注释）。返回 (hard, soft)。
+
+    实现已迁 `shared/asr_common.py`（单一权威，ASR 触发清单共用）；此处保留
+    同名薄壳，避免既有调用方与 `--stopwords` 文档口径断裂。
+    """
+    return _load_stopwords(path)
 
 
 # ---------------- 主流程 ----------------

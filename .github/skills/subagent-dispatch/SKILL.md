@@ -107,11 +107,13 @@ subagent prompt = 任务文件内容（含任务特有规则）
 > - 内联 / 引用分工见“组装原则”与纪律母版「五、工作区与工具纪律」
 > - 无外部格式权威的任务（如 `task-summary`）此项省略
 > **`## 先验知识` 内部顺序**：**高优先级靠前、紧贴对应任务规则**，不得打乱。
-> - **事实源 = 各渲染脚本 `TASKS[task]["prior"]` 的列表序**
+> - **事实源 = 各渲染脚本 `TASKS[task]["priors"]` 的列表序**
 >   - `task-translate` = `["humanizer","terms"]`
 >   - `task-punctuate` = `["breaks"]`
 >   - `task-split` = `["breaks"]`
 >   - `task-match` = `[]`
+>   - `task-en-preprocess`（`render_preprocess_prompt.py`）= `["asr_trigger","asr","glossary"]`（触发清单 → 映射表 → 词集，皆紧贴对应规则）
+>   - `task-term-recognition`（同上）= `["scan","glossary","asr"]`
 > - 整体拼接按“纪律 → 格式 → 知识 → 数据”序
 > - 需主会话判断的额外先验（块边界情况、前文摘要等）用 `--prior-file` 传文件追加到 `## 先验知识`
 
@@ -230,7 +232,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 | 任务 | 任务文件 | 输出（`_work/<视频名>/`） |
 |------|----------|--------------------------|
 | 术语识别（preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)） | `term-scan/task-term-recognition` | `_term_results/chunk_<k>.txt` |
-| 英文预整理·第一次遍历（preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)） | `term-scan/task-en-preprocess` | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv` |
+| 英文预整理·第一次遍历（preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描)） | `term-scan/task-en-preprocess` | `_en_results/chunk_<k>.srt` + `chunk_<k>.asr.tsv`（前置必跑 `asr_trigger.py scan`，收信号后跑 `asr_check_trigger.py` 校清单覆盖率） |
 | L3 术语查证（preprocess [集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐)，研究型 agent 分批派发 30 条/块，任务文件即 prompt） | `term-scan/task-term-resolve` | `term_resolve_<i>.md`（输入 `term_pending_<i>.md`；派发双引用） |
 | Wiki 查询（翻译过程任何需请求 Wiki 的场合，研究型 agent，任务文件即 prompt） | `wiki-tools/task-wiki-query` | `wiki_resolve_<i>.md`（输入 `wiki_pending_<i>.md`；派发双引用） |
 | 补标点（reflow [补标点](../reflow-redstone/semantic-reflow.md#补标点)） | `reflow-redstone/task-punctuate` | `reflow/r01_results/chunk_<k>.txt` |
