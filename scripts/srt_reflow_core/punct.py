@@ -28,6 +28,16 @@
    - `ellipsis` 省略号（`...`）不作句界
    - `bracket_balance` 括号配平（配对区间内不切 = 保护区间）
 
+4. **启发式保护层（可配置；2026-10-05 用户裁定）**——两类「语义整体优先于标点美观」的偏好，
+   统一为 `HEURISTIC_DEFAULTS`（每项都可 CLI 覆盖/关闭）：
+   - `bracket_keep` 括号整体：开括号前断开（把括注整体后移）优先于括号内标点；括号内断开加罚
+     （`bracket_break_penalty`）。实例 `…中继器（当然，除非你布线更巧妙）。` 不切成
+     `…中继器（当然，` + `除非…`。
+   - `enum_keep` 数字枚举整体：枚举（`8、8、4` / `8, 8 and 4` / `0, 3, 7, 11 and 15`）内部加罚
+     （`enum_break_penalty`）；副语言侧（英文行）另有**保护区挪移**——切点落在保护区内时
+     挪到保护区**外**的最近词边界（`word_cut_advantage` 阔限），修 `…on 8,` + `8 and 4 gameticks`
+     这类枚举被劈开。**只对保护区生效**，不是通用就近切词（无差别启用会劣化大量标点切点）。
+
 用法（模块）：
     from srt_reflow_core.punct import build_profile, split_atomic, pack_by_strength, split_sentences
     prof = build_profile("zh")
@@ -81,6 +91,29 @@ FRAG_PENALTY = 20.0   # 段宽 < min_unit 的额外罚（应显著大于任何�
 # 6.0 同时满足两条：括号内逗号（6.0）略贵于句外逗号（5.0），但远便宜于碎片（20.0）。
 BRACKET_BREAK_PENALTY = 6.0
 
+# ---- 启发式保护规则（可配置层；2026-10-05 用户裁定）----
+# 两类「语义整体优先于标点美观」的偏好，统一为**可配置的启发式层**（每个值都可 CLI 覆盖/关闭）：
+#   ① 括号整体（bracket_keep）：开括号前断开（bracket_open）优先于括号内标点；括号内断开加罚
+#   ② 枚举整体（enum_keep）：数字枚举（`8、8、4` / `8, 8 and 4` / `0, 3, 7, 11 and 15`）
+#      **内部**断点加罚——枚举被劈开（一侧只剩 `8,` / `8、`）比切在别处更难读。
+#      实例（2026-10-05 用户指出）：
+#        `Well, if you said 3 repeaters on 8,` + `8 and 4 gameticks, you'd be correct.`
+#      → 枚举的第一个元素被留在前一行；根因是**副语言侧**只能切在标点、而第一个 `8` 后的逗号
+#        距目标最近 → 故除加罚外还需 `word_cut_advantage`（词边界回退，见 split_by_nearby_punct）。
+# 关闭任一项 = 该偏好不参与代价（回退到纯断点强度 + 宽度）。
+ENUM_BREAK_PENALTY = 8.0   # 枚举内部断开加罚：> clause(5.0) 宁可在别处逗号切；< FRAG_PENALTY(20.0) 宁可劈枚举也不制造碎片
+WORD_CUT_ADVANTAGE = 2.0   # 副语言保护区挪移阔限：词边界比保护区标点**近出**该字符数时改用词边界
+                           #   （保留余量：实测案例词边界近 6 字符 → 2.0 足够触发；
+                           #    取值过大则挪移失效——曾先用 8.0 导致案例未修复，2026-10-05 自检发现）
+
+HEURISTIC_DEFAULTS = {
+    "bracket_keep": True,                              # 括号整体保护（开括号前优先断 + 括号内加罚）
+    "bracket_break_penalty": BRACKET_BREAK_PENALTY,
+    "enum_keep": True,                                 # 数字枚举整体保护
+    "enum_break_penalty": ENUM_BREAK_PENALTY,
+    "word_cut_advantage": WORD_CUT_ADVANTAGE,
+}
+
 # EN 常见缩写（缩写点不作句界；匹配须紧邻标点且以 . 结尾）
 _ABBR_RE = re.compile(
     r"(?i)(?<![A-Za-z])"
@@ -98,8 +131,12 @@ class PunctProfile:
     `lang` 仅作标记/诊断，不参与字符集选择——新增书写系统无需加分支，只需其标点在通用表内。
     """
 
-    def __init__(self, lang=None, role_chars=None, brackets=None, break_cost=None):
+    def __init__(self, lang=None, role_chars=None, brackets=None, break_cost=None,
+                 heuristics=None):
         self.lang = lang or "und"
+        # 启发式保护规则（括号整体 / 数字枚举整体）——未给的项取 HEURISTIC_DEFAULTS
+        self.heuristics = dict(HEURISTIC_DEFAULTS)
+        self.heuristics.update(heuristics or {})
         base = dict(PUNCT_ROLE_CHARS)
         for role, chars in (role_chars or {}).items():
             if chars is not None:
@@ -110,6 +147,10 @@ class PunctProfile:
         for role, cost in (break_cost or {}).items():
             if cost is not None:
                 self.break_cost[role] = float(cost)
+        # `bracket_keep=False` → 取消「开括号前优先断」这一正向偏好：
+        # 让 `bracket_open` 与普通句内断点（clause）同价，括号不再被整体后移。
+        if not self.heuristics.get("bracket_keep", True):
+            self.break_cost[BRACKET_OPEN_ROLE] = self.break_cost.get(CLAUSE, 5.0)
         # 反向索引：字符 → 角色（按强度降序写入，先写者优先——高角色不被低角色覆盖）
         self.char_role = {}
         for role in ROLE_ORDER:
@@ -133,10 +174,11 @@ class PunctProfile:
 
 
 def build_profile(lang="zh", terminators=None, strong=None, clause=None, list_chars=None,
-                  brackets=None, break_cost=None):
-    """构造角色 profile（未给的项取**通用默认表**）。CLI `--punct-*` 透传入口。
+                  brackets=None, break_cost=None, heuristics=None):
+    """构造角色 profile（未给的项取**通用默认表**）。CLI `--punct-*` / `--heuristic-*` 透传入口。
 
     `lang` 仅作标记（不再切换字符集）；显式传入的项覆盖通用表对应角色。
+    `heuristics` = 启发式保护规则覆盖（括号整体 / 数字枚举整体；见 `HEURISTIC_DEFAULTS`）。
     """
     role_chars = {}
     if terminators is not None:
@@ -147,7 +189,56 @@ def build_profile(lang="zh", terminators=None, strong=None, clause=None, list_ch
         role_chars[CLAUSE] = clause
     if list_chars is not None:
         role_chars[LIST] = list_chars
-    return PunctProfile(lang, role_chars, brackets, break_cost)
+    return PunctProfile(lang, role_chars, brackets, break_cost, heuristics)
+
+
+# ---- 启发式：数字枚举整体保护 ----
+# 枚举对判据（断点 k 在 `texts[k]` 与 `texts[k+1]` 之间）：
+#   前段**以数字/数字+量词收尾**（去掉尾随标点与空白）且 后段**以数字开头**（可带 and/or/和/以及）
+# 实例：`8、|8、`、`8、|4 个游戏刻`、`on 8,| 8 and 4 gameticks`、`0,| 3,` → 命中
+# 反例：`So default 2,| then 4,`（后段以 then 起）→ 不命中（正确：`then` 是连接词、断点在外）
+_ENUM_TAIL_RE = re.compile(r"[\d一二三四五六七八九十百千]\s*(?:个|只|种|次|格|座|层|片|页|级|条|块|倍)?\s*[，,、;；\s]*$")
+_ENUM_HEAD_RE = re.compile(r"^\s*(?:and|or|和|以及)?\s*[\d一二三四五六七八九十百千]")
+
+
+def _is_enum_pair(tail_text, head_text):
+    """两相邻原子段之间是否为「枚举内部」断点（前段以数字收尾 且 后段以数字开头）。"""
+    return bool(_ENUM_TAIL_RE.search(tail_text)) and bool(_ENUM_HEAD_RE.match(head_text))
+
+
+def _enum_internal_flags(texts):
+    """每个断点位置是否落在枚举内部 → `[bool] * len(texts)`（末元素恒 False，其后无断点）。"""
+    n = len(texts)
+    return [(_is_enum_pair(texts[k], texts[k + 1]) if k < n - 1 else False) for k in range(n)]
+
+
+def _protected_span(k, texts, ends, inbr, enum_flags):
+    """断点 k 所在**保护区**（枚举串 / 括号区间）的全局字符区间 `[lo, hi)`；非保护区返回 None。
+
+    用途：副语言侧「命中保护区 → 挪到保护区外的最近词边界」——挪移目标必须落在保护区**之外**，
+    否则等于没挪（`8, 8|and 4` 仍是劈开枚举）。故需先算出保护区的**字符范围**：
+    - 枚举：起点 = 前段尾部数字的起始位置（`on 8,` 的 `8`）；终点 = 向右连续命中的最后一个元素末尾。
+      实例 `Well, if you said 3 repeaters on 8,| 8 and 4 gameticks,` → `[33, 54)`，
+      理想切点 28.9（`repeaters|on`）落在区间**左外** → 可达。
+    - 括号：连续 `in_bracket` 原子段，含 `(` 的段向左扩、含 `)` 的段向右扩。
+    """
+    if enum_flags[k]:
+        m = _ENUM_TAIL_RE.search(texts[k])
+        lo = (ends[k - 1] if k > 0 else 0) + (m.start() if m else 0)
+        j = k
+        while j + 1 < len(texts) and _is_enum_pair(texts[j], texts[j + 1]):
+            j += 1
+        return lo, ends[j]
+    if inbr[k]:
+        a = k
+        while a - 1 >= 0 and (inbr[a - 1] or "(" in texts[a - 1]):
+            a -= 1
+        b = k
+        while b + 1 < len(texts) and inbr[b + 1]:
+            b += 1
+        lo = (ends[a - 1] if a > 0 else 0) + (texts[a].find("(") if "(" in texts[a] else 0)
+        return lo, ends[b]
+    return None
 
 
 # ---- 例外模式（guards）：统一保护层 ----
@@ -332,22 +423,38 @@ def split_by_nearby_punct(segs, widths, profile=None):
     n = len(widths)
     if n <= 0:
         return []
-    atoms = [(s, r) for s, r, _b in segs if s]
-    full = "".join(s for s, _r in atoms)
+    atoms = []
+    for s in segs:
+        if not s[0]:
+            continue
+        atoms.append((s[0], s[1], bool(s[2]) if len(s) >= 3 else False))
+    full = "".join(s for s, _r, _b in atoms)
     if n == 1:
         return [(full, None)]
     if len(atoms) < n:
         # 原子段比目标片数还少（副语言断点素材极稀疏）→ 无可依标点，退回按宽度比例的词边界切分
         return _even_split(full, n, widths)
 
+    hz = dict(HEURISTIC_DEFAULTS)
+    hz.update(getattr(profile, "heuristics", None) or {})
     cost = profile.break_cost if profile is not None else DEFAULT_BREAK_COST
     ends, acc = [], 0
-    for s, _r in atoms:
+    for s, _r, _b in atoms:
         acc += len(s)
         ends.append(acc)
     total_len = ends[-1]
     total_w = sum(widths) or 1
     tol = max(1.0, total_len / max(1, n - 1) / 3.0)   # “距离相近”的容忍桶宽
+    # 枚举内部断点标记（`8, 8 and 4` 这类枚举不得在内部切；关闭时恒 False）
+    keep_enum = bool(hz.get("enum_keep", True))
+    keep_br = bool(hz.get("bracket_keep", True))
+    enum_flags = (_enum_internal_flags([s for s, _r, _b in atoms]) if keep_enum
+                  else [False] * len(atoms))
+    inbr_flags = [(b and keep_br) for _s, _r, b in atoms]
+    # 保护断点（枚举内部 / 括号内部）：**不受词边界回退影响**，但作为「同距离时的破平」更差；
+    # 副语言侧对它们做「挪出保护区」的专用处理（见下），而不是在候选间加罚重排
+    # （加罚重排会把更早的弱断点顶上来：实测 `Well,`(5) 胜出，2026-10-05 自检发现）。
+    prot_flags = [(enum_flags[k] or inbr_flags[k]) for k in range(len(atoms))]
 
     # 目标点：按目标语言各单元宽度的累计比例，映射到副语言的字符位置
     cum, targets = 0.0, []
@@ -366,12 +473,29 @@ def split_by_nearby_punct(segs, widths, profile=None):
             # 同桶同强度时按**距目标最近**取（旧写法直接比 ends[k]，会取最早的断点：
             # `Well, if you said 3 repeaters on 8, 8 and 4 gameticks, you'd be correct.`
             # 目标 ≈29 字符却切在 `Well,`(5)——用户 2026-10-05 指出）
-            legal.append((bucket, cost.get(atoms[k][1], 0.0), abs(ends[k] - t), ends[k]))
+            # `prot`（保护区）仅作**距离完全相同**时的破平（放最后：绝不能压倒「距目标最近」，
+            # 否则 `Well,`(5) 会因「非保护区」胜出——2026-10-05 自检踩过）
+            legal.append((bucket, cost.get(atoms[k][1], 0.0), abs(ends[k] - t),
+                          int(prot_flags[k]), ends[k], k))
+        hi = ends[max_idx] if max_idx >= 0 else total_len
+        hi = max(hi, prev + 1)
         if legal:
-            cut = min(legal)[3]
+            bucket, _c, dist, _pf, cut, kb = min(legal)
+            # **保护区挪移**（枚举/括号整体保护在副语言侧的落点）：
+            # 最优标点若**本身落在保护区内**（枚举内部 / 括号内部），挪到保护区**外**的最近词边界。
+            # 这是"从这里挪开"的逃生通道，**不是**通用就近切词——无差别启用会把大量
+            # 原本切在标点上的位置改成词中切点（实测 216 段里 36 段劣化，2026-10-05 自检发现）。
+            # 实例：`...3 repeaters on 8,| 8 and 4 gameticks,...` 首选标点 = 枚举内部逗号
+            # → 挪到 `repeaters|on`（距目标 0.06 vs 24；保护区 `[33,54)` 外）。
+            # 若最优标点在保护区之外（普通逗号），一律不动、保持标点优先。
+            if prot_flags[kb]:
+                span = _protected_span(kb, [s for s, _r, _b in atoms], ends, inbr_flags, enum_flags)
+                wcut = _word_cut_outside(full, t, prev, hi, span) if span else None
+                if (wcut is not None and abs(wcut - t) + hz.get(
+                        "word_cut_advantage", WORD_CUT_ADVANTAGE) < dist):
+                    cut = wcut
         else:
-            hi = ends[max_idx] if max_idx >= 0 else total_len
-            cut = _nearest_word_cut(full, t, prev, max(hi, prev + 1))
+            cut = _nearest_word_cut(full, t, prev, hi)
         cuts.append(cut)
         prev = cut
 
@@ -384,6 +508,22 @@ def split_by_nearby_punct(segs, widths, profile=None):
     # 片段去首尾空白：切点落在“标点 + 空格”之后时，后片会带前导空格
     # （双语行显示为 “ are often overlooked, …”，用户 2026-10-05 指出）
     return [(f.strip(), None) for f in frags[:n]]
+
+
+def _word_cut_outside(text, t, lo, hi, span):
+    """在 `[lo, hi)` 内按词边界就近切，且**切点须在保护区 `span` 之外**（不在 `span` 内则退回最近词边界）。
+
+    保护区的「挪移」目标：`span` 左外侧（首选，`8, 8 and 4` 前）或右外侧；
+    两侧都不可达（保护区盖满 `[lo, hi)`）时**返回 None**（保持原标点断点，宁劈枚举也不制造碎片）。
+    """
+    cands = [lo + m.end() for m in re.finditer(r"\S+", text[lo:hi])]
+    if not cands:
+        return None
+    s0, s1 = span
+    out = [p for p in cands if p <= s0 or p >= s1]
+    if not out:
+        return None
+    return min(out, key=lambda p: (abs(p - t), p))
 
 
 def split_secondary(text, widths, profile=None):
@@ -489,10 +629,20 @@ def pack_by_strength(segs, hard_max, min_unit, soft_min=None, soft_max=None,
     elif soft_max is None:
         soft_max = float(hard_max)
     costs = profile.break_cost if profile else DEFAULT_BREAK_COST
+    hz = dict(HEURISTIC_DEFAULTS)
+    hz.update(getattr(profile, "heuristics", None) or {})
     texts = [s for s, _r, _b in norm]
     roles = [r for _s, r, _b in norm]
     inbr = [b for _s, _r, b in norm]
     widths = [text_width(s) for s in texts]
+    # 启发式保护：枚举内部 / 括号内断开加罚（可配可关；关闭时该偏好不参与代价）
+    enum_flags = (_enum_internal_flags(texts) if hz.get("enum_keep", True)
+                  else [False] * len(texts))
+    en_pen = hz.get("enum_break_penalty", ENUM_BREAK_PENALTY)
+    br_pen = (bracket_penalty if bracket_penalty is not None
+              else hz.get("bracket_break_penalty", BRACKET_BREAK_PENALTY))
+    if not hz.get("bracket_keep", True):
+        br_pen = 0.0
     n = len(norm)
     INF = float("inf")
     dp = [INF] * (n + 1)
@@ -512,7 +662,9 @@ def pack_by_strength(segs, hard_max, min_unit, soft_min=None, soft_max=None,
             else:
                 bc = costs.get(roles[j - 1], 0.0)
                 if inbr[j - 1]:                       # 括号内断开 → 额外罚（软优先）
-                    bc += bracket_penalty
+                    bc += br_pen
+                if enum_flags[j - 1]:                 # 枚举内部断开 → 额外罚（数字枚举整体优先）
+                    bc += en_pen
             c = dp[i] + bc + _width_cost(w, min_unit, soft_min, soft_max, w_under, w_over, frag_penalty)
             if c < dp[j]:
                 dp[j] = c

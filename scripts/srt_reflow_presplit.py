@@ -49,7 +49,29 @@ from srt_reflow_core.punct import (
     pack_by_strength,
     split_atomic,
     split_sentences,
+    ENUM_BREAK_PENALTY,
+    BRACKET_BREAK_PENALTY,
+    WORD_CUT_ADVANTAGE,
 )
+
+
+def heuristic_overrides(args):
+    """命令行 → 启发式规则覆盖 dict（只包含显式给出/关闭的项；None 项交给默认值）。
+
+    与 `--punct-*` 同款透传方式：`build_profile(..., heuristics=...)` 覆盖 `HEURISTIC_DEFAULTS`。
+    """
+    h = {}
+    if getattr(args, "no_bracket_keep", False):
+        h["bracket_keep"] = False
+    if getattr(args, "no_enum_keep", False):
+        h["enum_keep"] = False
+    if getattr(args, "enum_break_penalty", None) is not None:
+        h["enum_break_penalty"] = args.enum_break_penalty
+    if getattr(args, "bracket_break_penalty", None) is not None:
+        h["bracket_break_penalty"] = args.bracket_break_penalty
+    if getattr(args, "word_cut_advantage", None) is not None:
+        h["word_cut_advantage"] = args.word_cut_advantage
+    return h or None
 
 # 机械化断句默认参数来自 shared.srt_common 单一事实源（CJK；可 CLI 覆盖——多语言适配改标点角色表 + 这里）
 # 断点强度由 srt_reflow_core.punct 的角色表表达；`--punct-levels` 仍接受，但按**字符归属**映射（见 make_profile）。
@@ -295,14 +317,26 @@ def main():
     ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认取跨语言通用表）")
     ap.add_argument("--punct-clause", default=None, help="句内断点字符集（默认 zh ， / en ,）")
     ap.add_argument("--punct-list", dest="punct_list", default=None, help="并列内部断点字符集（默认 zh 、 / en 空）")
+    # 启发式保护规则（可配可关：括号整体 / 数字枚举整体；默认开启，见 punct.HEURISTIC_DEFAULTS）
+    ap.add_argument("--no-bracket-keep", action="store_true",
+                    help="关闭「括号整体」偏好（取消开括号前优先断，括注不再整体后移）")
+    ap.add_argument("--no-enum-keep", action="store_true",
+                    help="关闭「数字枚举整体」偏好（`8、8、4` / `8, 8 and 4` 允许在枚举内部断开）")
+    ap.add_argument("--enum-break-penalty", type=float, default=None,
+                    help=f"枚举内部断开的额外代价（默认 {ENUM_BREAK_PENALTY:g}）")
+    ap.add_argument("--bracket-break-penalty", type=float, default=None,
+                    help=f"括号内断开的额外代价（默认 {BRACKET_BREAK_PENALTY:g}）")
+    ap.add_argument("--word-cut-advantage", type=float, default=None,
+                    help=f"副语言词边界回退阔限：词边界比最优标点近出该字符数时改切词边界（默认 {WORD_CUT_ADVANTAGE:g}）")
     args = ap.parse_args()
 
+    heur = heuristic_overrides(args)
     en_prof = make_profile("en", args.punct_levels, terminators=args.punct_terminators,
                            strong=args.punct_strong, clause=args.punct_clause,
-                           list_chars=args.punct_list)
+                           list_chars=args.punct_list, heuristics=heur)
     zh_prof = make_profile("zh", args.punct_levels, terminators=args.punct_terminators,
                            strong=args.punct_strong, clause=args.punct_clause,
-                           list_chars=args.punct_list)
+                           list_chars=args.punct_list, heuristics=heur)
 
     en_blocks = collect_chunk_files(args.en_dir)
     zh_blocks = collect_chunk_files(args.zh_dir)

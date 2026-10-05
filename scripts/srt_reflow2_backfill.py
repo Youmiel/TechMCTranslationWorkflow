@@ -46,7 +46,7 @@ from shared.srt_common import (
     SOFT_MIN as SOFT_MIN_UNIT, SOFT_MAX, HARD_MAX, MIN_UNIT as DEFAULT_MIN_UNIT,
     TERMINATOR_CLASS,
 )
-from srt_reflow_presplit import split_zh, pack_candidates
+from srt_reflow_presplit import split_zh, pack_candidates, heuristic_overrides
 from srt_reflow_core.punct import build_profile, split_atomic, split_secondary
 from srt_reflow_build_r03 import split_en_by_weights
 PM = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -228,9 +228,19 @@ def main():
     ap.add_argument("--punct-strong", default=None, help="强断点字符集（默认取跨语言通用表）")
     ap.add_argument("--punct-clause", default=None, help="句内断点字符集（默认 ，）")
     ap.add_argument("--punct-list", dest="punct_list", default=None, help="并列内部断点字符集（默认 、）")
+    # 启发式保护规则（可配可关：括号整体 / 数字枚举整体；默认开启）
+    ap.add_argument("--no-bracket-keep", action="store_true",
+                    help="关闭「括号整体」偏好（取消开括号前优先断）")
+    ap.add_argument("--no-enum-keep", action="store_true",
+                    help="关闭「数字枚举整体」偏好（允许在 `8、8、4` 内部断开）")
+    ap.add_argument("--enum-break-penalty", type=float, default=None, help="枚举内部断开额外代价")
+    ap.add_argument("--bracket-break-penalty", type=float, default=None, help="括号内断开额外代价")
+    ap.add_argument("--word-cut-advantage", type=float, default=None,
+                    help="副语言词边界回退阔限（英文行枚举被劈开的修复项）")
     args = ap.parse_args()
+    heur = heuristic_overrides(args)
     zh_prof = build_profile("zh", terminators=args.punct_terminators, strong=args.punct_strong,
-                            clause=args.punct_clause, list_chars=args.punct_list)
+                            clause=args.punct_clause, list_chars=args.punct_list, heuristics=heur)
 
     z_blocks = collect_chunk_files(args.zsent_dir)
     a_blocks = collect_chunk_files(args.align_dir)
@@ -334,7 +344,8 @@ def main():
             # 机械切——后者会劈开语义单元：`soft | power`、`stone pressure | plates`）。
             # 段落数与目标语言一致（目标语言受行宽硬闸门约束，为主导侧）；
             # 无标点可用时退词边界，仍保证互斥拼接 == 整句 EN。
-            en_subs = split_secondary(en_full, [text_width(u) for u, _w in units])
+            en_subs = split_secondary(en_full, [text_width(u) for u, _w in units],
+                                      profile=zh_prof)
             # 复用 _allocate_by_weight：按权重比例在 [start,end] 内分界 + 吸附
             # units 元素取 u[0](key)/u[2](zh)，u[1] 作 en 占位；此处 zh 子段即显示文本
             segs = _allocate_by_weight([(f"u{i}", en_subs[i] if i < len(en_subs) else "", u)

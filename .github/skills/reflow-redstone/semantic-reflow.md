@@ -223,7 +223,7 @@
   - LLM **只输出匹配文件** `reflow/r03_matches/chunk_<k>.txt`（每行 `Z组 = E组`，如 `Z5+Z6+Z7+Z8 = E5`；**覆盖全部 Z/E 号各恰好一次**）——**不抄文本、不断句、不写 r03**（规则见 `task-match.md`；`r03_matches` 格式见 [PRODUCT_FORMATS_REFLOW#r03_matches](../../../docs/PRODUCT_FORMATS_REFLOW.md)）
   - **覆盖完整性是第一要务**：漏任何 Z/E 句都会在 r03 产物留空标记（脚本断句允许不完整，缺处人工核对或升级 5-1）
 2. **机械断句填回（脚本，一次性全目录）**：`python scripts/srt_reflow_build_r03.py reflow/r03_matches/ reflow/r03_normalized_1/ reflow/r03_normalized_2/ -o reflow/r03_results/`
-  - 子单元 = **复用模板骨架子句段**（presplit 机械断句结果，忠实/宽度由结构保证）；EN 整句 = 匹配 E 组按号拼接；子单元 EN = 切成与 ZH 子单元同数、**就近按标点找断点**（**互斥拼接 == 整句**，check-r03 ② 可过）
+  - 子单元 = **复用模板骨架子句段**（presplit 机械断句结果，忠实/宽度由结构保证）；EN 整句 = 匹配 E 组按号拼接；子单元 EN = 切成与 ZH 子单元同数、**就近按标点找断点**（**互斥拼接 == 整句**，check-r03 ② 可过）；切点落在**数字枚举**或**括号**内部时挪到保护区外最近词边界（启发式保护，默认开、可配 `--no-enum-keep` / `--no-bracket-keep`）
   - **漏句留空**：匹配未覆盖的 Z/E 句，产物写 `> ⚠️ 脚本断句·未匹配 Z<n>: <文本>`（**不静默消失**）；S 号块内连续、关系由子单元数定（1:1/1:n）
 
 ###### 校验
