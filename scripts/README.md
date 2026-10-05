@@ -5,7 +5,7 @@
 
 **目录约定**：本目录（`scripts/`）只放**工作流与维护会用到的工具**（有 CLI 入口）；
 不含 CLI 的**共享模块放语义文件夹**——
-`shared/`（跨工具共享：`srt_common.py` 字幕公共层——含**跨语言通用标点角色表**、`asr_common.py` ASR 修正链路公共层、`request_identity.py` 请求身份、`glossary_sources.py` **术语源适配层**、`traps.py` **陷阱词清单解析层**）、
+`shared/`（跨工具共享：`srt_common.py` 字幕公共层——含**跨语言通用标点角色表**、`asr_common.py` ASR 修正链路公共层、`request_identity.py` 请求身份、`glossary_sources.py` **术语源适配层**、`traps.py` **陷阱词清单解析层**、`knowledge_cards.py` **知识卡索引解析层**）、
 `srt_reflow_core/`（reflow 实现包，含断句引擎 `punct.py`）、`mojang_glossary/`（Mojang 词表实现包）。
 **`_dev/`**（开发分析工具，**非工作流依赖**——见下方专节）。
 导入方式：工具内 `from shared.srt_common import ...`（**绝对导入**——包存在顶层/包内两种导入路径，
@@ -37,6 +37,8 @@
 > `mojang_glossary/` 是 `glossary_fetch_mojang.py` 的实现包（内部逻辑），**非独立工具，勿直接调用**；`__init__.py`、`LICENSE` 非工具。
 
 > `shared/traps.py` — **陷阱词清单解析层**：读 `.github/experience/trap_words.md` 的 `## <分类名>` 段，供两个渲染脚本把清单整体注入翻译任务与术语识别任务的 prompt。
+>
+> `shared/knowledge_cards.py` — **知识卡索引解析层**：读 `indexes/knowledge/02_mechanic.md` 的「知识卡」节，只保留介绍各卡的句子（移除缩进的「关键词」「来源」子项），供术语识别任务的 prompt 注入。
 
 ## ASR 修正工具
 
@@ -140,7 +142,7 @@
 | 脚本 | 用途 | 用法 |
 |------|------|------|
 | `context_estimate.py` | **确定性 token 估算 + 分块建议**：按窗口配置与分块比例给出 `--owned` 建议值；放大协调 = 单块输入上限 `min(输入阈值, 输出阈值 ÷ amplification)`；`--no-amplification` 关闭；输出每 cue 平均字符与建议 `--owned`（长视频分块的**前置判断**依据，见 `redstone-conventions#长视频分块`） | `python scripts/context_estimate.py <文件> [--window N] [--split-ratio R] [--no-amplification] [--owned N]` |
-| `render_preprocess_prompt.py` | **preprocess 阶段二执行型块级任务 prompt 渲染**（会话外落盘 `prompts/`）：接入 `task-term-recognition` / `task-en-preprocess`；按任务注入先验知识（触发清单 / asr_fixes 映射 / 领域术语集，按 OWNED cue 过滤）；**`task-en-preprocess` 缺触发清单直接报错**。独立于 `render_subagent_prompt.py`（后者管 reflow/reflow2/translate 阶段三）。**集中补齐查证（`task-term-resolve`）不走本脚本**——研究型单次任务，任务文件即 prompt | `python scripts/render_preprocess_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--scan <scan_terms.txt>] [--glossary <csv...>] [--asr-fixes <局部文件>]` |
+| `render_preprocess_prompt.py` | **preprocess 阶段二执行型块级任务 prompt 渲染**（会话外落盘 `prompts/`）：接入 `task-term-recognition` / `task-en-preprocess`；按任务注入先验知识（触发清单 / asr_fixes 映射 / 领域术语集 / 陷阱词清单 / **知识卡索引**，按 OWNED cue 过滤）；**`task-en-preprocess` 缺触发清单直接报错**。独立于 `render_subagent_prompt.py`（后者管 reflow/reflow2/translate 阶段三）。**集中补齐查证（`task-term-resolve`）不走本脚本**——研究型单次任务，任务文件即 prompt | `python scripts/render_preprocess_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--scan <scan_terms.txt>] [--glossary <csv...>] [--asr-fixes <局部文件>]` |
 | `render_subagent_prompt.py` | **reflow/reflow2/translate 阶段二执行型块级任务 prompt 渲染**：接入 `task-punctuate`/`task-translate`/`task-split`/`task-match`（reflow，**reflow2 同名任务 `--skill reflow2`**）+ `task-consistency`（reflow2）+ `task-merge`/`task-translate`/`task-humanize`（translate，**`--skill translate-redstone`**）；读模板 + 纪律母版 `_discipline.md` + 产物格式约定 + 先验知识 → `prompts/<task>-chunk_<k>.txt`；完整 prompt 不进主会话历史 | `python scripts/render_subagent_prompt.py <task> --video <工作目录> [--chunk <k> \| --all] [--chunks-dir <chunks目录>] [--skill <skill>] [--prior-file <文件>]` |
 
 

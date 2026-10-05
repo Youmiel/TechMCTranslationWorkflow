@@ -162,7 +162,7 @@ reflow 阶段三（补标点 → 整段翻译 → 分句）：
 
 ### 5. 逐块派发与合并
 
-- **每块 prompt（派发配方）**：任务文件 + 纪律母版 + 产物格式约定 + 知识卡 + 块数据，按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装
+- **每块 prompt（派发配方）**：任务文件 + 纪律母版 + 产物格式约定 + 视频术语卡 + 块数据，按 [subagent-dispatch#派发配方](../subagent-dispatch/SKILL.md#派发配方) 组装
 - **跨块未完成句（结转规则，仅 translate/srt）**：
   - 每块只产出语义完整句且其 start cue 落在 OWNED 区
   - 负责区末尾句在可见上下文（OWNED + CONTEXT）内仍不完整则标记 `CARRY: c<起始idx>` 结转、不产出
@@ -178,4 +178,4 @@ reflow 阶段三（补标点 → 整段翻译 → 分句）：
   - **默认全自动**：按块序读结果、归位拼接成完整产物，主 Agent **零读取**（text 同组无缝/组间空行；srt 全局段号重排）
   - **异常时**：脚本产出 `<merged>.report.md` 异常清单（缺块 / 行数不符 / 重复 / 片号不连续 / cue 重叠 / 缺口 / CARRY）+ **异常块头尾窗口**——主 Agent **只读报告**决策即可，不整读中间
   - 合并后仍跑各工作流校验脚本（translate 用 `srt_check_segments.py`、reflow 用块级/全局校验）全量兜底；异常块经 Agent 修复后重跑 `text_merge.py`（覆盖写合并产物）
-- 术语/知识卡注入：全量术语表 + 按本块过滤命中（见 subagent-dispatch）
+- 术语/视频术语卡注入：全量术语表 + 按本块过滤命中（见 subagent-dispatch）

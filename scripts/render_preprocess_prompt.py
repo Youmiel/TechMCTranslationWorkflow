@@ -35,6 +35,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from shared.glossary_sources import iter_terms  # noqa: E402  （术语源适配层，单一权威）
+from shared.knowledge_cards import load_card_index  # noqa: E402  （知识卡索引解析）
 from shared.traps import load_traps  # noqa: E402  （陷阱词清单解析）
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -43,6 +44,8 @@ DISCIPLINE_PATH = os.path.join(SKILLS_DIR, "subagent-dispatch", "_discipline.md"
 ASR_FIXES_GLOBAL = os.path.join(PROJECT_ROOT, ".github", "experience", "asr_fixes.md")
 # 陷阱词清单（任务规则 2 `trap_words` 强制的清单来源）
 TRAP_WORDS_PATH = os.path.join(PROJECT_ROOT, ".github", "experience", "trap_words.md")
+# 知识卡索引（任务规则 3 的条目来源；解析见 shared/knowledge_cards.py）
+CARD_INDEX_PATH = os.path.join(PROJECT_ROOT, "indexes", "knowledge", "02_mechanic.md")
 
 # ASR 触发清单小节头（可执行方案 §五 5.2）。**纪律必须显式**——清单是前置必做项，
 # 缺失纪律会被当作“参考信息”而跳过；“不改变规则 1”一句是防**注意力隧道**（只看清单、
@@ -72,8 +75,8 @@ TASKS = {
         "inputs": ["_term_chunks/chunk_<k>.txt"],
         "output": "_term_results/chunk_<k>.txt",
         "chunks_key": "_term_chunks",
-        # 顺序 = 任务规则序：命中项查词（1）→ trap_words 强制（2）→ ASR 推测（3）
-        "priors": ["scan", "glossary", "traps", "asr"],
+        # 顺序 = 任务规则序：命中项查词（1）→ trap_words 强制（2）→ 知识卡索引（3）→ ASR 推测（4）
+        "priors": ["scan", "glossary", "traps", "cards", "asr"],
     },
     "task-en-preprocess": {
         "skill": "term-scan",
@@ -289,6 +292,23 @@ def collect_priors(cfg, video_dir, chunk, scan_path, glossary_paths, asr_fixes_p
                 "### 陷阱词清单（规则 2：下列词含词形变体，强制查词，不论是否已登记入 L1）\n\n"
                 + traps
             )
+
+    if "cards" in priors:
+        cards = load_card_index(CARD_INDEX_PATH)
+        if cards:
+            rows = []
+            for m in re.finditer(r"(?m)^-\s+\*\*`([^`]+)`\*\*\s*—\s*(.+)$", cards):
+                # 说明含 `|` 会破坏表格结构 → 跳过并告警（防静默丢条目）
+                if "|" in m.group(2):
+                    print(f"ℹ 知识卡索引条目含 `|`，未注入：{m.group(1)}")
+                    continue
+                rows.append(f"| `{m.group(1)}` | {m.group(2)} |")
+            parts.append(
+                "### 知识卡索引（已有语境判据的词条；规则 3）\n\n"
+                "| 知识卡 | 说明（何时用） |\n|---|---|\n" + "\n".join(rows)
+            )
+        else:
+            parts.append("### 知识卡索引（已有语境判据的词条；规则 3）\n\n（索引无条目）")
 
     if "asr" in priors:
         global_lines = parse_asr_fixes(ASR_FIXES_GLOBAL)

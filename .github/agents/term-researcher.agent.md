@@ -40,6 +40,6 @@ user-invocable: false
 
 ## 只读边界
 
-- 只读：`## 待查列表` 注明文件、`.cache/wiki/`、`indexes/repos/`、`01_subtitle_asr_fixed.srt`、`docs/WIKI_CACHE_FORMAT.md`
+- 只读：`## 待查列表` 注明文件、`.cache/wiki/`、`indexes/repos/`、`indexes/knowledge/`、`knowledge/02_mechanic/`、`01_subtitle_asr_fixed.srt`、`docs/WIKI_CACHE_FORMAT.md`
 - 只写：`_work/<视频名>/term_resolve_<i>.md`（与待查列表同名前缀）+ `.cache/wiki/`（抓取落盘）
 - 不参考其它视频的 `_work/`/`_output/` 文件

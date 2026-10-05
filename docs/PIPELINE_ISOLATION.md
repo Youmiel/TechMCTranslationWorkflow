@@ -11,7 +11,7 @@
 
 ## 2. 核心方法
 
-1. **定义输入产物**：每步只读它需要的东西（某块字幕、知识卡、全稿+规则），不读全量历史
+1. **定义输入产物**：每步只读它需要的东西（某块字幕、视频术语卡、全稿+规则），不读全量历史
 2. **定义输出产物**：每步产出并**落盘**，成为下一步输入（01/02/03/04 + 块级清单）
 3. **独立上下文执行**：无状态 subagent（或独立会话），prompt = 输入产物 + 权威规则（Skill）+ 固定模板（`subagent-dispatch`）
 4. **主 Agent 合并**：`text_merge.py` 全自动拼接（无异常零读取）；有异常读报告 + 异常块头尾窗口决策 → 校验 → 交用户审核（见 「subagent-dispatch#合并」）
@@ -41,11 +41,11 @@
 |------|----------|----------|----------|----------|----------|-----------|
 | 阶段〇 字幕机械修复 | 宜隔离 | `_input/` 原始字幕（+ 可选音频） | `00_subtitle_snapped.srt` | 脚本（`srt_mech_fix.py`，零知识、无 LLM） | `redstone-preprocess` | 隐式：无（时间轴/结构修正是新层） |
 | 阶段一 领域预判 | 视情况 | 视频元数据 + 前 ~20 句 | 领域分类 | 视情况 | `use-glossary` | 隐式：流程开头轻扫 |
-| 阶段二 术语扫描 | 宜隔离 | `00_subtitle_snapped.srt` 分块 + 术语/陷阱词知识卡 | 块级术语清单 → 汇总去重 | 每块一个 subagent | `use-glossary` + `subagent-dispatch` | 隐式：逐句全量扫描（查词可能已 ad-hoc 拆派） |
+| 阶段二 术语扫描 | 宜隔离 | `00_subtitle_snapped.srt` 分块 + 视频术语卡（术语/陷阱词） | 块级术语清单 → 汇总去重 | 每块一个 subagent | `use-glossary` + `subagent-dispatch` | 隐式：逐句全量扫描（查词可能已 ad-hoc 拆派） |
 | 阶段二 集中补齐 | 宜隔离 | 待查列表 | `.cache/wiki/*.md` + 术语映射补充 | 独立单步 | `redstone-preprocess` | 隐式：主流程内连续网络请求 |
 | 阶段二 术语确认/入库 | 需用户交互（宜主会话） | 术语清单 | `02_terms.md`、`_uncategorized.csv` | 主会话（需交互时）；否则视情况 | `term-registration` | 隐式：需用户确认 |
 | 阶段三 合并断句 | 宜隔离 | 01 分块 + 只读上下文 | 块级分段 → `s03_plan.md` | 每块一个 subagent | `segment-subtitles` | 隐式：两遍式手断 |
-| 阶段三 翻译 | 宜隔离 | 分段分块 + 知识卡 | 块级译文 → `s04_draft.srt` | 每块一个 subagent | `translate-redstone` + `subagent-dispatch` | 隐式：逐段译 |
+| 阶段三 翻译 | 宜隔离 | 分段分块 + 视频术语卡 | 块级译文 → `s04_draft.srt` | 每块一个 subagent | `translate-redstone` + `subagent-dispatch` | 隐式：逐段译 |
 | 阶段四 去翻译腔 | 宜隔离 | `s04_draft.srt` 全稿 + `humanizer-zh` 规则 | 修订稿 | 独立上下文一遍 | `humanizer-zh` | 隐式：主会话顺带改 |
 | 阶段五 审核循环 | 需用户交互（宜主会话） | `s04_draft.srt` + 决策点清单 | 定稿 | 主会话（需交互时） | `redstone-review` | 隐式：需用户审核 |
 | 阶段六 总结 | 视情况 | 各阶段产物 | `coverage_log.md` 流水 + `source_experience.md` 提炼 | 视情况 | `redstone-finalize` | 隐式：收尾追加 |
@@ -63,7 +63,7 @@
 | 跨步骤信息回流（翻译发现术语问题不回写 `02_terms.md`） | `subagent-dispatch`：按规则兜底 + 遗留标记；主 Agent 组装时统一收集批量处理 |
 | 一致性依赖指令完备 | 规则全部沉淀进 Skill/模板（语义合并、分块、纪律、各任务输出格式） |
 | 主 Agent 变调度者 | 只装产物不装过程；调度纪律见 `subagent-dispatch` |
-| 质量下限（孤立步骤看不到全貌） | 知识卡 + 上下文重叠（M 段只读上下文）+ 人工审核循环兜底 |
+| 质量下限（孤立步骤看不到全貌） | 视频术语卡 + 上下文重叠（M 段只读上下文）+ 人工审核循环兜底 |
 
 ## 7. 可落地的方向
 
