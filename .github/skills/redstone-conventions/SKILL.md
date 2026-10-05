@@ -30,6 +30,7 @@ Wiki 页面获取降级链、缓存保真阶梯、缓存读取、**过期判定�
 ## 环境
 
 - 本机**无 venv**，直接用 `python`（`venv\Scripts\Activate.ps1` 存在才激活）
+- **依赖**：`pip install -r requirements.txt`（`requests` + `numpy`）。阶段〇**时间轴吸附**另需系统 **ffmpeg**（`srt_snap_audio` 解码音频用，**阶段〇 引入**）——**无音频源 / ffmpeg 缺失时不自动跳过**：脚本暂停（退出码 1）+ 一次性反馈缺口，等用户决策（补缺口重跑 / `--skip-snap` 确认跳过）。详见 [`docs/SETUP.md#环境要求`](../../../docs/SETUP.md#环境要求)
 - PowerShell 中带 `[` 的文件路径用 `-LiteralPath`（否则被当通配符，Get-Content/Get-FileHash 失败）
 
 ## 输出门禁

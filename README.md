@@ -10,7 +10,7 @@
 ## 初始化
 
 ```bash
-# 安装依赖
+# 安装依赖（Python 3.8+）
 pip install -r requirements.txt
 
 # 初始化 submodule（知识仓库 + humanizer-zh Skill）

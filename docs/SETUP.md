@@ -2,6 +2,14 @@
 
 让项目在你的机器与编辑器上跑起来的全部配置、部署与适配步骤。编辑器差异（agent 定义迁移、派发入口映射）另见 [EDITOR_COMPAT](EDITOR_COMPAT.md)。
 
+## 环境要求
+
+| 项目 | 要求 | 说明 |
+|------|------|------|
+| Python | **3.8+** | 脚本语法下限（`scripts/` 全量解析通过）；开发环境为 3.12 |
+| Python 包 | 见 [`requirements.txt`](../requirements.txt) | `requests`（Wiki / Mojang 抓取）、`numpy`（时间轴吸附的能量包络计算，**阶段〇 引入**） |
+| [ffmpeg](https://ffmpeg.org/) | 可选（**装则更佳**） | 仅**阶段〇 时间轴吸附**（`srt_mech_fix.py --audio/--video`）解码音频时调用。**缺口（无音频源 / `--audio` 路径不存在 / ffmpeg 缺失）不静默跳过**——脚本暂停（退出码 1）并一次性反馈，**附探测足迹**（搜索目录 → 实际内容，便于判断音频放错位置 / 格式不在白名单 / 尚未下载），由用户决定补缺口重跑还是确认跳过（`--skip-snap`）。`--cache` 命中时无需音频源与 ffmpeg |
+
 ## 初始化
 
 ```bash

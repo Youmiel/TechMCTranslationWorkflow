@@ -29,8 +29,15 @@
 
 ## 音频来源
 `--audio` 显式指定，或 `--video` 指向视频（自动在视频同名/同目录找独立音频，或直接读容器
-音轨——ffmpeg 可解码 mp4/mkv 音轨，无需先分离）。两者都不可用时**降级跳过**（退出码 0，
-报告写明原因），不阻断流程。
+音轨——ffmpeg 可解码 mp4/mkv 音轨，无需先分离）。
+
+## 缺口反馈（不静默跳过）
+无音频源 / `--audio` 路径不存在 / ffmpeg 不在 PATH 时，**`--apply`（要写产物）会暂停并退出码 1**，
+把缺口**一次性**反馈到报告（含**探测足迹**：搜索过哪些目录、各自实际内容），等用户决策：
+补缺口（`--audio`/`--video`、装 ffmpeg 并加入 PATH）后重跑，或 `--skip-snap` 确认跳过。
+仅报告模式（不带 `--apply`）本就无写盘动作，缺口只作提示、退出码 0。
+
+**`--cache` 命中时无缺口**：`load_audio` 直接 `np.load`，既不需音频源也不需 ffmpeg（缓存自先前的成功解码）。
 
 ## 用法
   # 报告模式（默认，不改产物）
@@ -41,13 +48,17 @@
   python scripts/srt_snap_audio.py --video <视频.mp4> --srt 01.srt -o 00_subtitle_snapped.srt --apply
   # en_timeline 目录（时间轴固化层）
   python scripts/srt_snap_audio.py --audio <音频> --etimeline reflow2/en_timeline
+  # 缺口反馈后，用户确认跳过（跳过不产出吸附产物，退出码 0）
+  python scripts/srt_snap_audio.py --srt 01.srt -o 00.srt --apply --skip-snap
 `--report` 省略时写到 `<输入所在目录>/speech_align/snap_report.md`（不依赖 cwd）。
-退出码：0 = 完成（含无音频降级）；1 = 输入解析失败。
+退出码：0 = 完成（含用户确认跳过 / 仅报告模式的缺口提示）；1 = 输入解析失败 / 自检未过 /
+`--apply` 遇缺口待用户决策（无音频源、ffmpeg 缺失、解码失败）/ `--skip-snap` 未与 `--apply` 同用。
 """
 import argparse
 import glob
 import os
 import re
+import shutil
 import subprocess
 import sys
 
@@ -72,13 +83,19 @@ def fmt_srt(t):
 
 AUDIO_EXTS = (".mp3", ".m4a", ".opus", ".wav", ".flac", ".aac", ".ogg")
 VIDEO_EXTS = (".mp4", ".mkv", ".webm", ".mov", ".avi")
+# 疑似音频 / 视频但不在白名单——仅供「格式不受支持」诊断，不参与选取
+AUDIO_LIKE_EXTS = (".wma", ".aiff", ".aif", ".m4b", ".amr", ".ape", ".au", ".ra", ".oga", ".weba")
+VIDEO_LIKE_EXTS = (".flv", ".wmv", ".m4v", ".mpg", ".mpeg", ".ts", ".vob", ".3gp", ".rmvb", ".rm")
+FOOTPRINT_MAX_FILES = 25
 
 
 def pick_audio(explicit=None, video=None, search_dirs=()):
-    """定位可用音频源；无则返回 None（调用方降级跳过）。
+    """定位可用音频源；无则返回 None。
 
     优先级：显式 --audio → 视频同名音频 → 视频容器本身（ffmpeg 抽轨）→ search_dirs 内音频。
     覆盖三种实际形态：独立音频文件、视频内音轨、目录内任意音频（自动字幕下载常留 mp3）。
+
+    返回 None 后**不静默降级**——由 `check_gaps` 判定「暂停待用户决策」还是「报告模式仅提示」。
     """
     if explicit:
         return explicit
@@ -100,12 +117,89 @@ def pick_audio(explicit=None, video=None, search_dirs=()):
     return cands[0] if cands else None
 
 
-def load_audio(path, sr=16000, cache=None):
+def scan_footprint(search_dirs=(), video=None, max_files=FOOTPRINT_MAX_FILES):
+    """生成「探测足迹」：搜索位置 → 各目录**实际内容**，供诊断音频缺失的根因。
+
+    只做目录列举（零文件读取、零解码）。附在缺口反馈里，让 Agent / 用户无需再补一轮
+    目录列举，即可判断：音频放错位置 / 格式不在白名单 / 尚未下载 / 搜索目录本身不对。
+    """
+    L = ["- **探测足迹**（搜索位置 → 实际内容）："]
+    if video:
+        vp = os.path.abspath(video)
+        L.append(f"  - `--video`：`{vp}`（{'存在' if os.path.exists(vp) else '**不存在**'}）")
+        stem = os.path.splitext(vp)[0]
+        same = [os.path.basename(stem + a) for a in AUDIO_EXTS if os.path.exists(stem + a)]
+        L.append("  - 视频同名音频：" + (f"找到 {same}" if same else "无"))
+    for d in [x for x in search_dirs if x]:
+        if not os.path.isdir(d):
+            L.append(f"  - `{d}`：**目录不存在**（检查输入文件路径是否正确）")
+            continue
+        try:
+            files = sorted(f for f in os.listdir(d) if os.path.isfile(os.path.join(d, f)))
+        except OSError as e:
+            L.append(f"  - `{d}`：**不可读**（{e}）")
+            continue
+        like = [f for f in files
+                if os.path.splitext(f)[1].lower() in AUDIO_LIKE_EXTS + VIDEO_LIKE_EXTS]
+        L.append(f"  - `{d}`：{len(files)} 个文件，白名单音频 / 视频 0 个")
+        if like:
+            L.append(f"    - ⚠️ **疑似音频/视频但格式不在白名单**：{like}")
+        for f in files[:max_files]:
+            L.append(f"    - `{f}`")
+        if len(files) > max_files:
+            L.append(f"    - …（余 {len(files) - max_files} 个未列）")
+    return L
+
+
+def check_gaps(audio, writes_output, cache=None, explicit=None, search_dirs=(), video=None):
+    """探测时间轴吸附的**输入 / 环境缺口** → `(can_run, tag, lines, exit_code)`。
+
+    与 `srt_mech_fix.py` 共用本函数，保证「一次性反馈 + 待用户决策」口径一致。
+    本函数**只做判定与文案**，不改行为（是否产出由调用方决定）。
+
+    `writes_output` = 本次是否要写产物（写则缺口阻断 → 待用户决策；不写仅提示）。
+
+      tag = "ok"                 环境齐备，可执行
+      tag = "need-decision"      缺口存在且要写产物 → **暂停等用户决策**（exit_code=1）
+      tag = "skip-no-audio"      无音频、仅报告模式 → 不吸附
+      tag = "skip-no-ffmpeg"     ffmpeg 缺失、仅报告模式 → 不吸附
+      tag = "skip-bad-explicit"  `--audio` 路径不存在、仅报告模式 → 不吸附
+
+    `cache` 命中时**无缺口**——`load_audio` 直接 `np.load`，既不需音频源也不需 ffmpeg。
+    `lines` = 反馈要点（need-decision 时供调用方追加决策指引）。
+    """
+    if cache and os.path.exists(cache):
+        return (True, "ok", [], 0)
+    if explicit and not os.path.exists(explicit):
+        lines = [f"- **`--audio` 指定的文件不存在**：`{explicit}`",
+                 "- 检查路径拼写 / 文件是否已移动；或改用 `--video`（自动找同名音频或读容器音轨）"]
+        return ((False, "need-decision", lines, 1) if writes_output
+                else (False, "skip-bad-explicit", lines, 0))
+    if not audio:
+        lines = ["- **无音频可用**（未指定，且输入目录 / 视频旁均未探测到）",
+                 "- 探测顺序：`--audio` → `--video` 同名音频 → 视频容器音轨 → 输入目录内音频文件",
+                 "- 白名单：音频 " + " / ".join(AUDIO_EXTS) + "；视频 " + " / ".join(VIDEO_EXTS)]
+        if writes_output:
+            return (False, "need-decision",
+                    lines + [""] + scan_footprint(search_dirs, video), 1)
+        return (False, "skip-no-audio", lines, 0)
+    if shutil.which("ffmpeg") is None:
+        lines = [f"- **ffmpeg 不在 PATH**（已探测到音频：`{audio}`）",
+                 "- 装上 ffmpeg 并把其 bin 目录加入 PATH 后重跑"]
+        return ((False, "need-decision", lines, 1) if writes_output
+                else (False, "skip-no-ffmpeg", lines, 0))
+    return (True, "ok", [], 0)
+
+
+def load_audio(path, sr=16000, cache=None, silent=False):
+    """解码为 float32 单声道。`silent=True` 时解码失败返回 `None`（调用方自行反馈）。"""
     if cache and os.path.exists(cache):
         return np.load(cache), sr
     p = subprocess.run(["ffmpeg", "-v", "quiet", "-i", path, "-ac", "1", "-ar", str(sr),
                         "-f", "s16le", "-"], capture_output=True)
     if p.returncode != 0 or not p.stdout:
+        if silent:
+            return None
         sys.exit(f"❌ ffmpeg 解码失败：{path}")
     x = np.frombuffer(p.stdout, dtype=np.int16).astype(np.float32) / 32768.0
     if cache:
@@ -244,7 +338,7 @@ def report_lines(args, dur, db, hop, records, src, audio, problems=(), extra=())
 
     L = ["# 时间轴吸附报告（语音谷）", ""]
     L.append(f"- 输入：{src}")
-    L.append(f"- 音频：{audio}")
+    L.append(f"- 音频：{audio}" if audio else "- 音频：（缓存命中，未解码音频源）")
     L.append(f"- 音频时长 {fmt_t(dur)}；包络 {len(db)} 帧 @ {hop*1000:.1f}ms")
     L.append(f"- 参数：窗口 ±{args.window}s，下降阈 {args.min_drop}dB，最小间隔 {args.min_gap}s")
     L.append(f"- 边界点 {len(records)} 个")
@@ -316,25 +410,42 @@ def main():
     ap.add_argument("--min-drop", type=float, default=6.0, help="吸附所需能量下降(dB)")
     ap.add_argument("--min-gap", type=float, default=0.04, help="相邻边界最小间隔(秒)")
     ap.add_argument("--apply", action="store_true", help="写出结果（默认只报告）")
-    ap.add_argument("--cache", default=None, help="音频解码缓存 .npy")
+    ap.add_argument("--skip-snap", action="store_true",
+                    help="用户确认跳过时间轴吸附（缺口反馈后由其决策时使用，须与 --apply 同用）")
+    ap.add_argument("--cache", default=None,
+                    help="音频解码缓存 .npy（存在则直接读、不需音频源与 ffmpeg）")
     args = ap.parse_args()
+    if args.skip_snap and not args.apply:
+        sys.exit("❌ --skip-snap 需与 --apply 同用（它是「用户确认跳过」的凭据）")
 
     src = args.srt or args.etimeline
     base = os.path.dirname(os.path.abspath(args.srt if args.srt else args.etimeline.rstrip("/\\")))
     report = args.report or os.path.join(base, "speech_align", "snap_report.md")
 
     audio = pick_audio(args.audio, args.video, search_dirs=(base,))
-    if not audio:
-        emit_report(report, [
-            "# 时间轴吸附报告（语音谷）", "",
-            f"- 输入：{src}",
-            "- **无音频可用 → 降级跳过**：时间轴保持原样，下游行为不变",
-            "- 探测顺序：`--audio` → `--video` 同名音频 → 视频容器音轨 → 输入目录内音频文件",
-            "- 判据：目录内需有 " + " / ".join(AUDIO_EXTS) + " 之一，或用 `--video` 指定视频",
-        ])
+    can, tag, lines, code = check_gaps(audio, writes_output=args.apply, cache=args.cache,
+                                       explicit=args.audio, search_dirs=(base,), video=args.video)
+    if args.skip_snap:
+        lines = ([f"- 用户确认跳过（`--skip-snap`；环境本可用）"] if can
+                 else lines + ["- **用户确认跳过**（`--skip-snap`）"])
+        can, tag, code = False, "skip-user", 0
+    if not can:
+        L = ["# 时间轴吸附报告（语音谷）", "", f"- 输入：{src}", *lines]
+        if tag == "need-decision":
+            L += ["", "**本脚本已暂停（未产出产物）。** 请用户决策（缺口已一次性反馈）：",
+                  "- 补上缺口（提供 `--audio` / `--video`，或安装 ffmpeg 并确保在 PATH）后重跑；",
+                  "- 或确认跳过时间轴吸附 → 重跑加 `--apply --skip-snap`（产物照常写出）。"]
+        emit_report(report, L)
+        if code:
+            sys.exit(code)
         return
 
-    x, sr = load_audio(audio, cache=args.cache)
+    loaded = load_audio(audio, cache=args.cache, silent=True)
+    if loaded is None:
+        emit_report(report, ["# 时间轴吸附报告（语音谷）", "", f"- 输入：{src}",
+                             f"- ❌ ffmpeg 解码失败：{audio}（文件损坏或格式不支持）"])
+        sys.exit(1)
+    x, sr = loaded
     db, hop = envelope(x, sr)
     dur = len(x) / sr
 

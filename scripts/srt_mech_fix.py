@@ -24,8 +24,10 @@ ASR 误识别修正需要领域预判加载的词汇表 / asr_fixes 作先验，
   `end <= start` 则该 cue 不可修，报错退出（不静默产出坏轴）
 - **异常时长**：`< ULTRA_SHORT_MS`、`> LONG_UNIT_MS` → 报告告警（**不自动改**——
   改时长会破坏语义边界）
-- **时间轴吸附**（可选，需音频）：边界吸附到语音能量谷，起终点分向以保留 cue 间隙
-  （实现复用 `srt_snap_audio`）；**无音频则跳过**，结构与时间轴其余部分照常处理
+- **时间轴吸附**（可选，需音频 + ffmpeg）：边界吸附到语音能量谷，起终点分向以保留 cue 间隙
+  （实现复用 `srt_snap_audio`）
+- **缺口反馈（本阶段一次性汇报，等用户决策，不擅自跳过）**：无音频 / ffmpeg 缺失时**暂停并退出码 1**
+  （缺口一次性列出），由用户决定**补缺口重跑**还是**确认跳过**（`--skip-snap`）
 
 ## 不变量
 
@@ -39,8 +41,10 @@ cue 数不变、cue 文本逐条不变、每条 `start < end`、无重叠无倒�
   python scripts/srt_mech_fix.py <原始ASR.srt> -o 00_subtitle_snapped.srt --audio <音频>
   # 音频自动探测（同名音频 / 视频容器音轨 / 输入目录内音频文件）
   python scripts/srt_mech_fix.py <原始ASR.srt> -o 00_subtitle_snapped.srt --video <视频.mp4>
+  # 缺口反馈后，用户确认跳过时间轴吸附
+  python scripts/srt_mech_fix.py <原始ASR.srt> -o 00_subtitle_snapped.srt --skip-snap
 `--report` 省略时写到 `<输入所在目录>/speech_align/mech_fix_report.md`（不依赖 cwd）。
-退出码：0 = 完成；1 = 输入解析失败或自检未过。
+退出码：0 = 完成（含用户确认跳过）；1 = 输入解析失败 / 自检未过 / **吸附缺口待用户决策**。
 """
 import argparse
 import os
@@ -50,7 +54,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 from shared.srt_common import ULTRA_SHORT_MS, LONG_UNIT_MS
 from srt_snap_audio import (
-    AUDIO_EXTS, check_srt_invariants, envelope, fmt_srt, fmt_t, load_audio,
+    check_gaps, check_srt_invariants, envelope, fmt_srt, fmt_t, load_audio,
     parse_srt, pick_audio, snap_points,
 )
 
@@ -97,11 +101,14 @@ def main():
     ap.add_argument("-o", "--out", help="输出 00_subtitle_snapped.srt（省略则只报告）")
     ap.add_argument("--audio", help="音频文件（缺省时按 --video / 输入目录自动探测）")
     ap.add_argument("--video", help="视频文件（自动取同名音频或容器音轨）")
+    ap.add_argument("--skip-snap", action="store_true",
+                    help="用户确认跳过时间轴吸附（缺口反馈后由其决策时使用；可单独用，也可与 --audio/--video 同用）")
     ap.add_argument("--report", help="报告路径（默认 <输入目录>/speech_align/mech_fix_report.md）")
     ap.add_argument("--window", type=float, default=0.35, help="吸附窗口(秒)")
     ap.add_argument("--min-drop", type=float, default=6.0, help="吸附所需能量下降(dB)")
     ap.add_argument("--min-gap", type=float, default=0.04, help="相邻边界最小间隔(秒)")
-    ap.add_argument("--cache", default=None, help="音频解码缓存 .npy")
+    ap.add_argument("--cache", default=None,
+                    help="音频解码缓存 .npy（存在则直接读、不需音频源与 ffmpeg）")
     args = ap.parse_args()
 
     base = os.path.dirname(os.path.abspath(args.src))
@@ -137,18 +144,35 @@ def main():
     # ---- 2. 时间轴吸附（可选）----
     audio = pick_audio(args.audio, args.video, search_dirs=(base,))
     L.append("## 时间轴吸附")
-    if not audio:
-        L.append("- **无音频可用 → 跳过**（结构与其余时间轴照常输出）")
-        L.append(f"- 探测顺序：`--audio` → `--video` 同名音频 → 视频容器音轨 → 输入目录内的 "
-                 + " / ".join(AUDIO_EXTS))
+    can, tag, gap_lines, code = check_gaps(audio, writes_output=bool(args.out), cache=args.cache,
+                                           explicit=args.audio, search_dirs=(base,), video=args.video)
+    if args.skip_snap:
+        gap_lines = ([f"- 用户确认跳过（`--skip-snap`；环境本可用）"] if can
+                     else gap_lines + ["- **用户确认跳过**（`--skip-snap`）"])
+        can, tag, code = False, "skip-user", 0
+    if not can:
+        L += gap_lines
+        if tag == "need-decision":
+            L += ["", "**本阶段已暂停（未产出 `00`）。** 吸附缺口一次性反馈如下，请用户决策：",
+                  "- 补缺口（`--audio` / `--video`，或安装 ffmpeg 并加入 PATH）后重跑；",
+                  "- 或确认跳过时间轴吸附 → 重跑加 `--skip-snap`（`00` 照常产出、时间轴为原轴）。"]
+            emit(report, L)
+            sys.exit(code)
         L.append("")
         emit_report(report, L, args, cues, texts, n_cue, applied=True,
-                    note="仅结构清理（无音频，未做时间轴吸附）")
+                    note="仅结构清理（" + ("用户确认跳过吸附" if tag == "skip-user"
+                                          else "无音频 / 无 ffmpeg，未做吸附") + "）")
         return
 
-    x, sr = load_audio(audio, cache=args.cache)
+    loaded = load_audio(audio, cache=args.cache, silent=True)
+    if loaded is None:
+        L += [f"- ❌ **ffmpeg 解码失败**：`{audio}`（文件损坏 / 不含音轨 / 格式不支持）", "",
+              "**本阶段已暂停（未产出 `00`）。** 请用户决策：换可用音频 / 视频，或确认跳过吸附后加 `--skip-snap` 重跑。"]
+        emit(report, L)
+        sys.exit(1)
+    x, sr = loaded
     db, hop = envelope(x, sr)
-    L.append(f"- 音频：{audio}")
+    L.append(f"- 音频：`{audio}`" if audio else f"- 音频：**缓存命中**（`{args.cache}`，未解码音频源）")
     L.append(f"- 音频时长 {fmt_t(len(x) / sr)}；包络 {len(db)} 帧 @ {hop * 1000:.1f}ms")
     L.append(f"- 参数：窗口 ±{args.window}s，下降阈 {args.min_drop}dB，最小间隔 {args.min_gap}s")
 
