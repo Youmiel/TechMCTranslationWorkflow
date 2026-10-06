@@ -51,3 +51,4 @@ lag spike,,瞬时的超高卡顿,来源：Big Trees are broken [1.12]（h1eUsp29
 does not block Hoppers,,原版方块标签 #does_not_block_hoppers：带此标签的完整方块（蜂箱、蜂巢）不阻止漏斗拾取,来源：视频上下文 [推断]；视频 ZXGpmaIcMMo（A Closer Look at Minecraft's Storage Blocks - PRR 5） 00:08:12,不阻挡漏斗,
 footprint,,装置占用的方块范围（习题常限定占地尺寸）,四级查找未命中；2026-09-13 用户确认,占地尺寸,
 dust line,,由红石粉铺成的一段信号传输线路,由 redstone dust（红石粉）铺成的线路；What You Don't Know About Minecraft's Diodes - PRR 2（LyU6a4PuDjo）；[推断：字幕语境],红石线,
+directional,,"方块/装置的「方向性」，含两个独立层面：①方块属性义——方块带有朝向（facing）属性、可朝六个面之一放置（如投掷器/发射器、活塞、观察者）；②装置特质义——装置只在特定朝向下才能正常工作，旋转或镜像后行为改变。与「位置性」（locational，对世界坐标敏感）无必然联系。","覆盖上游术语表释义：_repos/techmc-glossary/（general 类）Directional 原释义仅「装置旋转或镜像后行为不同」，未含方块属性义；2026-10-06 用户裁定按两义修正；详见 knowledge/02_mechanic/directional.md",方向性;带有朝向属性,

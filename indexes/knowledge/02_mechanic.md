@@ -1,7 +1,7 @@
 # 机制知识索引
 
 > 生成时间：2026-08-01
-> 最近更新：2026-09-18
+> 最近更新：2026-10-06
 > 条目数已移除（见 `indexing-rules`：不写易漂移的精确计数，用范围/关键词描述）
 > 对应目录：`knowledge/02_mechanic/`
 
@@ -34,6 +34,10 @@
 - **`target.md`** — target 多义辨析：标靶方块（红石元件，投射物触发）与（怪物选定的）目标两义，按语境译「标靶」/「目标」 [通用]
   - 关键词：target, 标靶方块, 目标, 多义, 语境判断
   - 来源：用户总结（人工审核）
+
+- **`directional.md`** — directional 语境辨析：方块属性义（方块带朝向、可朝六个面，如投掷器/活塞/观察者）与装置特质义（旋转/镜像后行为不同，只在特定朝向工作）；并对照「位置性」（locational，对世界坐标敏感），两者无必然联系 [通用]
+  - 关键词：directional, directionality, 方向性, 有方向性, 带有朝向属性, locational, 位置性, 朝向, facing, 多义, 语境判断, 方块属性, 装置特质
+  - 来源：用户总结（人工审核）+ TechMC Glossary（general 类）+ storage-archive 词典
 
 - **`credits.md`** — credits 语境辨析：`credits video`（简介中列出的引用来源）→「（简介）引用的视频」，非「致谢视频」 [通用]
   - 关键词：credits, credit video, 引用, 致谢, 语境判断

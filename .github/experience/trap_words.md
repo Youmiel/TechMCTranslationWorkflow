@@ -47,6 +47,7 @@
 | 陷阱词 | 正确术语 | 标准译名 | 依据 |
 |--------|----------|----------|------|
 | target / target block | target | 标靶 / 目标（按语境二选一） | knowledge/02_mechanic/target.md；投射物/信号语境→标靶，仇恨/追踪语境→目标 |
+| directional / directionality | directional | 方向性 / 带有朝向属性（方块义作「带有朝向属性、可朝六个面」；装置义作「方向性」） | knowledge/02_mechanic/directional.md；勿与「位置性」locational（对世界坐标敏感）混为一谈，两者无必然联系 |
 | credits / credits video / credit video | credits | （简介）引用的视频 | knowledge/02_mechanic/credits.md；credits video 指被引用/被致谢的视频，非"致谢视频" |
 | power（单独名词，无 level / redstone 修饰） | power | 能量（或“信号”）；**禁译“电”** | 与库内 `provide power`→输出能量 一致；译“电”系口语直译 |
 | powering / powers（动词、动名词） | powering | 供能；**禁译“供电”** | knowledge/02_mechanic/power-vs-charge.md（Powering 供能 / Activating 激活 / Charging 充能 三级） |
