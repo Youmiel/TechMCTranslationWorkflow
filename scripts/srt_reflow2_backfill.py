@@ -57,6 +57,80 @@ from scripts.srt_reflow_core.allocate import _allocate_by_weight, cjk_reading_ms
 MATCH_RE = re.compile(r"^\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*=\s*([ZE][\d+]*(?:\+[ZE][\d+]*)*)\s*$")
 ET_RE = re.compile(r"^E(\d+)\t(.+?)\t.+?\t(.*)$")   # en_timeline 行：E<n>\t<start> --> <end>\tc..\t文本
 
+# ---- 断句润色（split_polish）----
+# 副语言（英文）切点的语义润色：脚本按中文段宽比例切出的断点仍可能落在句法单元内部
+# （限定词/名词、介词/宾语、助动词/主动词、短语动词被劈开）——这类判断需语义/句法识别，
+# 交断句润色 subagent。本脚本只负责：导出复核清单、读回结果、校验（全确定性）、逐组回退。
+# 产物：`reflow2/split_polish/chunk_<k>.txt`（行 = `<组标识> 片1 || 片2 || …`）；
+# 清单：`reflow2/split_polish/_request/chunk_<k>.md`（临时派发材料，随时可重生成）
+POLISH_SEP = "||"
+
+
+def polish_key(zs):
+    """Z 组标识（与 align/ 同形）：`Z1` / `Z1+Z2`。"""
+    return "+".join("Z%d" % z for z in zs)
+
+
+def parse_polish_text(text):
+    """split_polish 块文件 → {组标识: [片文本]}。
+
+    组标识形式：`Z1` / `Z1+Z2`（多 Z，与 align/ 同形）——正则应写成 `Z\d+(?:\+Z\d+)*`，
+    不可写成 `Z[\d+]+`（后者匹配不到 `Z1+Z2`：第二个 Z 是字母、不在字符类内）。
+    """
+    out = {}
+    for ln in text.splitlines():
+        ln = ln.strip()
+        if not ln or ln.startswith("#") or ln.startswith(">"):
+            continue
+        m = re.match(r"^(Z\d+(?:\+Z\d+)*)\s+(.+)$", ln)
+        if not m:
+            continue
+        out[m.group(1)] = [p.strip() for p in m.group(2).split(POLISH_SEP)]
+    return out
+
+
+def validate_polish(frags, en_full, n_units):
+    """校验断句润色结果（全确定性）：① 片数 == 中文段数 ② 拼接（去空白）== E 句全文。
+
+    判据 ② 已含“未增删改词 + 保序”——拼回原文即证明只移了断点。
+    """
+    if not frags or len(frags) != n_units:
+        return False
+    if any(not f for f in frags):
+        return False
+    norm = lambda s: re.sub(r"\s+", "", s)
+    return norm("".join(frags)) == norm(en_full)
+
+
+def write_polish_request(path, items):
+    """写复核清单（临时派发材料）：每项 = 组标识 + 中文各段（含宽度占比）+ 英文整句 + **当前切分（起点）**。
+
+    给出**脚本切分作起点**：任务是**微调**（只挪一两个词），不是重新切分——
+    实测无起点时 subagent 会大幅重切（最严重的一组挪了 39 个百分点、占比偏差 0.481）。
+    中文宽度占比仅作**参考**（微调时兼顾，不作硬要求）。
+    """
+    lines = ["# 断句润色请求", "",
+             "每个条目给出调节后的英文片段：片数不变、顺序不变、只移断点、不增删改词。",
+             "**在给定的当前切分上微调**（只挪一两个词），不要把句子重新切一遍。", ""]
+    for key, zh_segs, en_full, zh_ws, script_frags in items:
+        tot = sum(zh_ws) or 1
+        pcts = [round(100.0 * w / tot) for w in zh_ws]
+        lines.append("## %s" % key)
+        lines.append("")
+        lines.append("- 中文分段（%d 段；各段宽度占比 %s，作参考）："
+                     % (len(zh_segs), " / ".join("%d%%" % p for p in pcts)))
+        for i, s in enumerate(zh_segs, 1):
+            lines.append("  %d. %s" % (i, s))
+        lines.append("- 英文整句（%d 字符）——**当前切成 %d 片**（` || ` 为切点）："
+                     % (len(en_full), len(script_frags)))
+        lines.append("")
+        lines.append("```")
+        lines.append(" || ".join(script_frags))
+        lines.append("```")
+        lines.append("")
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write("\n".join(lines) + "\n")
+
 # ---- 跨块句衔接归位（2026-09-27 补上“补标点 的校验项 #4 衔接归位”从未落地的实现）----
 # 背景：块边界由 `--owned` cue 数等分，**常落在句子中间**（ASR 字幕 93% 的 cue 末尾无句末标点，
 # 且 cue 间常无缝 → 无句末可吸附）。于是补标点 agent 在两块各补全一次同一句，产生：
@@ -65,7 +139,9 @@ ET_RE = re.compile(r"^E(\d+)\t(.+?)\t.+?\t(.*)$")   # en_timeline 行：E<n>\t<s
 CROSS_MARKS = ("【延伸句】", "【承接句】")
 # 中文句末标点（判 prev 中文句界是否已闭合——闭合时拼接可能需润色）
 ZH_EOS_RE = re.compile(r"[" + TERMINATOR_CLASS + r"]\s*$")
-# 悬空成分（候选断点**前**的词：以此收尾 = 句子未完成）——与 task-punctuate 规则 7 判据 A 同源
+# 悬空成分（候选断点**前**的词：以此收尾 = 句子未完成）——主体同 task-punctuate 规则 7 判据 A
+# ⚠️ 口径差异（有意）：并列连词 and/but/or/nor/yet/so 在此保留（归位合并取保守：宁合不拆），
+#    而模板判据 A 不含它们（连接分句时可断，见判据 C）——勿机械对齐两处
 DANGLING = {
     # 介词
     "from", "to", "of", "in", "on", "at", "with", "for", "by", "into", "about",
@@ -216,7 +292,11 @@ def main():
     ap.add_argument("zsent_dir", help="Z 句文本目录：reflow2/zh_sentences/")
     ap.add_argument("align_dir", help="对齐目录：reflow2/align/（Z组=E组，task-match LLM 产物）")
     ap.add_argument("et_dir", help="E 固化时间目录：reflow2/en_timeline/")
-    ap.add_argument("-o", "--out", required=True, help="输出 r04_draft.srt（单语中文）")
+    ap.add_argument("-o", "--out", default=None, help="输出 r04_draft.srt（单语中文）；--emit-polish 模式下可省")
+    ap.add_argument("--emit-polish", default=None, metavar="DIR",
+                    help="仅导出断句润色复核清单到 DIR（如 reflow2/split_polish/_request/），不写 r04 产物")
+    ap.add_argument("--polish-input", default=None, metavar="DIR",
+                    help="读断句润色结果目录（如 reflow2/split_polish/）；缺失/校验失败逐组回退脚本切分")
     ap.add_argument("--bilingual", default=None, help="输出 r04_bilingual.srt（双语，行序见 --order；默认与 r04 同目录）")
     ap.add_argument("--alert", default=None, help="输出 r04_alerts.md（默认与 r04 同目录）")
     ap.add_argument("--order", choices=("en-zh", "zh-en"), default="zh-en",
@@ -235,8 +315,11 @@ def main():
                     help="关闭「数字枚举整体」偏好（允许在 `8、8、4` 内部断开）")
     ap.add_argument("--enum-break-penalty", type=float, default=None, help="枚举内部断开额外代价")
     ap.add_argument("--bracket-break-penalty", type=float, default=None, help="括号内断开额外代价")
-    ap.add_argument("--word-cut-advantage", type=float, default=None,
-                    help="副语言词边界回退阔限（英文行枚举被劈开的修复项）")
+    ap.add_argument("--punct-cut-bonus", type=float, default=None, help="副语言候选奖励：标点处（默认 14）")
+    ap.add_argument("--conn-cut-bonus", type=float, default=None, help="副语言候选奖励：一般连接词前（默认 6）")
+    ap.add_argument("--clause-cut-bonus", type=float, default=None, help="副语言候选奖励：从句连词前（默认 14）")
+    ap.add_argument("--dangling-pullback", type=int, default=None, help="副语言悬空回拉次数（默认 2）")
+    ap.add_argument("--min-piece-ratio", type=float, default=None, help="副语言片长下限系数（默认 0.5）")
     args = ap.parse_args()
     heur = heuristic_overrides(args)
     zh_prof = build_profile("zh", terminators=args.punct_terminators, strong=args.punct_strong,
@@ -250,9 +333,21 @@ def main():
     keys = sorted(set(z_blocks) & set(a_blocks) & set(e_blocks))
     if not keys:
         sys.exit("❌ zh_sentences/align/en_timeline 无共同块号（先跑 zsent/etimeline/task-match）")
+    if not args.out and not args.emit_polish:
+        sys.exit("❌ 需 -o/--out（或 --emit-polish 仅导出模式）")
 
-    out_dir = os.path.dirname(os.path.abspath(args.out))
-    os.makedirs(out_dir, exist_ok=True)
+    # 断句润色结果（可选）：{块号: {组标识: [片文本]}}
+    polish = {}
+    if args.polish_input:
+        for k, p in collect_chunk_files(args.polish_input).items():
+            with open(p, encoding="utf-8") as fh:
+                polish[k] = parse_polish_text(fh.read())
+        if not polish:
+            print(f"⚠️ --polish-input 目录无块文件：{args.polish_input}（逐组回退脚本切分）")
+
+    out_dir = os.path.dirname(os.path.abspath(args.out)) if args.out else os.getcwd()
+    if args.out:
+        os.makedirs(out_dir, exist_ok=True)
     alert_path = args.alert or os.path.join(out_dir, "r04_alerts.md")
 
     srt_blocks = []     # 每块 [(idx, start, end, zh, en, is_pred)]（全局 cue 号由外层累加）
@@ -260,6 +355,8 @@ def main():
     total_cue = 0
     problems = []
     all_cues = []       # 全部块的 Z/E 组（累积后先做“跨块句衔接归位”、再统一拆段）
+    emit_items = {}     # 仅导出模式：{块号: [(组标识, 中文各段, 英文整句)]}
+    n_polish_used = n_polish_bad = n_polish_missing = 0
     for k in keys:
         with open(a_blocks[k], encoding="utf-8") as fh:
             aligns, ap = parse_align(fh.read())
@@ -340,12 +437,27 @@ def main():
             if not units:
                 units = [(zh, text_width(zh))]
             weights = [max(1, cjk_reading_ms(u, args.cjk_speed)) for u, _w in units]
-            # 子段 EN（副语言）= 切成 len(units) 片，**就近按标点找断点**（而不是按词数比例
-            # 机械切——后者会劈开语义单元：`soft | power`、`stone pressure | plates`）。
-            # 段落数与目标语言一致（目标语言受行宽硬闸门约束，为主导侧）；
-            # 无标点可用时退词边界，仍保证互斥拼接 == 整句 EN。
-            en_subs = split_secondary(en_full, [text_width(u) for u, _w in units],
-                                      profile=zh_prof)
+            widths = [text_width(u) for u, _w in units]
+            en_subs = split_secondary(en_full, widths, profile=zh_prof)
+            # 仅导出模式：写复核清单（含**脚本切分作起点**）后跳过；不产生 r04 产物
+            if args.emit_polish:
+                emit_items.setdefault(cu["chunk"], []).append(
+                    (polish_key(cu["z"]), [u for u, _w in units], en_full,
+                     [_w for _u, _w in units], en_subs))
+                continue
+            # 子段 EN（副语言）= 切成 len(units) 片。优先用断句润色结果（若存在且校验通过），
+            # 否则用上方的脚本切分。段落数与目标语言一致（目标语言受行宽硬闸门约束，为主导侧）。
+            key = polish_key(cu["z"])
+            frags = polish.get(cu["chunk"], {}).get(key)
+            if frags is not None:
+                if validate_polish(frags, en_full, len(units)):
+                    en_subs = frags
+                    n_polish_used += 1
+                else:
+                    n_polish_bad += 1
+                    alerts.append(f"🈳 断句润色回退 {key}（片数/拼接校验未过）")
+            elif args.polish_input:
+                n_polish_missing += 1
             # 复用 _allocate_by_weight：按权重比例在 [start,end] 内分界 + 吸附
             # units 元素取 u[0](key)/u[2](zh)，u[1] 作 en 占位；此处 zh 子段即显示文本
             segs = _allocate_by_weight([(f"u{i}", en_subs[i] if i < len(en_subs) else "", u)
@@ -364,6 +476,18 @@ def main():
                     alerts.append(f"🔪 长句碎片 {fmt(s)}-{fmt(e2)}（{e2-s}ms <1s）: {zhtxt[:30]}——合并/调整切分点")
             if n_pred:
                 alerts.append(f"🎯 预测点 {cu['z']}: 拆 {len(units)} 段含 {n_pred} 个 100ms 预测点（无真实 cue 边界可吸附）")
+
+    # 仅导出模式：清单写完即退出（不产生任何 r04 产物；清单随时可重生成）
+    if args.emit_polish:
+        os.makedirs(args.emit_polish, exist_ok=True)
+        n_items = 0
+        for k, items in emit_items.items():
+            write_polish_request(os.path.join(args.emit_polish, f"chunk_{k:03d}.md"), items)
+            n_items += len(items)
+        print(f"✅ 已导出断句润色请求：{len(emit_items)} 块 / {n_items} 组 → {args.emit_polish}")
+        print("   下一步：派发断句润色 subagent，写回 split_polish/chunk_<k>.txt，"
+              "再用 --polish-input 重跑本脚本")
+        return 0
 
     # 全局时间重叠防御（生产健壮性）：相邻显示单元 start < 前单元 end → 后单元顺延到前 end。
     # 正常 reflow2 中 E 固化时间已含共享 cue 切分、align 基于同一 en_timeline 生成 → 天然零重叠；
@@ -387,6 +511,12 @@ def main():
     if n_overlap or n_invert:
         print(f"⚠️ 时间重叠顺延 {n_overlap} 处 / 倒挂 {n_invert} 处（见 r04_alerts）")
 
+    # 断句润色使用情况（仅在给了 --polish-input 时报告）
+    if args.polish_input:
+        print(f"🔤 断句润色：采用 {n_polish_used} 组 / 回退 {n_polish_bad} 组 / 缺结果 {n_polish_missing} 组")
+        if n_polish_bad or n_polish_missing:
+            print("   回退/缺失项已逐组回退脚本切分（见 r04_alerts）")
+
     # 落盘 r04_draft.srt（单语中文）
     with open(args.out, "w", encoding="utf-8", newline="\n") as fh:
         for cu in srt_blocks:
@@ -405,7 +535,10 @@ def main():
         fh.write(f"- 超宽拆段整句: {sum(1 for a in alerts if a.startswith('🎯'))}\n")
         fh.write(f"- 长句碎片: {sum(1 for a in alerts if a.startswith('🔪'))}\n")
         fh.write(f"- 时间重叠顺延: {sum(1 for a in alerts if a.startswith('🔀'))}\n")
-        fh.write(f"- 时间倒挂: {sum(1 for a in alerts if a.startswith('⛔'))}\n\n")
+        fh.write(f"- 时间倒挂: {sum(1 for a in alerts if a.startswith('⛔'))}\n")
+        if args.polish_input:
+            fh.write(f"- 断句润色采用: {n_polish_used} / 回退: {n_polish_bad} / 缺结果: {n_polish_missing}\n")
+        fh.write("\n")
         if alerts:
             fh.write("## 告警清单\n")
             for a in alerts:
@@ -424,4 +557,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -55,7 +55,7 @@
 1. **定容量**：`python scripts/context_estimate.py <01>`
   - 参数默认读 `configs/context_window.json`、CLI 可覆盖
   - 输出：估算 token / 单块容量上限（min 统一、已含放大）/ 每 cue 平均字符 / `--owned` 建议值（= 单块容量上限 × 1.5 ÷ 每 cue 平均字符）
-  - **实践建议**（补丁，机制设计不变）：`--owned` 取值按 **≤300 cue** 封顶——实践得出；⚠️ 若单块 >200 cue 时分句 subagent 出现 no-think 输出超限中断（只能拆半重派），**该视频降回 ≤200**；封顶只在取值时做，`context_estimate.py` 反推公式与分块机制不变
+  - **实践建议**（补丁，机制设计不变）：`--owned` 取值按 **≤300 cue** 封顶——实践得出；⚠️ 若单块 >200 cue 时分句 subagent 出现执行型模型输出超限中断（只能拆半重派），**该视频降回 ≤200**；封顶只在取值时做，`context_estimate.py` 反推公式与分块机制不变
 2. **分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps-file reflow/r00_gaps_active.tsv --owned <每块cue数> --ctx <衔接cue数> --out reflow/chunks/`
   - 块 = “空隙组-片”，
   - `--owned` 填上一步建议值

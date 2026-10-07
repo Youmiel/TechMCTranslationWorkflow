@@ -40,7 +40,7 @@
 ##### 处理
 
 1. **定容量**：`python scripts/context_estimate.py <01>`（默认读 `configs/context_window.json`；输出 `--owned` 建议值）
-   - **实践建议**（机制不变）：`--owned` ≤300 cue 封顶（同 reflow-redstone 分块补丁；若单块 >200 cue 遇 no-think 输出超限中断，该视频降回 ≤200）
+   - **实践建议**（机制不变）：`--owned` ≤300 cue 封顶（同 reflow-redstone 分块补丁；若单块 >200 cue 遇执行型模型输出超限中断，该视频降回 ≤200）
 2. **分块**：`python scripts/text_chunk.py <01.srt> --type srt --gaps-file reflow2/r00_gaps_active.tsv --owned <每块cue数> --ctx 10 --out reflow2/chunks/`
    - 块 = “空隙组-片”；空隙点强制切块（语义硬边界），组内按 `--owned` 拆片
    - `--gaps-file` 读生效集（`excluded` 项自动跳过）——排除源切分缺陷空隙无需再去掉开关
@@ -172,7 +172,18 @@
 
 ##### 处理
 
-1. **继承 + 回填（脚本，唯一动作）**：`python scripts/srt_reflow2_backfill.py reflow2/zh_sentences/ reflow2/align/ reflow2/en_timeline/ -o reflow2/r04_draft.srt --alert reflow2/r04_alerts.md`
+1. **导出断句润色清单（脚本，仅导出模式、不写产物）**：`python scripts/srt_reflow2_backfill.py reflow2/zh_sentences/ reflow2/align/ reflow2/en_timeline/ --emit-polish reflow2/split_polish/_request/`
+   - 每个**拆段组**（中文超宽、已有断点）导出为 `_request/chunk_<k>.md` 的一项：组标识（`Z<n>` / `Z<n>+Z<m>`）+ 中文各段（决定片数）+ 英文整句
+   - **不注入脚本切分结果**——避免引导 subagent 沿脚本切点微调；单片组不进清单
+   - 仅导出模式**不需要 `-o`**、不写任何 r04 产物；清单可在任意时点重生成（与 `align/` 同批）
+2. **断句润色（逐块派 subagent）**：渲染命令 `python scripts/render_subagent_prompt.py task-split-polish --skill reflow2 --video <工作目录> [--chunk <k> | --all]`
+   - 派发引用 prompt（见 [subagent-dispatch#派发引用-prompt](../subagent-dispatch/SKILL.md#派发引用-prompt)）
+   - 产物：`reflow2/split_polish/chunk_<k>.txt`：每行 `<组标识> <片1> || <片2> || …`
+     - **只移断点、不改文本**（拼接必须逐字符等于英文整句）
+     - 片数 == 该组中文段数
+     - 依据：脚本按中文段宽比例切出的断点仍可能落在**句法单元内部**（限定词/名词、介词/宾语、助动词/主动词、短语动词被劈开）——这类判断需语义/句法识别
+3. **继承 + 回填（脚本，唯一写入动作）**：`python scripts/srt_reflow2_backfill.py reflow2/zh_sentences/ reflow2/align/ reflow2/en_timeline/ -o reflow2/r04_draft.srt --alert reflow2/r04_alerts.md --polish-input reflow2/split_polish/`
+   - `--polish-input` 可省（回退到脚本切分，与未引入本环节时逐字节一致）
    - 处理方式（**脚本内一次性完成，主代理零读取、不参与时间分配**）：
      - **跨块句兜底合并**（拆段前）：兜底处理**未走补标点 衔接归位**的历史产物（两侧都补全 → EN 重复）或
        ASR 残式边界（互补两半）。判据 ① **重复**：两侧 EN 归一化后相等 → EN 取后块完整句；
@@ -186,9 +197,12 @@
        - **拼合 = 代价最小化**（断点强度 + 段宽偏离 [15,22] + 碎片罚）：`strong`（`；：—`）> `clause`（`，`）> `list`（`、`）；括号内断点为**软代价**（优先保持括注完整，超宽时允许断开）
          - 顿号（`、`）代价取 **18.0**（“最后手段”）——优先保住并列成分完整，但超硬限时仍可断（完全禁止会使并列项长句切不动、直接超硬限）
          - 拼合不用“贪心填满硬上限”：贪心会吞掉强断点（`…回答一下：第一，` + `怎么搭…？`，断点落在逗号而非冒号）；分号 = `strong` 强优先（可被宽度否决）、不硬断
-     - **双语**：同步生成 `r04_bilingual.srt`（zh-en：中文行在前，英文行 = E 句/片段，子段 EN **就近按标点切**、互斥拼接 == 整句 EN；切点落在**数字枚举**（`8, 8 and 4`）或**括号**内部时挪到保护区外最近词边界——启发式保护，默认开、`--no-enum-keep` / `--no-bracket-keep` 可关）
+     - **双语**：同步生成 `r04_bilingual.srt`（zh-en：中文行在前，英文行 = E 句/片段，子段 EN **按中文段宽比例切**、互斥拼接 == 整句 EN）
+       - 候选含**全部词边界**；标点处 / 从句连词前 / 一般连接词前给奖励；枚举与括号内部**候选排除**；功能词（介词/冠词/助动词/并列连词）后的悬空切点**回拉**（把功能词挪到后段）
+       - 启发式保护默认开，`--no-enum-keep` / `--no-bracket-keep` / `--dangling-pullback` / `--punct-cut-bonus` 等可调
+       - **断句润色结果优先**：`--polish-input` 给出且校验通过时用其结果，否则回退脚本切分（逐组）
    - 产物：`r04_draft.srt`（预览，止步 `_work/`）+ `r04_bilingual.srt` + `r04_alerts.md`
-2. **agent 复核（按需）**：`r04_alerts.md` 告警处置（长句碎片 🔪 / 独立短句 ⏱️ / 预测点 🎯）——主代理不读全量
+4. **agent 复核（按需）**：`r04_alerts.md` 告警处置（长句碎片 🔪 / 独立短句 ⏱️ / 预测点 🎯）——主代理不读全量
 
 ##### 校验
 
@@ -197,6 +211,7 @@
    - 行宽 >27 → 必切
    - [Music] 等非语音 cue → 跳过
    - 断句暴露译文问题 → 回 r02 改（重切 Z / 重对齐 / 重继承）
+   - `🈳 断句润色回退` → 该组按脚本切分输出（片数/拼接校验未过），可重派该块
 2. **时间轴校验**：`python scripts/srt_check_segments.py reflow2/r04_draft.srt --orig <01>`（时间不重叠、区间不逆；时间边界贴原 cue + 允许必要预测点）
 3. **行宽校验**：`python scripts/srt_check_width.py reflow2/r04_bilingual.srt --order zh-en`（残留超限仅预警）
 4. **预览止步 `_work/`**，未经确认禁止写入 `_output/`；**回填严格脚本化**：只做继承 + 时间运算 + 拆段，禁止任何二次翻译/改写

@@ -51,7 +51,11 @@ from srt_reflow_core.punct import (
     split_sentences,
     ENUM_BREAK_PENALTY,
     BRACKET_BREAK_PENALTY,
-    WORD_CUT_ADVANTAGE,
+    PUNCT_CUT_BONUS,
+    CONN_CUT_BONUS,
+    CLAUSE_CUT_BONUS,
+    DANGLING_PULLBACK,
+    MIN_PIECE_RATIO,
 )
 
 
@@ -69,8 +73,16 @@ def heuristic_overrides(args):
         h["enum_break_penalty"] = args.enum_break_penalty
     if getattr(args, "bracket_break_penalty", None) is not None:
         h["bracket_break_penalty"] = args.bracket_break_penalty
-    if getattr(args, "word_cut_advantage", None) is not None:
-        h["word_cut_advantage"] = args.word_cut_advantage
+    if getattr(args, "punct_cut_bonus", None) is not None:
+        h["punct_cut_bonus"] = args.punct_cut_bonus
+    if getattr(args, "conn_cut_bonus", None) is not None:
+        h["conn_cut_bonus"] = args.conn_cut_bonus
+    if getattr(args, "clause_cut_bonus", None) is not None:
+        h["clause_cut_bonus"] = args.clause_cut_bonus
+    if getattr(args, "dangling_pullback", None) is not None:
+        h["dangling_pullback"] = args.dangling_pullback
+    if getattr(args, "min_piece_ratio", None) is not None:
+        h["min_piece_ratio"] = args.min_piece_ratio
     return h or None
 
 # 机械化断句默认参数来自 shared.srt_common 单一事实源（CJK；可 CLI 覆盖——多语言适配改标点角色表 + 这里）
@@ -326,8 +338,16 @@ def main():
                     help=f"枚举内部断开的额外代价（默认 {ENUM_BREAK_PENALTY:g}）")
     ap.add_argument("--bracket-break-penalty", type=float, default=None,
                     help=f"括号内断开的额外代价（默认 {BRACKET_BREAK_PENALTY:g}）")
-    ap.add_argument("--word-cut-advantage", type=float, default=None,
-                    help=f"副语言词边界回退阔限：词边界比最优标点近出该字符数时改切词边界（默认 {WORD_CUT_ADVANTAGE:g}）")
+    ap.add_argument("--punct-cut-bonus", type=float, default=None,
+                    help=f"副语言候选奖励：标点处抵扣的“距目标距离”（默认 {PUNCT_CUT_BONUS:g}）")
+    ap.add_argument("--conn-cut-bonus", type=float, default=None,
+                    help=f"副语言候选奖励：一般连接词前（默认 {CONN_CUT_BONUS:g}）")
+    ap.add_argument("--clause-cut-bonus", type=float, default=None,
+                    help=f"副语言候选奖励：从句连词前（默认 {CLAUSE_CUT_BONUS:g}）")
+    ap.add_argument("--dangling-pullback", type=int, default=None,
+                    help=f"副语言悬空回拉次数：切点前是功能词时把该词挪到后段（默认 {DANGLING_PULLBACK}）")
+    ap.add_argument("--min-piece-ratio", type=float, default=None,
+                    help=f"副语言片长下限系数（默认 {MIN_PIECE_RATIO:g}；防碎片）")
     args = ap.parse_args()
 
     heur = heuristic_overrides(args)

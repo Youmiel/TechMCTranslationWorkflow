@@ -83,11 +83,11 @@ UA 由 `scripts/fetch_wiki.py`、`scripts/mojang_glossary/` 共用；未配置�
 
 ## 执行型 subagent 模型
 
-执行型 subagent（`reflow-worker`，承担补标点 / 翻译 / 分句等一次性产出任务）需使用**无思考模型**。模型名**因人而异、脚本无法探测**，须由使用者填写：
+执行型 subagent（`reflow-worker`，承担补标点 / 翻译 / 分句等一次性产出任务）需使用**专用于执行的模型**——可以是思考模型、无思考模型或小模型，由使用者按自身可用性选择。模型名**因人而异、脚本无法探测**，须由使用者填写：
 
 ```yaml
 # configs/subagent_model.yaml
-execution_model: "<你的 no-think 模型名>"
+execution_model: "<你的执行型模型名>"
 ```
 
 模板见 [examples/configs/subagent_model.yaml](examples/configs/subagent_model.yaml)。

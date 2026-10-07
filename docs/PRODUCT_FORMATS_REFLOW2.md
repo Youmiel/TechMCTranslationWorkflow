@@ -16,6 +16,7 @@
 | `r01_results/`（衔接归位后） | 补标点 subagent → 脚本 `srt_reflow2_stitch.py`（跨块句衔接归位：只在一侧留完整句） | 脚本 `srt_reflow2_etimeline.py`（E 句固化）、翻译 subagent |
 | `zh_sentences/chunk_<k>.txt` | 脚本 `srt_reflow2_zsent.py`（Z 句文本列表） | task-match LLM（句子匹配输入）、脚本 `srt_reflow2_backfill.py` |
 | `align/chunk_<k>.txt` | Agent（句子匹配 subagent，`reflow2/task-match`） | 脚本 `srt_reflow2_backfill.py`（继承时间） |
+| `split_polish/chunk_<k>.txt` | Agent（断句润色 subagent，`reflow2/task-split-polish`） | 脚本 `srt_reflow2_backfill.py --polish-input`（校验 + 逐组回退） |
 | `r04_draft.srt` / `r04_bilingual.srt` / `r04_alerts.md` | 脚本 `srt_reflow2_backfill.py` | `srt_check_segments.py`、`srt_check_width.py --order zh-en` |
 
 > 块级产物（`en_timeline` / `consistency` / `zh_sentences` / `align` / `r01_results`）的**块数 = 空隙组数 × 组内片数**。
@@ -63,13 +64,36 @@
 - 约束：**覆盖完整性**——全部 Z 号（`Z1..Zm`）与全部 E 号（`E1..En`）各出现恰好一次；漏句 → 回填问题清单留空，需补派
 - 消费：脚本 `srt_reflow2_backfill.py`（继承 E 固化时间）
 
+## `reflow2/split_polish/chunk_<k>.txt`
+
+- 命名：`<工作目录>/reflow2/split_polish/chunk_<k>.txt`；输入清单 `reflow2/split_polish/_request/chunk_<k>.md`
+- 生成：Agent（断句润色 subagent，`reflow2/task-split-polish`）——**只复核断点位置**，不写文本
+- 格式：**每行一组**，`<组标识> <片1> || <片2> || …`
+  - 组标识 = `Z<n>` / `Z<n>+Z<m>`（与 `align/` 同形）；`align/` 中多 Z 对应一个 E 的组即多 Z 标识
+  - 片分隔符 = ` || `；片数 == 该组中文段数
+- 约束：
+  - **只移断点、不改文本**：拼接（去空白）必须逐字符等于该组英文整句
+  - 采段组（中文宽度 > 软限）才存在；单片组不进清单
+  - 缺失 / 校验未过 → 该组**逐组回退** `punct.split_secondary` 结果，不阻断流程（记 `r04_alerts.md` 的 `🈳`）
+  - **无同源校验**（与 `align/` 同类的风险）——`align/` 变更后必须重跑 `--emit-polish` 重导出清单
+- 消费：脚本 `srt_reflow2_backfill.py --polish-input`（校验后替代 `split_secondary`；时间轴不受影响）
+
+## `reflow2/split_polish/_request/chunk_<k>.md`
+
+- 命名：`<工作目录>/reflow2/split_polish/_request/chunk_<k>.md`
+- 生成：`python scripts/srt_reflow2_backfill.py reflow2/zh_sentences/ reflow2/align/ reflow2/en_timeline/ --emit-polish reflow2/split_polish/_request/`（**仅导出模式**——不写任何 r04 产物，可随时重生成）
+- 格式：每个待复核组一节 `## <组标识>` + 中文分段列表（决定片数）+ 英文整句（``` 代码块）
+- 约束：**不注入脚本切分结果**——避免引导 subagent 沿脚本切点微调、失去独立判断
+- 定位：**临时派发材料**（非产物）；清单与 `split_polish/` 一并重生成
+
 ## `reflow2/r04_draft.srt` / `r04_bilingual.srt` / `r04_alerts.md`
 
 - 命名：`<工作目录>/reflow2/r04_draft.srt`（预览单语中文）、`r04_bilingual.srt`（双语 zh-en，中文行在前）、`r04_alerts.md`（告警）
 - 生成：`python scripts/srt_reflow2_backfill.py reflow2/zh_sentences/ reflow2/align/ reflow2/en_timeline/ -o reflow2/r04_draft.srt --alert reflow2/r04_alerts.md`（双语默认与 r04 同目录 `r04_bilingual.srt`）
+  - 断句润色（可选）：先 `--emit-polish` 导出清单、派发 `task-split-polish`，再 `-o … --polish-input reflow2/split_polish/`
 - 格式：
   - `r04_draft.srt`：标准 SRT 单语中文（显示单元 = Z 整句或拆段）；时间 = E 组覆盖范围（源头固化，天然零重叠）
-  - `r04_bilingual.srt`：标准 SRT 双语 `zh-en`（中文行 = 对应译文，英文行 = E 句/片段；拆段子单元 EN **就近按标点切**、互斥拼接 == 整句 EN；切点落在数字枚举或括号内部时挪到保护区外最近词边界——启发式保护，默认开）
+  - `r04_bilingual.srt`：标准 SRT 双语 `zh-en`（中文行 = 对应译文，英文行 = E 句/片段；拆段子单元 EN **按中文段宽比例切**、互斥拼接 == 整句 EN；候选含全部词边界、标点/连词前给奖励、枚举与括号内候选排除、功能词悬空回拉——启发式保护，默认开）
   - `r04_alerts.md`：`# r04_alerts（新 reflow2）` + 总显示单元/跨块句合并/超宽拆段/长句碎片统计 + `## 告警清单`——🔗 跨块句合并（拼中文句界已闭合时附“回 r02 调整”提示）/ 🔪 长句碎片（<1s）/ ⏱️ 独立短句（<1s 语义自足可接受）/ 🎯 预测点（拆段含 100ms 取整）/ 🔀 时间重叠顺延 / ⛔ 倒挂
 - 约束：**继承回填严格脚本化**（只做继承 + 时间运算 + 拆段 + **跨块句衔接归位**，禁二次翻译）；时间边界贴原 cue（E 固化），仅拆子段在无真实 cue 边界可吸附处允许 100ms 预测点
   - 跨块句衔接归位：合并被块边界劈成两半的同一句（判据：两侧 EN 归一化后相等 / 前句末尾悬空成分 + 后句碎片）——ZH 互补拼接、EN 去重、时间与真实 cue 边界取并集；块边界常落句中且**无句末可吸附**（ASR 93% cue 末尾无标点），故本机制是常态路径

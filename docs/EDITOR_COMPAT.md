@@ -28,7 +28,7 @@
 |--------|-------------|------|
 | **agent 定义适配**（reflow-worker / term-researcher / wiki-researcher） | ❌ | 脚本不生成各编辑器 agent 文件；迁移时按下方「agent 定义适配」手动 adapt |
 | **派发 subagent 入口** | ❌ | 各编辑器派发命令/工具名不同（见「各编辑器派发 subagent 命令表」），由**使用者自己的 agent** 按表执行 |
-| **no-think 模型名**（execution_model） | ❌ | 因人而异、脚本无法探测；统一填 `configs/subagent_model.yaml`（见 [SETUP#执行型-subagent-模型](SETUP.md#执行型-subagent-模型)） |
+| **执行型模型名**（execution_model） | ❌ | 因人而异、脚本无法探测；统一填 `configs/subagent_model.yaml`（见 [SETUP#执行型-subagent-模型](SETUP.md#执行型-subagent-模型)） |
 | **MCP 配置** | ❌ | `.vscode/mcp.json` 仅 VS Code；其它编辑器 mcp 配置格式不同（见 [SETUP#mcp-wiki-工具](SETUP.md#mcp-wiki-工具)） |
 | **agent 内模型字段** | ❌ | `reflow-worker.agent.md` 已**移除** `model` 硬编码，模型统一由“模型配置”+ 派发参数决定 |
 
@@ -44,8 +44,7 @@
 | **Gemini CLI** | subagent 工具 | `.gemini/agents/*.md` | agent 定义内模型字段 |
 | **其它** | 以官方文档为准 | 以官方文档为准 | 以官方文档为准 |
 
-> **派发 reflow-worker 时（权威）**：agent **必须读取 `configs/subagent_model.yaml`**，把 `execution_model` 的值**“照原样”填入 subagent 派发参数**。
-> - **“照原样”= 逐字复用配置文件中的值**，不得改动 / 推断 / 凭记忆或上下文臆造模型名
+> **派发 reflow-worker 时（权威）**：agent **必须读取 `configs/subagent_model.yaml`**，把 `execution_model` 的值**“照原样”填入 subagent 派发参数**。> - **“照原样”= 逐字复用配置文件中的值**，不得改动 / 推断 / 凭记忆或上下文臆造模型名
 > - 若编辑器支持**调用时指定模型**（如 `runSubagent` 的 `model` 参数）即传入该值，否则填入 agent frontmatter `model`（见「agent 定义适配」模型行）
 > - 文件缺失或未配置 → **停下请使用者填写 `execution_model`，不自行决定**
 
@@ -53,7 +52,7 @@
 
 项目约定层：**通用格式承载全部知识 / 流程**（`AGENTS.md` + `.github/skills/`），**执行型 agent 定义 = GitHub Copilot 格式单一权威**（`.github/agents/`），**系统提示词覆盖由 agent 承载**；迁移其它编辑器时从该格式 **adapt**。
 
-**所有编辑器相关操作细节（agent 定义文件 / 格式 / 派发入口 / 模型名 / adapt 步骤）集中在本文档**，主逻辑 skill（`subagent-dispatch` 等）不承载编辑器适配，只表述“派发 `reflow-worker`，使用无思考模型”。
+**所有编辑器相关操作细节（agent 定义文件 / 格式 / 派发入口 / 模型名 / adapt 步骤）集中在本文档**，主逻辑 skill（`subagent-dispatch` 等）不承载编辑器适配，只表述“派发 `reflow-worker`，使用执行型模型”。
 
 - **通用格式（所有编辑器）**：`AGENTS.md`（多工具标准）+ `.github/skills/`（Agent Skills 开放格式）
 - **执行型 agent（系统提示词覆盖，单一权威）**：`.github/agents/reflow-worker.agent.md`——正文即**系统提示词**，从根源替代宿主通用提示词（内联覆盖声明对抗系统层不可靠）；VS Code / Copilot 原生直接使用

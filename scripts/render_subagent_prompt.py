@@ -176,6 +176,18 @@ TASKS = {
         "output": "reflow2/consistency/chunk_<k>.txt",
         "prior": [],
     },
+    "task-split-polish": [
+        {
+            "skill": "reflow2",
+            "template": "task-split-polish.md",
+            "role": "断句润色",
+            "format_section": "split_polish/chunk_<k>.txt（断句润色）",
+            "format_file": "docs/PRODUCT_FORMATS_REFLOW2.md",
+            "inputs": ["reflow2/split_polish/_request/chunk_<k>.md"],
+            "output": "reflow2/split_polish/chunk_<k>.txt",
+            "prior": [],
+        },
+    ],
 }
 
 

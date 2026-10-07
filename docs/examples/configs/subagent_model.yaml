@@ -1,4 +1,5 @@
-# 执行型 subagent（reflow-worker 类任务）运行的 no-think 模型名。
+# 执行型 subagent（reflow-worker 类任务）运行的模型名。
+# 执行型模型 = 专用于一次性产出类执行任务的模型（思考 / 无思考 / 小模型均可）。
 # 因人而异——按你当前编辑器里可用的模型名填写：
 #   VS Code：模型选择器中的名称；Claude Code：模型标识；其它：对应模型标识。
 # 脚本无法自动探测，见 docs/SETUP.md「执行型 subagent 模型」与 docs/EDITOR_COMPAT.md「各编辑器派发 subagent 命令表」。

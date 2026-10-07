@@ -34,9 +34,11 @@
      （`bracket_break_penalty`）。实例 `…中继器（当然，除非你布线更巧妙）。` 不切成
      `…中继器（当然，` + `除非…`。
    - `enum_keep` 数字枚举整体：枚举（`8、8、4` / `8, 8 and 4` / `0, 3, 7, 11 and 15`）内部加罚
-     （`enum_break_penalty`）；副语言侧（英文行）另有**保护区挪移**——切点落在保护区内时
-     挪到保护区**外**的最近词边界（`word_cut_advantage` 阔限），修 `…on 8,` + `8 and 4 gameticks`
-     这类枚举被劈开。**只对保护区生效**，不是通用就近切词（无差别启用会劣化大量标点切点）。
+     （`enum_break_penalty`）；副语言侧（英文行）把枚举内部 / 括号内部划为**保护区**，
+     候选切点落在保护区内即**排除**——修 `…on 8,` + `8 and 4 gameticks` 这类枚举被劈开。
+   - `punct_cut_bonus` / `conn_cut_bonus` 候选奖励：副语言候选集 = **全部词边界**（含无标点
+     长段内部），标点处与连接词前给奖励——修正“候选只有标点边界 → 目标位置被挤到最早标点”
+     造成的片宽失衡（末片吃掉无标点长段）。
 
 用法（模块）：
     from srt_reflow_core.punct import build_profile, split_atomic, pack_by_strength, split_sentences
@@ -99,19 +101,74 @@ BRACKET_BREAK_PENALTY = 6.0
 #      实例（2026-10-05 用户指出）：
 #        `Well, if you said 3 repeaters on 8,` + `8 and 4 gameticks, you'd be correct.`
 #      → 枚举的第一个元素被留在前一行；根因是**副语言侧**只能切在标点、而第一个 `8` 后的逗号
-#        距目标最近 → 故除加罚外还需 `word_cut_advantage`（词边界回退，见 split_by_nearby_punct）。
+#        距目标最近 → 故除加罚外还需副语言侧把保护区改为**候选排除**（见 split_by_nearby_punct）。
 # 关闭任一项 = 该偏好不参与代价（回退到纯断点强度 + 宽度）。
 ENUM_BREAK_PENALTY = 8.0   # 枚举内部断开加罚：> clause(5.0) 宁可在别处逗号切；< FRAG_PENALTY(20.0) 宁可劈枚举也不制造碎片
-WORD_CUT_ADVANTAGE = 2.0   # 副语言保护区挪移阔限：词边界比保护区标点**近出**该字符数时改用词边界
-                           #   （保留余量：实测案例词边界近 6 字符 → 2.0 足够触发；
-                           #    取值过大则挪移失效——曾先用 8.0 导致案例未修复，2026-10-05 自检发现）
+
+# 副语言候选奖励（字符当量，直接抵扣“距目标点的距离”）：
+#   标点处 > 从句连词前 > 一般连接词前 > 普通词边界。取值约束：略小于 tolerance 桶宽
+#   （total_len/(n-1)/3），使标点优先但**不绝对**——过大会把目标位置拉离比例。
+PUNCT_CUT_BONUS = 14.0
+CONN_CUT_BONUS = 6.0
+CLAUSE_CUT_BONUS = 14.0
+# 片长下限系数：每片不得短于“按目标语言比例应得长度”的该倍数。
+# 防御“候选奖励把切点拉过目标 → 剩余空间不够 → 下一片成为碎片”（实例：中文段宽 18/3/11，
+# 首刀被标点奖励拉到目标之外，次片只剩 `grab`）。
+MIN_PIECE_RATIO = 0.5
+# 悬空回拉次数（副语言侧）：切点**前**的词是功能词 → 把该词**挪到后段**（切点左移到它之前）。
+# 依据：功能词的依赖成分（宾语 / 名词 / 主动词 / 分句）与其**同侧**，在中间切开即破碎——
+# 实例（2026-10-07 二次优化暴露，均为“挪 1 词”）：
+#   `… the fact that you can | actually change …`（切在助动词 `can` 后）、
+#   `… shorter than the | delay …`（切在冠词后）、`… another repeater or | comparator …`（切在并列连词后）、
+#   `… the smallest combination of | repeaters …`（切在介词后）
+# ⚠️ **软惩罚做不到**（实测只能 16.6% → 13.7%）：多数刀在可行域内**没有**非悬空候选，
+#   而**回拉**会改变 `prev`、进而改变后续刀的可行域。实测悬空切点率 16.6% → **0.6%**。
+# ⚠️ **方向性**：回拉把功能词**并入后段**（`… repeater | or comparator …`），
+#   而不是把切点右移（后者会推向 `… repeater or comparator | …`，仍不解决问题）。
+# ⚠️ **只收明确的功能词**；`this` / `that` / `these` / `those` 等指示词兼引导词的不列入
+#   （`… the fact that | you can …` 本身是可接受边界，列入会误拉）。
+DANGLING_PULLBACK = 2
+DANGLING_AFTER = frozenset(
+    "a an the my your its their our some any no each every "
+    "from to of in on at with for by into about above below over under between through "
+    "against without than as is are was were be been being do does did can could will would "
+    "shall should may might must has have had and but or nor yet so".split())
+
+# 连接词（切在它**前面**：下一词命中 → 当前词边界加奖励）——**分两级**：
+#   `CONN_CLAUSE_WORDS` 引导**完整分句**（状语 / 原因 / 让步从句）→ 切在它前面时后半句
+#     自成语义单元，观感优于切在分句内部。实例（用户 2026-10-07）：
+#     `… redstone works | so that you can build …` 而不是 `… so that you | can build …`
+#   `CONN_WORDS` 一般并列 / 顺承（and / but / or / nor / yet / then …）→ 较低奖励
+#     （高频词，一律高奖励会把切点系统性左移、片宽失衡）
+#   **不列入**：`that` / `which` / `who` 这类关系词 / 名词性从句引导词——切在其前
+#     通常是破碎的（`… the fact | that you can …`）
+CONN_CLAUSE_WORDS = frozenset(
+    "so because although though whereas unless until since if when where whether while".split())
+CONN_WORDS = frozenset(
+    "and but or nor yet then when where because if while since although unless until "
+    "whether whereas".split()) - CONN_CLAUSE_WORDS
+# 多词连接短语：**内部不切**（`so | that` 破碎）——切点在短语**之前**
+# （首词在 `CONN_CLAUSE_WORDS` 时自动得从句奖励；否则由 (首词,次词) 命中本表判定）
+CONN_PHRASES = frozenset({
+    ("so", "that"), ("such", "that"), ("now", "that"), ("even", "though"),
+    ("even", "if"), ("as", "if"), ("in", "case"), ("as", "long"),
+})
+
+
+def _norm_word(s):
+    """词形归一（去两端标点 + 小写）——连接词判定用。"""
+    return s.strip(".,;:!?\u2014\u2013()[]\\\"'\u201c\u201d\u2018\u2019").lower()
 
 HEURISTIC_DEFAULTS = {
     "bracket_keep": True,                              # 括号整体保护（开括号前优先断 + 括号内加罚）
     "bracket_break_penalty": BRACKET_BREAK_PENALTY,
     "enum_keep": True,                                 # 数字枚举整体保护
     "enum_break_penalty": ENUM_BREAK_PENALTY,
-    "word_cut_advantage": WORD_CUT_ADVANTAGE,
+    "punct_cut_bonus": PUNCT_CUT_BONUS,
+    "conn_cut_bonus": CONN_CUT_BONUS,
+    "clause_cut_bonus": CLAUSE_CUT_BONUS,
+    "dangling_pullback": DANGLING_PULLBACK,
+    "min_piece_ratio": MIN_PIECE_RATIO,
 }
 
 # EN 常见缩写（缩写点不作句界；匹配须紧邻标点且以 . 结尾）
@@ -215,8 +272,8 @@ def _enum_internal_flags(texts):
 def _protected_span(k, texts, ends, inbr, enum_flags):
     """断点 k 所在**保护区**（枚举串 / 括号区间）的全局字符区间 `[lo, hi)`；非保护区返回 None。
 
-    用途：副语言侧「命中保护区 → 挪到保护区外的最近词边界」——挪移目标必须落在保护区**之外**，
-    否则等于没挪（`8, 8|and 4` 仍是劈开枚举）。故需先算出保护区的**字符范围**：
+    用途：副语言侧把保护区**内的候选排除**（见 split_by_nearby_punct）——故需先算出
+    保护区的**字符范围**：
     - 枚举：起点 = 前段尾部数字的起始位置（`on 8,` 的 `8`）；终点 = 向右连续命中的最后一个元素末尾。
       实例 `Well, if you said 3 repeaters on 8,| 8 and 4 gameticks,` → `[33, 54)`，
       理想切点 28.9（`repeaters|on`）落在区间**左外** → 可达。
@@ -399,20 +456,25 @@ def split_atomic(text, profile):
 
 
 def split_by_nearby_punct(segs, widths, profile=None):
-    """把**副语言**（非目标语言）整句切成 len(widths) 片：**就近按标点找断点**。
+    """把**副语言**（非目标语言）整句切成 len(widths) 片：**按目标语言宽度比例 + 自然断点**。
 
     用途：双语字幕里目标语言（中文）已由代价最小化 DP 定出 N 个单元，副语言侧必须
-    凑成同样的 N 片才能逐片配对显示。副语言切点应落在**标点处**而非词中——机械按词数
-    比例切会劈开语义单元（实测：`soft | power`、`stone pressure | plates`、
+    凑成同样的 N 片才能逐片配对显示。副语言切点应落在**标点处 / 连接词前**而非词中——
+    机械按词数比例切会劈开语义单元（实测：`soft | power`、`stone pressure | plates`、
     `from 0 to | 15`）。
 
-    做法（贪心，**不用 DP**）：逐个目标位置取“距目标最近的原子段边界”，并保证
-    剩余段数足够（`i < n-1` 时至少留 1 段给剩余单元）。
+    做法（贪心，**不用 DP**）：候选 = **全部词边界**，逐个目标位置取“距目标距离 − 候选奖励”
+    最小者，并保证剩余候选数足够（之后至少留 1 个候选给每片）。
     - 为何不用 DP：副语言断点素材稀疏——实测 49% 的英文整句**一个逗号都没有**
       （强断点 `;`/`—` 为 0），候选只有一个时 DP 必然退化为贪心，徒增复杂度
-    - **目标位置由宽度比例给出**：`widths` 是目标语言各单元的宽度（视觉宽度口径与
-      `text_width` 一致），累计比例 → 副语言累计宽度上的目标点
-    - 找不到标点时退回**词边界**（不劈词）；仍不可行则均分（由 `_even_split` 兜底）
+    - **候选集必须含词边界**：若只取“有标点的原子段边界”，无标点的长原子段内部
+      **零候选** → 目标位置被挤到最早的标点、末片吃掉整个长段（原子段数仅比片数多 1
+      时必然发生：前几刀被迫切在左侧）
+    - **候选奖励**（`punct_cut_bonus` / `conn_cut_bonus`）：标点处、连接词**前**的候选
+      抵扣“距目标距离”——标点优先但**不绝对**（硬优先会把目标位置拉离比例）
+    - **保护区**（`enum_keep` / `bracket_keep`）：枚举内部 / 括号内部的候选**排除**，
+      不参与选取（修 `…on 8,` + `8 and 4 gameticks` 这类枚举被劈开）
+    - 找不到候选时退回**词边界**（不劈词）；仍不可行则均分（由 `_even_split` 兜底）
     - 保序：返回的切点严格递增
 
     参数
@@ -438,24 +500,57 @@ def split_by_nearby_punct(segs, widths, profile=None):
     hz = dict(HEURISTIC_DEFAULTS)
     hz.update(getattr(profile, "heuristics", None) or {})
     cost = profile.break_cost if profile is not None else DEFAULT_BREAK_COST
+    texts = [s for s, _r, _b in atoms]
     ends, acc = [], 0
-    for s, _r, _b in atoms:
+    for s in texts:
         acc += len(s)
         ends.append(acc)
     total_len = ends[-1]
     total_w = sum(widths) or 1
-    tol = max(1.0, total_len / max(1, n - 1) / 3.0)   # “距离相近”的容忍桶宽
-    # 枚举内部断点标记（`8, 8 and 4` 这类枚举不得在内部切；关闭时恒 False）
+    # 枚举内部 / 括号内部 → 保护区字符区间（候选落在其中即排除）
     keep_enum = bool(hz.get("enum_keep", True))
     keep_br = bool(hz.get("bracket_keep", True))
-    enum_flags = (_enum_internal_flags([s for s, _r, _b in atoms]) if keep_enum
-                  else [False] * len(atoms))
+    enum_flags = _enum_internal_flags(texts) if keep_enum else [False] * len(atoms)
     inbr_flags = [(b and keep_br) for _s, _r, b in atoms]
-    # 保护断点（枚举内部 / 括号内部）：**不受词边界回退影响**，但作为「同距离时的破平」更差；
-    # 副语言侧对它们做「挪出保护区」的专用处理（见下），而不是在候选间加罚重排
-    # （加罚重排会把更早的弱断点顶上来：实测 `Well,`(5) 胜出，2026-10-05 自检发现）。
-    prot_flags = [(enum_flags[k] or inbr_flags[k]) for k in range(len(atoms))]
+    prot_spans = []
+    for k in range(len(atoms)):
+        if enum_flags[k] or inbr_flags[k]:
+            sp = _protected_span(k, texts, ends, inbr_flags, enum_flags)
+            if sp:
+                prot_spans.append(sp)
+    # 标点处候选的断点强度（同奖励同距离时优先强标点：`：` > `，`）
+    punct_cost = {ends[k]: (cost.get(atoms[k][1], 0.0) if atoms[k][1] is not None else 99.0)
+                  for k in range(len(atoms))}
 
+    # 候选 = 全部词边界（排除保护区内）；标点处 / 连接词前 给奖励
+    punct_bonus = float(hz.get("punct_cut_bonus", PUNCT_CUT_BONUS))
+    conn_bonus = float(hz.get("conn_cut_bonus", CONN_CUT_BONUS))
+    clause_bonus = float(hz.get("clause_cut_bonus", CLAUSE_CUT_BONUS))
+    words = list(re.finditer(r"\S+", full))
+    cand = []
+    for j, m in enumerate(words):
+        c = m.end()
+        if c >= total_len:
+            continue                                  # 句末不作切点
+        if any(s0 < c < s1 for s0, s1 in prot_spans):
+            continue                                  # 保护区内不切
+        w_cur = _norm_word(m.group())
+        w_nxt = _norm_word(words[j + 1].group()) if j + 1 < len(words) else ""
+        w_nxt2 = _norm_word(words[j + 2].group()) if j + 2 < len(words) else ""
+        if (w_cur, w_nxt) in CONN_PHRASES:
+            continue                                  # 连接短语**内部**不切（`so | that`）
+        if c in punct_cost:
+            bonus = punct_bonus
+        elif w_nxt in CONN_CLAUSE_WORDS or (w_nxt, w_nxt2) in CONN_PHRASES:
+            bonus = clause_bonus                      # 引导完整分句的连词**前**
+        elif w_nxt in CONN_WORDS:
+            bonus = conn_bonus                        # 一般连接词**前**
+        else:
+            bonus = 0.0
+        cand.append((c, bonus, punct_cost.get(c, 99.0)))
+    # 词边界 → 词下标：悬空回拉的判据（找到切点前的词，看它是否为功能词）
+    idx_of_end = {m.end(): j for j, m in enumerate(words)}
+    dangling_pullback = int(hz.get("dangling_pullback", DANGLING_PULLBACK))
     # 目标点：按目标语言各单元宽度的累计比例，映射到副语言的字符位置
     cum, targets = 0.0, []
     for w in widths[:-1]:
@@ -463,39 +558,31 @@ def split_by_nearby_punct(segs, widths, profile=None):
         targets.append(total_len * cum / total_w)
 
     cuts, prev = [], 0
+    min_ratio = float(hz.get("min_piece_ratio", MIN_PIECE_RATIO))
     for i, t in enumerate(targets):
-        max_idx = len(atoms) - (n - i - 1) - 1        # 该刀允许的最大原子段下标
-        legal = []
-        for k in range(max_idx + 1):
-            if ends[k] <= prev or atoms[k][1] is None:
-                continue                              # 越界 / 无标点的原子段尾不作候选
-            bucket = int(abs(ends[k] - t) / tol)      # 距离分桶：同桶内比标点强度
-            # 同桶同强度时按**距目标最近**取（旧写法直接比 ends[k]，会取最早的断点：
-            # `Well, if you said 3 repeaters on 8, 8 and 4 gameticks, you'd be correct.`
-            # 目标 ≈29 字符却切在 `Well,`(5)——用户 2026-10-05 指出）
-            # `prot`（保护区）仅作**距离完全相同**时的破平（放最后：绝不能压倒「距目标最近」，
-            # 否则 `Well,`(5) 会因「非保护区」胜出——2026-10-05 自检踩过）
-            legal.append((bucket, cost.get(atoms[k][1], 0.0), abs(ends[k] - t),
-                          int(prot_flags[k]), ends[k], k))
-        hi = ends[max_idx] if max_idx >= 0 else total_len
-        hi = max(hi, prev + 1)
-        if legal:
-            bucket, _c, dist, _pf, cut, kb = min(legal)
-            # **保护区挪移**（枚举/括号整体保护在副语言侧的落点）：
-            # 最优标点若**本身落在保护区内**（枚举内部 / 括号内部），挪到保护区**外**的最近词边界。
-            # 这是"从这里挪开"的逃生通道，**不是**通用就近切词——无差别启用会把大量
-            # 原本切在标点上的位置改成词中切点（实测 216 段里 36 段劣化，2026-10-05 自检发现）。
-            # 实例：`...3 repeaters on 8,| 8 and 4 gameticks,...` 首选标点 = 枚举内部逗号
-            # → 挪到 `repeaters|on`（距目标 0.06 vs 24；保护区 `[33,54)` 外）。
-            # 若最优标点在保护区之外（普通逗号），一律不动、保持标点优先。
-            if prot_flags[kb]:
-                span = _protected_span(kb, [s for s, _r, _b in atoms], ends, inbr_flags, enum_flags)
-                wcut = _word_cut_outside(full, t, prev, hi, span) if span else None
-                if (wcut is not None and abs(wcut - t) + hz.get(
-                        "word_cut_advantage", WORD_CUT_ADVANTAGE) < dist):
-                    cut = wcut
+        rest = n - i - 1                              # 本刀之后还需切出的片数
+        # 片长下限：本片 / 剩余各片都不得短于“按比例应得”的 min_ratio 倍
+        min_this = min_ratio * total_len * widths[i] / total_w
+        min_rest = min_ratio * total_len * sum(widths[i + 1:]) / total_w
+        best = None
+        for j, (c, bonus, pc) in enumerate(cand):
+            if c <= prev:
+                continue
+            if len(cand) - j - 1 < rest:
+                break                                 # 后面候选不足 → 不得在此切
+            if (c - prev) < min_this:
+                continue                              # 本片过短（相对目标）
+            if rest and (total_len - c) < min_rest:
+                break                                 # 剩余不够后续片 → 只能往前找
+            # 奖励抵扣距离（标点优先但不绝对）；非标点候选强度排最后（`pc`=99）
+            key = (abs(c - t) - bonus, pc, abs(c - t), c)
+            if best is None or key < best[0]:
+                best = (key, c)
+        if best is not None:
+            cut = best[1]
         else:
-            cut = _nearest_word_cut(full, t, prev, hi)
+            cut = _nearest_word_cut(full, t, prev, total_len)
+            cut = total_len if prev + 1 >= total_len else min(cut, total_len - 1)
         cuts.append(cut)
         prev = cut
 
@@ -510,20 +597,33 @@ def split_by_nearby_punct(segs, widths, profile=None):
     return [(f.strip(), None) for f in frags[:n]]
 
 
-def _word_cut_outside(text, t, lo, hi, span):
-    """在 `[lo, hi)` 内按词边界就近切，且**切点须在保护区 `span` 之外**（不在 `span` 内则退回最近词边界）。
 
-    保护区的「挪移」目标：`span` 左外侧（首选，`8, 8 and 4` 前）或右外侧；
-    两侧都不可达（保护区盖满 `[lo, hi)`）时**返回 None**（保持原标点断点，宁劈枚举也不制造碎片）。
+_PUNCT_TAIL_RE = re.compile(r"[.,;:!?\u2014)\u3001\u3002\uff0c]\s*$")
+
+
+def _pullback_dangling(frags, max_pull=DANGLING_PULLBACK):
+    """悬空回拉（**统一后处理**，覆盖所有切分路径）：把切点前的功能词**挪到后段**。
+
+    为何做成后处理而非选点内：切分有两条路径（`split_by_nearby_punct` 主路径 + `_even_split`
+    兑底），后者占 **34%** 的组；把回拉埋在选点循环里会漏掉兑底路径。
+    为何必须“回拉”而非“右移”：把功能词并入**后段**（`… repeater | or comparator …`）；
+    右移会推向 `… repeater or comparator | …`，仍不解决问题。
     """
-    cands = [lo + m.end() for m in re.finditer(r"\S+", text[lo:hi])]
-    if not cands:
-        return None
-    s0, s1 = span
-    out = [p for p in cands if p <= s0 or p >= s1]
-    if not out:
-        return None
-    return min(out, key=lambda p: (abs(p - t), p))
+    out = list(frags)
+    for i in range(len(out) - 1):
+        n = 0
+        while n < max_pull:
+            ta, tb = re.findall(r"\S+", out[i]), re.findall(r"\S+", out[i + 1])
+            if len(ta) <= 1 or not tb:
+                break                                 # 前片只到 1 词 → 停止（防空片）
+            if _PUNCT_TAIL_RE.search(out[i]):
+                break                                 # 以标点结尾 = 自然边界
+            if _norm_word(ta[-1]) not in DANGLING_AFTER:
+                break                                 # 切点前的词不是功能词
+            out[i] = " ".join(ta[:-1])
+            out[i + 1] = ta[-1] + " " + out[i + 1]
+            n += 1
+    return out
 
 
 def split_secondary(text, widths, profile=None):
@@ -535,7 +635,10 @@ def split_secondary(text, widths, profile=None):
     返回 `[片文本]`（长度 == len(widths)）。
     """
     prof = profile or build_profile("en")
-    return [f for f, _r in split_by_nearby_punct(split_atomic(text, prof), widths, prof)]
+    hz = dict(HEURISTIC_DEFAULTS)
+    hz.update(getattr(prof, "heuristics", None) or {})
+    frags = [f for f, _r in split_by_nearby_punct(split_atomic(text, prof), widths, prof)]
+    return _pullback_dangling(frags, max_pull=int(hz.get("dangling_pullback", DANGLING_PULLBACK)))
 
 
 def _nearest_word_cut(full, t, lo, hi):
@@ -551,33 +654,48 @@ def _nearest_word_cut(full, t, lo, hi):
 def _even_split(full, n, widths=None):
     """无标点可用时的兜底：按**词边界**切 n 片（不劈词；片数不足时补空串）。
 
-    有 `widths`（目标语言各单元宽度）时按**宽度比例**定词数切点——与
-    `split_by_nearby_punct` 的目标位置口径一致，避免“中文段长、英文片却等长均分”
-    的失衡（用户 2026-10-05 指出：`what do you think happens when I input a | pulse …`
-    按均分劈在 `a | pulse` 短语中间）。
+    有 `widths`（目标语言各单元宽度）时按**字符长度累积**比例定切点——与
+    `split_by_nearby_punct` 的目标位置口径一致（`widths` 是**视觉宽度**，不是词数；
+    按词数比例会因英文词长不均而系统性偏离——`a` 与 `comparator` 同算一个词）。
+    同时避免“中文段长、英文片却等长均分”的失衡（用户 2026-10-05 指出：
+    `what do you think happens when I input a | pulse …` 按均分劈在 `a | pulse` 短语中间）。
     """
     words = re.findall(r"\S+", full)
     if not words:
         return [("", None)] * n
-    m = len(words)
+    nw = len(words)
     if widths and len(widths) == n and sum(widths) > 0:
-        total_w, cum, cuts = float(sum(widths)), 0.0, []
-        for w in widths[:-1]:
-            cum += w
-            cuts.append(m * cum / total_w)
+        ends, acc = [], 0
+        for w in words:
+            acc += len(w)
+            ends.append(acc)          # ends[i] = 词 i 的结束字符位置
+            acc += 1                  # 词间空格
+        total = ends[-1]
+        total_w = float(sum(widths))
+        cuts, prev = [], 0
+        for i, w in enumerate(widths[:-1]):
+            rest = n - i - 1
+            lo, hi = prev + 1, nw - rest      # 切点（= 前 b 个词成片）
+            if lo > hi:
+                cuts.append(min(lo, nw))
+                prev = cuts[-1]
+                continue
+            t = total * sum(widths[:i + 1]) / total_w
+            b = min(range(lo, hi + 1), key=lambda x: (abs(ends[x - 1] - t), x))
+            cuts.append(b)
+            prev = b
         out, prev = [], 0
-        for i, c in enumerate(cuts):
-            c = max(prev + 1, min(int(round(c)), m - (n - i - 1)))
-            out.append(" ".join(words[prev:c]))
-            prev = c
+        for b in cuts:
+            out.append(" ".join(words[prev:b]))
+            prev = b
         out.append(" ".join(words[prev:]))
-        return [(s, None) for s in out]
+        return [(s, None) for s in out[:n]]
     out = []
     for i in range(n):
         if i == n - 1:
-            out.append(" ".join(words[m * i // n:]))
+            out.append(" ".join(words[nw * i // n:]))
         else:
-            out.append(" ".join(words[m * i // n:m * (i + 1) // n]))
+            out.append(" ".join(words[nw * i // n:nw * (i + 1) // n]))
     while len(out) < n:
         out.append("")
     return [(s, None) for s in out[:n]]

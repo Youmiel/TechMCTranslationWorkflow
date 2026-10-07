@@ -39,7 +39,6 @@ description: 补标点任务——合并字幕块 cue 文本为整段英文并�
    - **必须结合语义判断，不得机械遵循**：
      - 确为**话轮切换**（换人说话 / 一问一答）→ 在标签前补句末标点（`. ` 或 `? `）
      - 只是**同一说话人的长话**被字幕行切断、语义与前后连贯 → **不要断**
-     - 拿不准就不动——保持原样比切碎好
    - 示例：`... oftentimes unintuitive, jazziRed: would you say it's hard to learn redstone? CraftyMasterman: (thinking) CraftyMasterman: yes but let's see if we can change that.`
      → `... oftentimes unintuitive. jazziRed: would you say it's hard to learn redstone? CraftyMasterman: (thinking). CraftyMasterman: yes. but let's see if we can change that.`
    - **只补句末标点**：不改词、不改大小写（`yes. but` 的小写由 r02 翻译承担）
@@ -54,16 +53,23 @@ description: 补标点任务——合并字幕块 cue 文本为整段英文并�
      - 冠词 / 限定词：the, a, an, this, that, these, those, my, your, its, their, our, some, any, no, each, every
      - 助动词 / 情态：is, are, was, were, be, been, being, do, does, did, can, could, will, would, shall, should, may, might, must, has, have, had
      - 从属连词：that, which, who, whom, whose, because, if, when, while, since, although, unless, until, whether
-     - 并列连词：and, but, or, nor, yet, so, for
+     - 并列连词：for（作并列连词罕见，一律按悬空处理）；**`and` / `but` / `or` / `nor` / `yet` / `so` 不属此类**——它们连接的是成分还是分句按判据 C 判，**不得一律当悬空成分**
      - 及物动词（宾语缺失）：transfer, pull, push, put, take, give, send, make, place, detect, use, see, know, say, tell, show, find, get, need, want, support, accept, power, activate
    - **判据 B · 补足成分**（候选断点**后**的词）：紧接的词若正好补全上述悬空（名词短语补介词 / 宾语补动词 / 从句补连词）→ **依附前句，不得在此断**。
-   - **判据 C · 反向保护**：也不必为“语义连贯”而抹掉真句界——断句处必须有完整主谓结构且语义自足；**拿不准就不动**。
+   - **判据 C · 独立主谓（该断就断）**：一处出现**第二个能单独成句的主谓结构** → 必须在其边界补句末标点。
+     - 判法（不计数）：**这段能拆成两句、各自都成立吗？能 → 拆。**
+     - 常见形态：并列连词（`and` / `but` / `or` / `nor` / `yet` / `so`）后紧跟**自己的主语 + 谓语**，而前半已有完整主谓
+     - **为何必须主动断**：下游按中文行宽把英文句切成 1–2 段——**英文句太长，就会被切在句子中间**（半句一行）
+   - **判据 D · 反向保护（别切过头）**：不得为拆句而切断**同一主谓结构**——一个主谓未说完（宾语 / 补语 / 从句尚未交代）时，句号不得落下。
    - **实例（本项目实测）**：
      - ❌ `... an output from. Below Hoppers can also input items...`　✅ `... an output from below. Hoppers can also input items...`
        （`from` 悬空 + `below` 是其宾语；勿被 `From`/`Below` 双大写误导）
      - ❌ `... can pick up and transfer. Items the shape...`　✅ `... can pick up and transfer items. The shape...`
        （`transfer` 及物动词缺宾语 + `items` 是宾语；**两侧全小写**，误断与大小写无关）
-     - ✅ `... this value is and that becomes the output.`（`and` 并列连词 → 依附前句，正确）
+     - ❌ `... another comparator or redstone dust, but if you place a repeater ...`（**该断未断**：`but` 后是独立主谓，应在 `but` 前补句号）
+     - ✅ `... an input side on the back, an output side in the front, and two side inputs ...`（`and` 连接并列宾语 → 依附前句，正确）
+   - **产出前自检（全篇，与规则 4 的片边界自检同一次完成）**：回扫全篇，找**能拆成两句、各自都成立**而未见句末标点的地方，补上句号。
+     - **不计数**：不数词、不估字数（长度由主会话脚本校验，思考中不做手算）
 
 ## 输出
 

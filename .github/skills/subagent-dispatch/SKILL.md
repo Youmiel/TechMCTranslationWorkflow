@@ -16,7 +16,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > 原则：**粗粒度、少打扰**——派发是执行机制，是否派由任务性质决定，**不需逐步骤报告**（考量沿用 [PIPELINE_ISOLATION.md §3](../../../docs/PIPELINE_ISOLATION.md)）。
 
 **一律派 subagent**（reflow 阶段三 补标点/翻译/分句、reflow2 一致性复核、preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) 第一次遍历 + 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
-
+**reflow2 断句润色（继承回填内）→ 派 subagent**：`srt_reflow2_backfill.py --emit-polish` 先导出复核清单（仅导出、不写产物），再逐块派 `task-split-polish`，最后 `--polish-input` 回填（逐组校验、失败回退脚本切分）。
 **查证（preprocess [集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐)）→ 研究型 agent 分批派发**：L3 术语查证待查列表按 **30 条/块** 拆 `term_pending_<i>.md`，逐块派 `term-researcher`（研究型 agent）。
 - **非任务处理 agent**：允许推理 / 判断 / 多步查证，但页面原文只进一次性上下文、只返回每词一行压缩总结
 - **任务文件即完整 prompt**（`term-scan/task-term-resolve.md`，规则静态内联）——派发时“任务文件 + 该块 `term_pending_<i>.md`”双引用
@@ -87,7 +87,8 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > - `task-fix`（reflow / translate 版）/ `task-summary` 未接入：错误清单 / 摘要为动态内容不走块级渲染，仍按旧方式——主 agent 读模板 + 手工组装 + 落盘存档（内容不大时也可直接内联派发）
 >
 > **每任务的实际取材在各任务文件底部**（`> **渲染步骤**` 区块，渲染时剥离）：声明该任务按什么顺序、用哪些内容拼接（见该区块的有序列表）。**本节（派发配方）只描述通用流程与规则**，具体取材以任务文件为准。
-> **执行型纪律与模型**：reflow 类执行任务**派发 `reflow-worker`（执行型 agent），使用无思考模型**。
+> **执行型纪律与模型**：reflow 类执行任务**派发 `reflow-worker`（执行型 agent），使用执行型模型**。
+> - **执行型模型** = 专用于一次性产出类执行任务的模型（可为思考模型 / 无思考模型 / 小模型——由使用者按自身可用性选择）
 > - 具体做法（派发入口 / agent 定义 / 模型名 / adapt）按你自己的编辑器执行，见 [EDITOR_COMPAT](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml` 的 `execution_model`）
 > - 纪律母版「一、执行型定位」与 agent 系统提示词同源，由渲染脚本随 prompt 整体注入（内联兜底 + 任务特定纪律 + 兜底）
 > - **研究型任务不同**（`term-researcher` 查证 / `wiki-researcher` Wiki 查询）：用主模型（非 `execution_model`）、不追加执行型纪律母版——见「派发边界」
@@ -244,6 +245,7 @@ subagent prompt = 任务文件内容（含任务特有规则）
 | 补标点（reflow2 [补标点](../reflow2/phase2.md#补标点)） | `reflow2/task-punctuate`（派发渲染用 `--skill reflow2`） | `reflow2/r01_results/chunk_<k>.txt` |
 | 整段翻译（reflow2 [翻译](../reflow2/phase2.md#翻译)） | `reflow2/task-translate`（派发渲染用 `--skill reflow2`） | `reflow2/r02_results/chunk_<k>.txt` |
 | 句子匹配（reflow2 [切 Z 句与对齐](../reflow2/phase2.md#切-z-句与对齐)） | `reflow2/task-match`（派发渲染用 `--skill reflow2`） | `reflow2/align/chunk_<k>.txt` |
+| 断句润色（reflow2 [继承回填](../reflow2/phase2.md#继承回填)） | `reflow2/task-split-polish`（派发渲染用 `--skill reflow2`） | `reflow2/split_polish/chunk_<k>.txt` |
 | 定点修复（校验打回 B 档） | `reflow-redstone/task-fix` | 覆盖写 `## 目标文件` 同一路径 |
 | 前文摘要（reflow [翻译](../reflow-redstone/semantic-reflow.md#翻译) 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
 | 合并断句（translate 阶段三） | `translate-redstone/task-merge` | `_merge_results/chunk_<k>.txt` |
