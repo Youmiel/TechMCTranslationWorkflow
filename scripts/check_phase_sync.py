@@ -19,6 +19,7 @@
 - E 标题不得含全角括注（括注使锚点变长、引用方写短形式即静默断链）
 - F `「」` 弱引用可解析（**警告级**：外部引用须 `「<前缀>#<标题>」`，无 `#` = 同文件引用）
 - P 引用块短语（`>` 句尾无句末标点）与标题写死数量词（见 `docs/SYMBOLS.md`）
+- G 流程链箭头（同行带宽白 ` → ` ≥ 2 处；改列表或“先…再…”）——**警告级**
 用法（命令根 = Project_Main/）：
     python scripts/check_phase_sync.py                 # 全部检查
     python scripts/check_phase_sync.py --list          # 只列注册表
@@ -45,15 +46,16 @@ SCAN_EXCLUDE_PREFIXES = (".github/skills/humanizer-zh", "scripts/__pycache__")
 SCAN_EXCLUDE_FILES = ("scripts/check_phase_sync.py", "scripts/srt_snap_audio.py")
 
 # ---- 阶段空间注册表（唯一权威；新号在此、旧号不出现在此 = 旧号自动成违规）----
-# 号 → (角色名, 适用工作流集合)。阶段四 仅 translate 适用（reflow/reflow2 无去翻译腔）。
+# 号 → (角色名, 适用工作流集合)。阶段四 仅 translate 适用（其余无去翻译腔）。
+# vocalign 无阶段四，且其阶段〇 的角色对应「音频采集与文本定稿」（输入是音频而非字幕）。
 PHASES = {
-    "〇": ("字幕机械修复", ("translate-redstone", "reflow-redstone", "reflow2")),
-    "一": ("领域预判与准备", ("translate-redstone", "reflow-redstone", "reflow2")),
-    "二": ("术语扫描与知识补齐", ("translate-redstone", "reflow-redstone", "reflow2")),
-    "三": ("工作流核心", ("translate-redstone", "reflow-redstone", "reflow2")),
+    "〇": ("字幕机械修复", ("translate-redstone", "reflow-redstone", "reflow2", "vocalign")),
+    "一": ("领域预判与准备", ("translate-redstone", "reflow-redstone", "reflow2", "vocalign")),
+    "二": ("术语扫描与知识补齐", ("translate-redstone", "reflow-redstone", "reflow2", "vocalign")),
+    "三": ("工作流核心", ("translate-redstone", "reflow-redstone", "reflow2", "vocalign")),
     "四": ("去翻译腔", ("translate-redstone",)),
-    "五": ("人工审核与输出门禁", ("translate-redstone", "reflow-redstone", "reflow2")),
-    "六": ("数据源效果总结", ("translate-redstone", "reflow-redstone", "reflow2")),
+    "五": ("人工审核与输出门禁", ("translate-redstone", "reflow-redstone", "reflow2", "vocalign")),
+    "六": ("数据源效果总结", ("translate-redstone", "reflow-redstone", "reflow2", "vocalign")),
 }
 
 # 各主/阶段文件的阶段标题集合（`### 阶段X` 级别）——与 PHASES 归属交叉约束
@@ -61,11 +63,14 @@ PHASE_HEADING_SETS = {
     ".github/skills/translate-redstone/SKILL.md": frozenset("〇一二三四五六"),
     ".github/skills/reflow-redstone/SKILL.md": frozenset("〇一二三五六"),
     ".github/skills/reflow2/SKILL.md": frozenset("〇一二三五六"),
+    ".github/skills/vocalign/SKILL.md": frozenset("〇一二三五六"),
     ".github/skills/redstone-preprocess/SKILL.md": frozenset("〇一二"),
     ".github/skills/redstone-review/SKILL.md": frozenset(),   # 不设编号阶段标题（审核循环机制）
     ".github/skills/redstone-finalize/SKILL.md": frozenset("六"),
     ".github/skills/reflow-redstone/semantic-reflow.md": frozenset("三"),
     ".github/skills/reflow2/phase2.md": frozenset("三"),
+    ".github/skills/vocalign/phase0.md": frozenset("〇"),
+    ".github/skills/vocalign/phase3.md": frozenset("三"),
 }
 
 # ---- 被外部引用的锚点冻结清单（file → 必须存在的锚点集）----
@@ -118,11 +123,12 @@ CHECK_GROUPS = {
     "E": "标题括注",
     "F": "弱引用 `「」` 断链",
     "P": "引用块短语 / 标题数量词",
+    "G": "流程链箭头",
 }
 
 # 警告级组：只报不拦（不影响退出码）——判据只能验「存在性/归属」，
 # 未命中 ≠ 违规（可能是指称概念、仓库外对象、或有意的短形式），需借上下文裁定。
-WARN_GROUPS = {"F"}
+WARN_GROUPS = {"F", "G"}
 
 # 豁免：自有“阶段 X”体系、与工作流编号空间无关的文件（不进 A 组检查）
 PHASE_TOKEN_EXEMPT_FILES = (".github/skills/video-abstract/SKILL.md",)
@@ -169,6 +175,32 @@ FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
 BLOCKQ_SENT_RE = re.compile(r"[。；！？]|参见|摘自|https?://")
 # 含中文（无中文 = 英文示例/原文引用，豁免）
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+
+# ---- G 组判据（见 docs/SYMBOLS.md「箭头」）----
+# 流程链禁用箭头串行（`A → B → C`）——链一长即过宽，增删节点要改整行。
+# 判据 = 同行**首个箭头到末个箭头的跨度**超过阈值（见 ARROW_CHAIN_MAX）。
+# 为什么用跨度而非个数：例外是「**极短内联序列**」（退避 `2s → 4s → 8s`、层级
+# `L1→L1.5→L2`）——节点多但跨度小属豁免；节点少但很长（`口语化长短语 → 另一长短语`）
+# 同样是拥挤。跨度自然兼顾两者，且不需区分中英文。
+ARROW_RE = re.compile(r"→")
+# 跨度阈值（字符数，含箭头与中间内容）：~15 字以下视为极短内联序列。
+ARROW_CHAIN_MAX = 15
+# 表格单元格内的换行替代（Markdown 表格行物理上不能折行）——先按它切段再算跨度，
+# 否则「表格内改 `<br>` 分行」的修法在物理行上不生效。
+BR_RE = re.compile(r"<br\s*/?>")
+
+
+def _arrow_span(line):
+    """一行内首个 `→` 起点到末个 `→` 终点的跨度；按 `<br>` 切段后逐段算，取最大。
+
+    箭头不足 2 个的段不计（单处箭头 = 正当二元指向）。
+    """
+    best = 0
+    for seg in BR_RE.split(line):
+        ms = list(ARROW_RE.finditer(seg))
+        if len(ms) >= 2:
+            best = max(best, ms[-1].end() - ms[0].start())
+    return best
 
 # ---- F 组判据（见 docs/SYMBOLS.md「`「」` 弱引用」）----
 # 约定：外部引用写 `「<文件名|skill 名|目录名>#<标题>」`；无 `#` = 同文件引用。
@@ -579,6 +611,33 @@ def check_e(rel, text, problems):
                              f"标题含括注（改用冒号/连接符或移入正文）：'{head}'", head))
 
 
+def check_g(rel, text, problems):
+    """G 组：流程链箭头（`docs/SYMBOLS.md`「SYMBOLS.md#箭头」）——**警告级**。
+
+    `→` 只用于二元指向（条件→动作、动作→产物、原词→译名）；把它当流程连接符串成
+    `A → B → C` 会随链路变长而过宽，且增删节点要改整行，不如列表可逐条维护。
+
+    判据：**同行首个箭头到末个箭头的跨度 ≥ `ARROW_CHAIN_MAX` 字符**（见 `_arrow_span`，
+    先按 `<br>` 切段再算）。以跨度为尺自然地放过了「极短内联序列」（`2s → 4s → 8s`、
+    `L1→L1.5→L2`）；表格单元格无法列表化 → 改 `<br>` + `·` 分行。模板示例 / 引文内箭头
+    可能一并报出，故为警告级。
+    """
+    if Path(rel).suffix != ".md":
+        return
+    fence = False
+    for i, line in enumerate(text.split("\n"), 1):
+        if FENCE_RE.match(line):
+            fence = not fence
+            continue
+        if fence:
+            continue
+        span = _arrow_span(line)
+        if span >= ARROW_CHAIN_MAX:
+            problems.append(("G", rel, i,
+                             f"流程链箭头（首末箭头跳 {span} 字；改列表或“先…再…”，表格内改 `<br>` 分行）",
+                             line.strip()[:120]))
+
+
 def check_p(rel, text, problems):
     """P 组：① 引用块短语（`docs/SYMBOLS.md`「`>` 引用块」）；② 标题写死数量词。
 
@@ -659,7 +718,7 @@ def run_checks(groups, target=None):
         text = read_text(rel)
         if text is None:
             continue
-        for g, fn in (("A", check_a), ("C", check_c), ("D", check_d), ("E", check_e), ("P", check_p)):
+        for g, fn in (("A", check_a), ("C", check_c), ("D", check_d), ("E", check_e), ("P", check_p), ("G", check_g)):
             if g in groups:
                 fn(rel, text, problems)
         if "B" in groups:

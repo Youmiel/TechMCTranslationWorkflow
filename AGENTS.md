@@ -23,10 +23,11 @@
 - 翻译工作流 → `translate-redstone` Skill（细节在各扩展 Skill，见「translate-redstone#依赖」）
 - 语义回填工作流 → `reflow-redstone` Skill（共享阶段〇、一、二、五、六，见「reflow-redstone#依赖」）
 - 时间轴源头固化工作流（新） → `reflow2` Skill（共享阶段〇、一、二、五、六；阶段三 = 源头固化 E 句时间 + 中文继承，见「reflow2#依赖」）
+- 语音对齐骨架驱动工作流（新） → `vocalign` Skill（共享阶段〇、一、二、五、六；阶段三 = 由音频词级时轴建三层骨架、整段翻译后按骨架切分回填，见「vocalign#依赖」；**需音频 + venv**）
 - 知识/索引维护 → `maintain-knowledge` Skill（决策路由见其「maintain-knowledge#维护任务决策」）
 - Wiki 抓取/兜底 → `wiki-tools` Skill（含缓存过期判定与主动刷新，翻译过程中需请求 Wiki 时遵循）
 - 对外视频摘要（发布简介用） → `video-abstract` Skill（主会话直接执行，不派 subagent）
-- **主会话调度纪律（仅约束 translate/reflow/reflow2 派发-校验阶段）**：零定点编辑、验证性读禁止等 token 纪律权威在 「subagent-dispatch#主会话读写最小化」，随工作流 Skill 引用加载；**maintain-knowledge / wiki-tools 等日常维护不适用、不受影响**
+- **主会话调度纪律（仅约束 translate/reflow/reflow2/vocalign 派发-校验阶段）**：零定点编辑、验证性读禁止等 token 纪律权威在 「subagent-dispatch#主会话读写最小化」，随工作流 Skill 引用加载；**maintain-knowledge / wiki-tools 等日常维护不适用、不受影响**
 
 ## 工作流程
 

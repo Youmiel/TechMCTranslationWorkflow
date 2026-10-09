@@ -113,6 +113,16 @@ TASKS = {
             "output": "_trans_results/chunk_<k>.txt",
             "prior": ["humanizer", "terms", "traps"],
         },
+        {
+            "skill": "vocalign",
+            "template": "task-translate.md",
+            "role": "整段翻译",
+            "format_section": "r02_results/chunk_<k>.txt（翻译块）",
+            "format_file": "docs/PRODUCT_FORMATS_VOCALIGN.md",
+            "inputs": ["vocalign/r01_normalized/chunk_<k>.txt"],
+            "output": "vocalign/r02_results/chunk_<k>.txt",
+            "prior": ["humanizer", "terms", "traps"],
+        },
     ],
     "task-merge": {
         "skill": "translate-redstone",
@@ -165,17 +175,39 @@ TASKS = {
             "output": "reflow2/align/chunk_<k>.txt",
             "prior": [],
         },
+        {
+            "skill": "vocalign",
+            "template": "task-match.md",
+            "role": "句子匹配",
+            "format_section": "align/chunk_<k>.txt（对齐文件）",
+            "format_file": "docs/PRODUCT_FORMATS_VOCALIGN.md",
+            "inputs": ["vocalign/e0/en_timeline/chunk_<k>.txt", "vocalign/zh_sentences/chunk_<k>.txt"],
+            "output": "vocalign/align/chunk_<k>.txt",
+            "prior": [],
+        },
     ],
-    "task-consistency": {
-        "skill": "reflow2",
-        "template": "task-consistency.md",
-        "role": "机制断言自洽性复核",
-        "format_section": "consistency/chunk_<k>.txt",
-        "format_file": "docs/PRODUCT_FORMATS_REFLOW2.md",
-        "inputs": ["reflow2/en_timeline/chunk_<k>.txt"],
-        "output": "reflow2/consistency/chunk_<k>.txt",
-        "prior": [],
-    },
+    "task-consistency": [
+        {
+            "skill": "reflow2",
+            "template": "task-consistency.md",
+            "role": "机制断言自洽性复核",
+            "format_section": "consistency/chunk_<k>.txt",
+            "format_file": "docs/PRODUCT_FORMATS_REFLOW2.md",
+            "inputs": ["reflow2/en_timeline/chunk_<k>.txt"],
+            "output": "reflow2/consistency/chunk_<k>.txt",
+            "prior": [],
+        },
+        {
+            "skill": "vocalign",
+            "template": "task-consistency.md",
+            "role": "机制断言自洽性复核",
+            "format_section": "consistency/chunk_<k>.txt",
+            "format_file": "docs/PRODUCT_FORMATS_VOCALIGN.md",
+            "inputs": ["vocalign/e0/en_timeline/chunk_<k>.txt"],
+            "output": "vocalign/consistency/chunk_<k>.txt",
+            "prior": [],
+        },
+    ],
     "task-split-polish": [
         {
             "skill": "reflow2",
@@ -188,6 +220,26 @@ TASKS = {
             "prior": [],
         },
     ],
+    "task-candidates": {
+        "skill": "vocalign",
+        "template": "task-candidates.md",
+        "role": "语义候选点标注",
+        "format_section": "candidates/reply/chunk_<k>.txt（候选点作答）",
+        "format_file": "docs/PRODUCT_FORMATS_VOCALIGN.md",
+        "inputs": ["vocalign/candidates/_request/chunk_<k>.md"],
+        "output": "vocalign/candidates/reply/chunk_<k>.txt",
+        "prior": [],
+    },
+    "task-e0": {
+        "skill": "vocalign",
+        "template": "task-e0.md",
+        "role": "E0 定稿（仲裁/补标点/注释）",
+        "format_section": "e0/reply/chunk_<k>.txt（E0 作答）",
+        "format_file": "docs/PRODUCT_FORMATS_VOCALIGN.md",
+        "inputs": ["vocalign/e0/_request/chunk_<k>.md"],
+        "output": "vocalign/e0/reply/chunk_<k>.txt",
+        "prior": [],
+    },
 }
 
 
@@ -457,6 +509,8 @@ def main():
         chunks_dir = args.chunks_dir
     elif args.skill == "reflow2":
         chunks_dir = os.path.join(video_dir, "reflow2", "chunks")
+    elif args.skill == "vocalign":
+        chunks_dir = os.path.join(video_dir, "vocalign", "chunks")
     elif args.skill == "translate-redstone":
         chunks_dir = os.path.join(video_dir, "chunks")
     else:

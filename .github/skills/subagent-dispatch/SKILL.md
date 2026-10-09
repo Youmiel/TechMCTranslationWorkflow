@@ -15,7 +15,7 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 >
 > 原则：**粗粒度、少打扰**——派发是执行机制，是否派由任务性质决定，**不需逐步骤报告**（考量沿用 [PIPELINE_ISOLATION.md §3](../../../docs/PIPELINE_ISOLATION.md)）。
 
-**一律派 subagent**（reflow 阶段三 补标点/翻译/分句、reflow2 一致性复核、preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) 第一次遍历 + 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
+**一律派 subagent**（reflow 阶段三 补标点/翻译/分句、reflow2 一致性复核、vocalign 文本定稿/一致性复核/翻译/对齐/候选点、preprocess [术语扫描](../redstone-preprocess/SKILL.md#21-术语扫描) 第一次遍历 + 术语识别）：统一路径，块数由骨架决定，**无需报告"用/不用"**——直接按派发配方派发。
 **reflow2 断句润色（继承回填内）→ 派 subagent**：`srt_reflow2_backfill.py --emit-polish` 先导出复核清单（仅导出、不写产物），再逐块派 `task-split-polish`，最后 `--polish-input` 回填（逐组校验、失败回退脚本切分）。
 **查证（preprocess [集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐)）→ 研究型 agent 分批派发**：L3 术语查证待查列表按 **30 条/块** 拆 `term_pending_<i>.md`，逐块派 `term-researcher`（研究型 agent）。
 - **非任务处理 agent**：允许推理 / 判断 / 多步查证，但页面原文只进一次性上下文、只返回每词一行压缩总结
@@ -81,13 +81,14 @@ description: subagent 派发规范——派发配方（任务文件+纪律母版
 > - reflow 阶段三：`scripts/render_subagent_prompt.py` 接入 `task-punctuate` / `task-translate` / `task-split` / `task-match`
 > - reflow2 阶段三：同一脚本接入 `task-consistency`（`--skill reflow2`）+ 同名任务的 reflow2 版
 > - translate 阶段三：同一脚本接入 `task-merge` / `task-humanize` / `task-translate`
+> - vocalign 阶段〇 / 阶段三：同一脚本接入 `task-e0` / `task-candidates` / `task-consistency`（`--skill vocalign`）+ 同名任务（`task-translate` / `task-match`）的 vocalign 版
 >   - **同名任务多 skill**：派发时 `--skill translate-redstone` 取 translate 版，默认 reflow 版
 > - preprocess 阶段二：**独立脚本** `scripts/render_preprocess_prompt.py` 接入 `task-term-recognition` / `task-en-preprocess`（块级执行型任务）
 > - **[集中补齐](../redstone-preprocess/SKILL.md#22-集中补齐) 查证（`task-term-resolve`）/ Wiki 查询（`task-wiki-query`）不走渲染脚本**：研究型任务、规则静态内联于任务文件，派发时“任务文件 + 该批待查清单”双引用（见「派发边界」）
 > - `task-fix`（reflow / translate 版）/ `task-summary` 未接入：错误清单 / 摘要为动态内容不走块级渲染，仍按旧方式——主 agent 读模板 + 手工组装 + 落盘存档（内容不大时也可直接内联派发）
 >
 > **每任务的实际取材在各任务文件底部**（`> **渲染步骤**` 区块，渲染时剥离）：声明该任务按什么顺序、用哪些内容拼接（见该区块的有序列表）。**本节（派发配方）只描述通用流程与规则**，具体取材以任务文件为准。
-> **执行型纪律与模型**：reflow 类执行任务**派发 `reflow-worker`（执行型 agent），使用执行型模型**。
+> **执行型纪律与模型**：字幕工作流执行型任务（reflow / reflow2 / vocalign / translate）**派发 `reflow-worker`（执行型 agent），使用执行型模型**。
 > - **执行型模型** = 专用于一次性产出类执行任务的模型（可为思考模型 / 无思考模型 / 小模型——由使用者按自身可用性选择）
 > - 具体做法（派发入口 / agent 定义 / 模型名 / adapt）按你自己的编辑器执行，见 [EDITOR_COMPAT](../../../docs/EDITOR_COMPAT.md)（模型名读 `configs/subagent_model.yaml` 的 `execution_model`）
 > - 纪律母版「一、执行型定位」与 agent 系统提示词同源，由渲染脚本随 prompt 整体注入（内联兜底 + 任务特定纪律 + 兜底）
@@ -246,6 +247,9 @@ subagent prompt = 任务文件内容（含任务特有规则）
 | 整段翻译（reflow2 [翻译](../reflow2/phase2.md#翻译)） | `reflow2/task-translate`（派发渲染用 `--skill reflow2`） | `reflow2/r02_results/chunk_<k>.txt` |
 | 句子匹配（reflow2 [切 Z 句与对齐](../reflow2/phase2.md#切-z-句与对齐)） | `reflow2/task-match`（派发渲染用 `--skill reflow2`） | `reflow2/align/chunk_<k>.txt` |
 | 断句润色（reflow2 [继承回填](../reflow2/phase2.md#继承回填)） | `reflow2/task-split-polish`（派发渲染用 `--skill reflow2`） | `reflow2/split_polish/chunk_<k>.txt` |
+| 语义候选点标注（vocalign [候选点](../vocalign/phase3.md#候选点)） | `vocalign/task-candidates`（派发渲染用 `--skill vocalign`） | `vocalign/candidates/reply/chunk_<k>.txt` |
+| 文本定稿（vocalign [文本定稿](../vocalign/phase0.md#文本定稿)） | `vocalign/task-e0`（派发渲染用 `--skill vocalign`） | `vocalign/e0/reply/chunk_<k>.txt` |
+| 机制断言复核（vocalign [一致性复核](../vocalign/phase3.md#一致性复核)） | `vocalign/task-consistency`（派发渲染用 `--skill vocalign`） | `vocalign/consistency/chunk_<k>.txt` |
 | 定点修复（校验打回 B 档） | `reflow-redstone/task-fix` | 覆盖写 `## 目标文件` 同一路径 |
 | 前文摘要（reflow [翻译](../reflow-redstone/semantic-reflow.md#翻译) 可选） | `reflow-redstone/task-summary` | `reflow/summary.md` |
 | 合并断句（translate 阶段三） | `translate-redstone/task-merge` | `_merge_results/chunk_<k>.txt` |

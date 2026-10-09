@@ -8,11 +8,12 @@
 | translate | [PRODUCT_FORMATS_TRANSLATE.md](PRODUCT_FORMATS_TRANSLATE.md) | 产物速查 + `s03_plan.md` / `s04_draft.srt` / `_merge_results` / `_trans_results` / `_humanize_results` |
 | reflow | [PRODUCT_FORMATS_REFLOW.md](PRODUCT_FORMATS_REFLOW.md) | 产物速查 + `r00`–`r04` / `r03_anchored.jsonl` / `r03_*` 分句输入 |
 | reflow2 | [PRODUCT_FORMATS_REFLOW2.md](PRODUCT_FORMATS_REFLOW2.md) | 产物速查 + `en_timeline` / `zh_sentences` / `align` / reflow2 `r04_*` |
+| vocalign | [PRODUCT_FORMATS_VOCALIGN.md](PRODUCT_FORMATS_VOCALIGN.md) | 产物速查 + `words.json` / `skeleton.json` / `boundaries.txt` / vocalign `r04_*` |
 
 > 各 SKILL 步骤与脚本 docstring 只引用本文件（或对应分文件）、不重复展开；**处理某产物前先查对应节**，勿现查代码猜格式。
 > 脚本解析器（`plan.py parse_r03`、`srt_check_segments.py` 等）是格式的**实现标准**，本文件是**约定标准**——两者必须一致，变更需同步（见「变更同步清单」）。
 >
-> **跨工作流复用约定的写法**：同一约定被多种工作流使用时，详细描述只写在**最早使用该约定的工作流文件**内，后建立的工作流文件只留短句 + 章节链接（建立顺序：translate 最早 → reflow → reflow2 最晚）。
+> **跨工作流复用约定的写法**：同一约定被多种工作流使用时，详细描述只写在**最早使用该约定的工作流文件**内，后建立的工作流文件只留短句 + 章节链接（建立顺序：translate 最早 → reflow → reflow2 → vocalign 最晚）。
 
 ## 通用约定
 
@@ -27,13 +28,13 @@
 
 改动任何产物的**格式 / 分隔符 / 字段**时必须同步：
 
-1. **对应格式文件**——通用机制与共享产物改本文件；工作流专有产物改对应分文件（[translate](PRODUCT_FORMATS_TRANSLATE.md) / [reflow](PRODUCT_FORMATS_REFLOW.md) / [reflow2](PRODUCT_FORMATS_REFLOW2.md)）
+1. **对应格式文件**——通用机制与共享产物改本文件；工作流专有产物改对应分文件（[translate](PRODUCT_FORMATS_TRANSLATE.md) / [reflow](PRODUCT_FORMATS_REFLOW.md) / [reflow2](PRODUCT_FORMATS_REFLOW2.md) / [vocalign](PRODUCT_FORMATS_VOCALIGN.md)）
 2. **生成 / 解析脚本**：
    - reflow：`srt_reflow_gap_scan.py`、`srt_reflow_breaks.py`、`srt_reflow_check_breaks.py`、`srt_reflow_check_words.py`、`srt_reflow_check_sentence_len.py`、`srt_reflow_presplit.py`、`srt_reflow_build_r03.py`、`srt_reflow_core/{io,plan,allocate,alerts,reflow,attach}.py`
    - reflow2：`srt_reflow2_etimeline.py`、`srt_reflow2_stitch.py`、`srt_reflow2_zsent.py`、`srt_reflow2_backfill.py`（源头固化链 + 跨块句衔接归位）
    - 字幕通用：`srt_join_parts.py`、`text_chunk.py`、`text_merge.py`、`srt_mech_fix.py`（阶段〇机械修复）、`srt_snap_audio.py`（时间轴吸附实现）
    - 校验：`srt_check_segments.py`、`srt_check_width.py`、`srt_check_plan_words.py`（translate 断句措辞）、`srt_check_terms.py`（reflow r02 / translate 译文术语，跨工作流）
-3. **引用 SKILL 步骤**：`reflow-redstone`（空隙探测 / 分块 / 补标点 / 翻译 / 分句 / 回填 / 组装）、`reflow2`（同上 + 源头固化 / 切 Z 句与对齐 / 继承回填）、`translate-redstone`（阶段三）、`redstone-preprocess`（产物契约）、`segment-subtitles`（断句/行宽）
+3. **引用 SKILL 步骤**：`reflow-redstone`（空隙探测 / 分块 / 补标点 / 翻译 / 分句 / 回填 / 组装）、`reflow2`（同上 + 源头固化 / 切 Z 句与对齐 / 继承回填）、`vocalign`（语音采集 / 骨架构建 / 翻译 / 骨架回填）、`translate-redstone`（阶段三）、`redstone-preprocess`（产物契约）、`segment-subtitles`（断句/行宽）
 4. **阶段编号 / 标题**：改阶段号或阶段标题（含子节 `2.1` 式编号）时——同步跳文件链接与 `scripts/check_phase_sync.py` 注册表，并跑该脚本（步骤见 「scripts/README.md#修改阶段编号 / 标题时的同步清单」）
 5. **脚本 docstring**（格式描述与实现一致），格式描述中的阶段用**角色名**（如「phase2.md#补标点」「phase2.md#源头固化」）而非数字步骤号
 
@@ -44,7 +45,7 @@
 ## 产物速查
 
 > 本表只列**共享产物**（不属任何单一工作流，阶段〇–阶段二产出或跨阶段使用）。
-> 各工作流专有产物的速查表在对应文件顶部：[translate](PRODUCT_FORMATS_TRANSLATE.md#产物速查) · [reflow](PRODUCT_FORMATS_REFLOW.md#产物速查) · [reflow2](PRODUCT_FORMATS_REFLOW2.md#产物速查)。
+> 各工作流专有产物的速查表在对应文件顶部：[translate](PRODUCT_FORMATS_TRANSLATE.md#产物速查) · [reflow](PRODUCT_FORMATS_REFLOW.md#产物速查) · [reflow2](PRODUCT_FORMATS_REFLOW2.md#产物速查) · [vocalign](PRODUCT_FORMATS_VOCALIGN.md#本工作流产物速查)。
 > 各产物**详细规格**（命名 / 生成 / 格式 / 约束 / 校验）：共享产物见本文件「共享产物」节；专有产物见各自文件对应节。
 
 | 产物 | 生成者 | 消费/校验脚本 |

@@ -9,6 +9,26 @@
 | Python | **3.8+** | 脚本语法下限（`scripts/` 全量解析通过）；开发环境为 3.12 |
 | Python 包 | 见 [`requirements.txt`](../requirements.txt) | `requests`（Wiki / Mojang 抓取）、`numpy`（时间轴吸附的能量包络计算，**阶段〇 引入**） |
 | [ffmpeg](https://ffmpeg.org/) | 可选（**装则更佳**） | 仅**阶段〇 时间轴吸附**（`srt_mech_fix.py --audio/--video`）解码音频时调用。**缺口（无音频源 / `--audio` 路径不存在 / ffmpeg 缺失）不静默跳过**——脚本暂停（退出码 1）并一次性反馈，**附探测足迹**（搜索目录 → 实际内容，便于判断音频放错位置 / 格式不在白名单 / 尚未下载），由用户决定补缺口重跑还是确认跳过（`--skip-snap`）。`--cache` 命中时无需音频源与 ffmpeg |
+| [语音对齐 venv](#语音对齐虚拟环境vocalign) | vocalign 语音采集时需要 | `torch` / `faster-whisper` / `whisperx` + GPU；体积大、不入 `requirements.txt`，见下节 |
+
+## 语音对齐虚拟环境：vocalign
+
+vocalign 工作流的**语音采集**（[`scripts/vocalign_collect.py`](../scripts/vocalign_collect.py)）依赖 `torch` / `faster-whisper` / `whisperx` 与 GPU——体积大、仅此一步需要，故**不入** [`requirements.txt`](../requirements.txt)。
+
+**位置固定为 `Project_Main/.venv`**：各 skill 与命令模板一律调用 `Project_Main\.venv\Scripts\python.exe`（不用 `activate`，不依赖终端会话状态）；换位置须同步改本文件与 vocalign skill 的命令模板。
+
+```powershell
+# 在 Project_Main/ 下创建；torch 索引按本机 CUDA 版本替换（cu121 仅为示例）
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cu121
+.\.venv\Scripts\python.exe -m pip install faster-whisper whisperx
+
+# 验证
+.\.venv\Scripts\python.exe -c "import torch, whisperx; print(torch.cuda.is_available())"
+```
+
+- 全局已装 CUDA 版 torch 时，建 venv 可加 `--system-site-packages` 复用（免重下 GB 级依赖）
+- 缺 venv / 无 GPU / 缺 ffmpeg 时 vocalign 阶段〇**不静默跳过**——暂停并一次性列出缺口（见 [vocalign SKILL](../.github/skills/vocalign/SKILL.md#特有规则)）
 
 ## 初始化
 
