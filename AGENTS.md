@@ -4,6 +4,8 @@
 
 本项目是一个 Minecraft 红石技术视频字幕翻译辅助工作流。目标是帮助译者外文红石技术视频字幕高质量翻译为简体中文。
 
+工作流共四套，推荐序：`vocalign`（音频驱动，需音视频）、`reflow2`、`reflow-redstone`、`translate-redstone`。**接入工作流的 LLM 只需要文字能力**——音频仅用于取得词级真实时轴。
+
 ## 项目结构
 
 各目录用途与产物归属约定见 [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md)。处理或产出文件时，不确定放哪里先查该文档。
@@ -20,10 +22,10 @@
 
 ## 组织路由
 
-- 翻译工作流 → `translate-redstone` Skill（细节在各扩展 Skill，见「translate-redstone#依赖」）
+- 语音对齐骨架驱动工作流（**首选**）→ `vocalign` Skill（共享阶段〇、一、二、五、六；阶段三 = 由音频词级时轴建三层骨架、整段翻译后按骨架切分回填，见「vocalign#依赖」；**需音频 + venv**）
+- 时间轴源头固化工作流 → `reflow2` Skill（共享阶段〇、一、二、五、六；阶段三 = 源头固化 E 句时间 + 中文继承，见「reflow2#依赖」）
 - 语义回填工作流 → `reflow-redstone` Skill（共享阶段〇、一、二、五、六，见「reflow-redstone#依赖」）
-- 时间轴源头固化工作流（新） → `reflow2` Skill（共享阶段〇、一、二、五、六；阶段三 = 源头固化 E 句时间 + 中文继承，见「reflow2#依赖」）
-- 语音对齐骨架驱动工作流（新） → `vocalign` Skill（共享阶段〇、一、二、五、六；阶段三 = 由音频词级时轴建三层骨架、整段翻译后按骨架切分回填，见「vocalign#依赖」；**需音频 + venv**）
+- 逐句翻译工作流 → `translate-redstone` Skill（细节在各扩展 Skill，见「translate-redstone#依赖」）
 - 知识/索引维护 → `maintain-knowledge` Skill（决策路由见其「maintain-knowledge#维护任务决策」）
 - Wiki 抓取/兜底 → `wiki-tools` Skill（含缓存过期判定与主动刷新，翻译过程中需请求 Wiki 时遵循）
 - 对外视频摘要（发布简介用） → `video-abstract` Skill（主会话直接执行，不派 subagent）
