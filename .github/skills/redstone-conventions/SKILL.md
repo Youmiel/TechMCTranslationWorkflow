@@ -14,7 +14,7 @@ description: 红石字幕工作流通用规则
 
 ## Wiki 抓取与兜底
 
-Wiki 页面获取降级链、缓存保真阶梯、缓存读取、**过期判定与主动刷新**、抓取注意事项、社区资料检索**全部见 [wiki-tools](../wiki-tools/SKILL.md)（权威）**；缓存文件格式见 `docs/WIKI_CACHE_FORMAT.md`。MCP 配置见 `.vscode/mcp.json`，部署见 `docs/SETUP.md`。
+Wiki 页面获取降级链、缓存保真阶梯、缓存读取、**读取通道与落盘通道**、**过期判定与主动刷新**、抓取注意事项、社区资料检索**全部见 [wiki-tools](../wiki-tools/SKILL.md)（权威）**；缓存文件格式见 `docs/WIKI_CACHE_FORMAT.md`。MCP 配置见 `.vscode/mcp.json`，部署见 `docs/SETUP.md`。
 
 - **翻译过程中任何需请求 Wiki 的场合**（不止阶段二集中补齐）：命中缓存后**必先判定过期，过期则主动刷新再读**——不得静默复用过期缓存（静默错误来源）
   - 判定：`python scripts/refresh_cache.py --check-page "<页面名>"`（退出码 1 = 有需处理项）

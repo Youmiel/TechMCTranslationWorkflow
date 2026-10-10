@@ -22,6 +22,8 @@ description: L3 术语查证任务（preprocess [集中补齐](../redstone-prepr
    - Wiki 擅长类型（基础定义 / 合成配方 / 机制）→ `mc-wiki-fetch-mcp` 的 `get_page`（无损源）；不可用按可靠度降级——`fetch_wiki.py --wikitext` → `minecraft-wiki-mcp`
      - `fetch_wiki.py` 用终端工具运行，命令见 `wiki-tools`
      - 浏览器兜底由主会话执行
+   - **MCP 只读不存**：MCP 返回不形成缓存；本次查询**有留存价值**（该页机制页会被后续引用 / 值得跨视频复用）时，用终端工具跑保存命令 `python scripts/fetch_wiki.py --wikitext "<页面名>"` 落盘（同数据源 lossless、内容不进上下文；已用 MCP 读过该页则同页间隔 ≥2s 再跑）
+   - **无留存价值不落盘**：仅取方块/物品/生物的**官方译名**（取完即弃——除非该页是机制页；结论已写入 `term_resolve_<i>.md`）
    - 社区类型（高端技术 / 经验 / 人名）→ 先查 `indexes/repos/` 索引定位本地仓库文件，不网络抓取
 4. **提取译名 + 依据**：从返回内容 / 社区资料提取确认译名，记录数据源 + 简短依据
 5. **上下文推断（降级）**：回 `01_subtitle_asr_fixed.srt` 搜首次出现前后 3-5 句。
@@ -33,8 +35,8 @@ description: L3 术语查证任务（preprocess [集中补齐](../redstone-prepr
 
 - 缓存命中即用，禁止重复联网；`.cache/wiki/` 跨视频共享
 - 请求间隔 ≥2s；429/403 指数退避重试（2s → 4s → 8s，最多 3 次）
-- 抓取落盘 `.cache/wiki/`（模板见 `docs/WIKI_CACHE_FORMAT.md`，中文规范标题命名）
-- **终端工具边界**：仅用于 `python scripts/refresh_cache.py --check-page` / `python scripts/fetch_wiki.py`（抓取与刷新）——不得用于其它命令
+- 抓取落盘 `.cache/wiki/`（模板见 `docs/WIKI_CACHE_FORMAT.md`，中文规范标题命名）——**仅当该页有留存价值**（机制页 / 值得跨视频复用，见第 3 步）
+- **终端工具边界**：仅用于 `python scripts/refresh_cache.py --check-page` / `python scripts/fetch_wiki.py`（过期判定 / 抓取 / 保存落盘）——不得用于其它命令
 
 ## 输出
 

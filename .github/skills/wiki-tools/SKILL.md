@@ -9,8 +9,8 @@ description: Minecraft Wiki 页面获取与缓存写入的规范（MCP 工具降
 
 - **任务**：按可靠度降级链获取 Minecraft Wiki 页面并写入 `.cache/wiki/`，遵循抓取注意事项与缓存保真阶梯；**命中的缓存若已过期，先主动刷新再读取**
 - **触发**：阶段一「term-scan#集中补齐」查询术语/机制时；翻译过程中任何需请求 Wiki 的场合；MCP 工具不可用时降级
-- **产出**：`.cache/wiki/<规范中文页面名>.md` 缓存（新增或刷新）+ 术语译名补充；派发场景另写 `_work/<视频名>/wiki_resolve_<i>.md`
-- **关联工具**：`mc-wiki-fetch-mcp` / `minecraft-wiki-mcp`（MCP）、`scripts/fetch_wiki.py`（抓取 + 刷新，官方 API 直连）、`scripts/refresh_cache.py --check-page`（过期判定）、浏览器
+- **产出**：有留存价值时写 `.cache/wiki/<规范中文页面名>.md` 缓存（新增或刷新）+ 术语译名补充；派发场景另写 `_work/<视频名>/wiki_resolve_<i>.md`
+- **关联工具**：`mc-wiki-fetch-mcp` / `minecraft-wiki-mcp`（MCP，只读不存）、`scripts/fetch_wiki.py`（抓取 + 刷新 + **保存落盘**，官方 API 直连）、`scripts/refresh_cache.py --check-page`（过期判定）、浏览器
 - **派发载体**：`wiki-researcher`（研究型 agent）+ `task-wiki-query.md`（任务文件即完整 prompt）——需要抓取/长内容阅读的查询一律派发，主会话不读页面全文
 
 ## 缓存读取
@@ -29,9 +29,10 @@ description: Minecraft Wiki 页面获取与缓存写入的规范（MCP 工具降
 4. **fidelity 回源判定**：命中后按内容保真度决定是否回源——
    - 查 **ID / 色值 / 历史 / 隐藏注释** → 需 `lossless`；`plain`/`degraded` 时回源 wikitext（`mc-wiki-fetch-mcp` `get_page`）
    - 只看**正文定义 / 机制** → `plain` / `refined` 足够，直接用
-5. **未命中才联网**：走下方「Wiki 页面获取」降级链抓取，结果按「缓存写入保真阶梯」落盘，供本视频后续与**跨视频复用**
+5. **未命中才联网**：走下方「Wiki 页面获取」降级链抓取；结果**是否有留存价值**按「读取通道与落盘通道」判定，需留存才落盘，供本视频后续与**跨视频复用**
 
 > **跨视频复用**：`.cache/wiki/` 是全局共享缓存，其它视频抓过的页面直接读，禁止重复联网；**但复用的缓存同样要过第 3 步过期判定**——旧缓存不因跨视频复用而免检。
+> **缓存不因“查过”而产生**：MCP 读取不留痕迹，未落盘的查询下次仍是「未缓存」，过期判定链也无从生效。
 
 ## 缓存过期与主动刷新
 
@@ -66,14 +67,30 @@ description: Minecraft Wiki 页面获取与缓存写入的规范（MCP 工具降
 
 ## Wiki 页面获取
 
-1. `mc-wiki-fetch-mcp` → `search_wiki(q)` / `get_page(pageName)`（wikitext，**lossless**，ID 表/色值/历史/隐藏注释全保留）——**需 Agent 直接阅读内容并判断**时用它
+1. `mc-wiki-fetch-mcp` → `search_wiki(q)` / `get_page(pageName)`（wikitext，**lossless**，ID 表/色值/历史/隐藏注释全保留）——**需 Agent 直接阅读内容并判断**时用它；**读取不落盘**，需留存时另跑下方第 2 项保存命令
 2. `python scripts/fetch_wiki.py --wikitext "页面名" ["页面名" ...]`（**官方 MediaWiki API 直连**，wikitext，**lossless**、与上一行同数据源）
    - 逐页抓取（wikitext 体量大，不批量）、间隔 ≥2s；结果写入 `.cache/wiki/`，返回 JSON 摘要供 Agent 解析
-   - **刷新缓存 / 批量抓取 / 避免 wikitext 涌入上下文**时用它（内容只落盘）
+   - **刷新缓存 / 保存落盘 / 批量抓取 / 避免 wikitext 涌入上下文**时用它（内容只落盘）
    - 只要可读正文时去掉 `--wikitext`（`explaintext` 模式 → `fidelity: plain`，表格被剥离）
 3. `minecraft-wiki-mcp` → `minecraft_wiki_search(q)` / `minecraft_wiki_get_page(pageName)`（markdown，模板占位/乱码/数值丢，仅快速浏览正文）
 4. 浏览器访问 `https://zh.minecraft.wiki/` → 站内搜索 → 阅读页面内容（终极兜底，所有 API 都不可用时）
-   - **读取后同样按模板写入 `.cache/wiki/`**（`via: browser`），不得跳过落盘
+   - 若判定该页有留存价值，按「读取通道与落盘通道」落盘（首选 `scripts/fetch_wiki.py --wikitext`，保证 `lossless`；无网络工具时才手工按模板写 `via: browser`）
+
+## 读取通道与落盘通道
+
+> **MCP 只读不存**：`mc-wiki-fetch-mcp` / `minecraft-wiki-mcp` 的返回只用于当场判断与提取结论，**不自动形成 `.cache/wiki/` 缓存**。需要留存时，由执行者**额外调用保存命令**落盘。
+
+- **保存命令**：`python scripts/fetch_wiki.py --wikitext "<页面名>"`——与 `mc-wiki-fetch-mcp` 同数据源（官方 MediaWiki API）、同为 `lossless`，但**内容只落盘、不进上下文**
+  - 已用 MCP 读过该页时，保存命令是**第二次请求**（同页间隔 ≥2s 后再跑）——这是有意代价：换无损缓存 + 零上下文成本
+  - 浏览器兜底读过页面后，若官方 API 仍可用，同样优先用它落盘，避免复述全文
+- **有留存价值 → 落盘**，判据是**之后还要引用该页内容**：
+  1. 该页的机制 / 数值 / 版本行为会被本次翻译的其它块或后续工序引用
+  2. 该页值得跨视频复用（通用方块 / 机制 / 术语表页）
+  3. 后续需以该页缓存做时效判定（`refresh_cache.py --check-page`）
+- **无留存价值 → 不落盘**，结论落盘即可：
+  1. 仅核对页面存在性或官方译名，结论已写入 `02_terms.md` / `term_resolve_<i>.md` / `wiki_resolve_<i>.md`
+  2. 页面全文对后续无用途的一次性追问
+- 落盘后的命中路径与保真规则同「缓存读取」；**未落盘的查询不产生缓存**，下次仍需联网
 
 ## 缓存写入保真阶梯
 

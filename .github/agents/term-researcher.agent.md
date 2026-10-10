@@ -19,6 +19,7 @@ user-invocable: false
    - 判定不要靠 mtime 直觉或记忆；`.cache/wiki/` 是跨视频共享缓存，**旧缓存不因跨视频复用而免检**
 3. **未命中判断数据源**（按 wiki-tools 降级链）：
    - Wiki 擅长类型（基础定义 / 合成配方 / 机制）→ `mc-wiki-fetch-mcp` 的 `get_page`（wikitext 无损源）；不可用按可靠度降级（`fetch_wiki.py --wikitext` → `minecraft-wiki-mcp`）——**`fetch_wiki.py` 用你的终端工具运行**，命令见 `wiki-tools`；**浏览器兜底档由主会话执行**（你报告“需浏览器”即可，不自行浏览器抓取）
+   - **MCP 只读不存**：MCP 返回不形成缓存；**有留存价值**（机制页会被后续引用 / 值得跨视频复用）时用终端工具跑保存命令 `python scripts/fetch_wiki.py --wikitext "<页面名>"` 落盘（同数据源 lossless、内容不进上下文；已用 MCP 读过则该页间隔 ≥2s 再跑）；仅取方块/物品/生物的**官方译名**取完即弃，不落盘
    - 社区类型（高端技术 / 经验 / 人名）→ 先查 `indexes/repos/` 索引定位本地仓库文件，不网络抓取
 4. **提取译名 + 依据**：从返回内容/社区资料提取确认译名，记录数据源 + 简短依据
 5. **上下文推断（降级）**：回 `01_subtitle_asr_fixed.srt` 搜首次出现前后 3-5 句，能推断则标 `[推断]`；不足则给**候选译名 + 依据**标 `[待审核]`
@@ -28,8 +29,8 @@ user-invocable: false
 
 - 缓存命中即用，禁止重复联网；`.cache/wiki/` 跨视频共享
 - 请求间隔 ≥2s；429/403 指数退避重试（2s → 4s → 8s，最多 3 次）
-- 缓存写入按 `docs/WIKI_CACHE_FORMAT.md` 模板（front matter + 内容），命名用中文规范标题
-- **终端工具边界**：**仅用于**运行 `python scripts/refresh_cache.py --check-page` / `python scripts/fetch_wiki.py`（抓取与刷新）——**不得用于其它任何命令**（不跑校验 / 合并 / 删除 / 写非允许路径的命令）
+- 需留存落盘时按 `docs/WIKI_CACHE_FORMAT.md` 模板（front matter + 内容），命名用中文规范标题；**无留存价值不落盘**
+- **终端工具边界**：**仅用于**运行 `python scripts/refresh_cache.py --check-page` / `python scripts/fetch_wiki.py`（过期判定 / 抓取 / 保存落盘）——**不得用于其它任何命令**（不跑校验 / 合并 / 删除 / 写非允许路径的命令）
 
 ## 输出纪律
 
@@ -41,5 +42,5 @@ user-invocable: false
 ## 只读边界
 
 - 只读：`## 待查列表` 注明文件、`.cache/wiki/`、`indexes/repos/`、`indexes/knowledge/`、`knowledge/02_mechanic/`、`01_subtitle_asr_fixed.srt`、`docs/WIKI_CACHE_FORMAT.md`
-- 只写：`_work/<视频名>/term_resolve_<i>.md`（与待查列表同名前缀）+ `.cache/wiki/`（抓取落盘）
+- 只写：`_work/<视频名>/term_resolve_<i>.md`（与待查列表同名前缀）+ `.cache/wiki/`（有留存价值时落盘）
 - 不参考其它视频的 `_work/`/`_output/` 文件

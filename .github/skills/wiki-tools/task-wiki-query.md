@@ -25,7 +25,9 @@ description: Wiki 查询任务（翻译过程中按需请求 Wiki）——对待
    - `python scripts/fetch_wiki.py --wikitext "页面名"` 用**终端工具**运行（wikitext，lossless）；只要可读正文可用 `python scripts/fetch_wiki.py "页面名"`（纯文本，表格被剥离，fidelity=plain）
    - `minecraft-wiki-mcp` 的 `minecraft_wiki_get_page` / `minecraft_wiki_search`（markdown，降级，仅浏览正文）
    - **浏览器兜底由主会话执行**：你报告 `[需浏览器]` 即可，不自行浏览器抓取
-   - 抓取结果按 `docs/WIKI_CACHE_FORMAT.md` 模板落盘 `.cache/wiki/`（front matter + 中文规范标题命名）
+   - **MCP 只读不存**：MCP 返回不形成缓存；本次查询**有留存价值**（该页内容会被后续引用 / 值得跨视频复用 / 后续要以该页缓存做时效判定）时，用**终端工具**跑保存命令 `python scripts/fetch_wiki.py --wikitext "<页面名>"` 落盘（同数据源 lossless、内容不进上下文；已用 MCP 读过该页则同页间隔 ≥2s 再跑）
+   - **无留存价值不落盘**：仅核对页面存在性 / 译名且结论已写入 `wiki_resolve_<i>.md`；页面全文对后续无用途的一次性追问
+   - 落盘时按 `docs/WIKI_CACHE_FORMAT.md` 模板（中文规范标题命名，脚本已按模板写入）
 5. **社区类型查询**（高端技术 / 经验总结 / 人名 / Bug 分析）：先查 `indexes/repos/` 索引定位本地仓库文件，直接读本地，**不网络抓取**
 6. **提取结论 + 依据**：每条给出结论、数据源、刷新状态；结论不足时给候选 + 依据并标 `[待审核]`
 
@@ -33,13 +35,13 @@ description: Wiki 查询任务（翻译过程中按需请求 Wiki）——对待
 
 - 缓存命中即用，禁止重复联网；`.cache/wiki/` 跨视频共享——**复用的缓存同样要过第 3 步过期判定**，旧缓存不因跨视频复用而免检
 - 请求间隔 ≥2s；429/403 指数退避重试（2s → 4s → 8s，最多 3 次）
-- **终端工具边界**：**仅用于** `python scripts/refresh_cache.py --check-page` / `python scripts/fetch_wiki.py` 这两条判定与抓取命令——**不得用于其它任何命令**（不跑校验 / 合并 / 删除 / 写非允许路径的命令）
+- **终端工具边界**：**仅用于** `python scripts/refresh_cache.py --check-page` / `python scripts/fetch_wiki.py` 这三类命令（过期判定 / 抓取 / 保存落盘）——**不得用于其它任何命令**（不跑校验 / 合并 / 删除 / 写非允许路径的命令）
 - 一次性脚本禁止硬编码数据；临时逻辑脚本只放 `_work/<当前视频名>/`
 
 ## 只读 / 只写边界
 
 - 只读：`## 待查清单` 注明文件、`.cache/wiki/`、`.cache/glossary/`、`knowledge/01_terminology/`、`indexes/repos/`、`docs/WIKI_CACHE_FORMAT.md`
-- 只写：`_work/<视频名>/wiki_resolve_<i>.md`（与待查清单同名前缀）+ `.cache/wiki/`（抓取 / 刷新落盘）
+- 只写：`_work/<视频名>/wiki_resolve_<i>.md`（与待查清单同名前缀）+ `.cache/wiki/`（有留存价值时落盘）
 - **不参考其它视频的 `_work/`、`_output/` 文件**；不删除任何文件 / 目录
 
 ## 输出

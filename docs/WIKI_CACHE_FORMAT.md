@@ -1,6 +1,8 @@
 # Wiki 页面缓存规范（`.cache/wiki/`）
 
-本文档是 `.cache/wiki/` 的**唯一格式规范**。所有写入该目录的通道（MCP 工具、`fetch_wiki.py`、浏览器兜底）必须遵循本规范。
+本文档是 `.cache/wiki/` 的**唯一格式规范**。所有写入该目录的通道（`fetch_wiki.py`、浏览器兜底手工落盘）必须遵循本规范。
+
+> **MCP 工具（`mc-wiki-fetch-mcp` / `minecraft-wiki-mcp`）只读不存**：返回不形成缓存。需留存时调 `fetch_wiki.py --wikitext` 落盘（同数据源不降保真）；判定准则见 `wiki-tools#读取通道与落盘通道`。
 
 ## 命名规则
 
@@ -67,8 +69,8 @@ Agent 读缓存时根据 `fidelity` 决定是否回源补精确数据：
 
 按数据源可靠度降级（与保真阶梯一致，非"哪个在线"的顺序）：
 
-1. `mc-wiki-fetch-mcp`（MCP-2，wikitext，无损）→ **首选**，查精确数据用它最可靠（但大量 wikitext 会进 Agent 上下文）
-2. `python scripts/fetch_wiki.py --wikitext "页面名"`（**官方 API 直连 wikitext，无损**）——同数据源、不经 MCP；**刷新缓存与大量抓取用它**（结果只落盘、不进上下文）
+1. `mc-wiki-fetch-mcp`（MCP-2，wikitext，无损）→ **首选**，查精确数据用它最可靠（但大量 wikitext 会进 Agent 上下文）；**只读不存**，需留存时用第 2 项落盘
+2. `python scripts/fetch_wiki.py --wikitext "页面名"`（**官方 API 直连 wikitext，无损**）——同数据源、不经 MCP；**刷新缓存、保存落盘与大量抓取用它**（结果只落盘、不进上下文）
 3. `python scripts/fetch_wiki.py "页面名"`（纯文本，正文可读，表格剥离）
 4. `minecraft-wiki-mcp`（MCP-1，markdown，降级）→ 仅快速浏览正文
 5. 浏览器访问 `https://zh.minecraft.wiki/`（终极兜底；读取后也要按本模板落盘）
