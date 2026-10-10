@@ -20,12 +20,12 @@
 
 作答格式契约（与 `.github/skills/vocalign/task-candidates.md` 同步）
     | 项 | 规定 |
-    | 行首 | `S<n>`（与 `skeleton.json` 的长句编号一致）+ 空白 |
+    | 行首 | `S<n>`（单 S，与 `skeleton.json` 长句编号一致）或 `S<n>+S<m>`（合译组，与 `align/` 同形）+ 空白 |
     | 分隔符 | ` \\| `（前后各一空格，表示断在**词间**） |
     | 数量 | **宁多勿少**（候选集，不是最终切点） |
     | 禁止 | `/`（Minecraft 命令大量使用）、增删改任何词、写时间戳 / 行号 |
-    | 清单给 | `⋯<ms>⋯` = 该词边界处**净停顿**（仅 ≥250ms 标注；**仅供参考，不是判据**） |
-    | 清单不给 | 脚本自己的切分结果（避免引导“微调”而非“重判”） |
+    | 清单给 | 仅长句文本与 `[至少切 N 处]` |
+    | 清单不给 | 停顿位置（脚本本就有语音证据，标出来只会引导 agent 往已覆盖处标）；脚本自己的切分结果（避免引导“微调”而非“重判”） |
 
 校验判据（4 条，任一条不过 → 该行失败）
     1. `S<n>` 存在于清单、不重复、无多余行
@@ -56,9 +56,10 @@ E0 定稿文本（`--e0`）
 
 用法（命令根 = Project_Main/）
     python scripts/vocalign_candidates.py emit  --skeleton <work>/vocalign --words <work>/vocalign \\
-        --chunks <work>/vocalign/chunks --srt <work>/01_subtitle_asr_fixed.srt
-    python scripts/vocalign_candidates.py check --skeleton <work>/vocalign --words <work>/vocalign
-    python scripts/vocalign_candidates.py norm  --skeleton <work>/vocalign --words <work>/vocalign
+        --e0 <work>/vocalign/e0 --chunks <work>/vocalign/chunks --srt <work>/vocalign/e0/long_lines.srt \\
+        --r02 <work>/vocalign/r02_results --align <work>/vocalign/align
+    python scripts/vocalign_candidates.py check --skeleton <work>/vocalign --words <work>/vocalign --e0 <work>/vocalign/e0
+    python scripts/vocalign_candidates.py norm  --skeleton <work>/vocalign --words <work>/vocalign --e0 <work>/vocalign/e0
 
 退出码：0 = 无失败行；1 = 有失败行（详见校验报告）。
 """
@@ -66,13 +67,14 @@ import argparse
 import bisect
 import difflib
 import json
+import math
 import os
 import re
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from shared.srt_common import collect_chunk_files, parse_owned_cue_range
+from shared.srt_common import collect_chunk_files, parse_owned_cue_range, text_width, HARD_MAX
 
 PM = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PM not in sys.path:
@@ -82,15 +84,20 @@ from scripts.srt_reflow_core.io import parse_srt  # noqa: E402
 # ---- 格式契约常量（改动须同步 skill 的 task-candidates.md / docs/PRODUCT_FORMATS_VOCALIGN.md）----
 SEP_CHAR = "|"                 # 候选点分隔符（**禁用 `/`**：MC 命令 `/give` `/setblock` 会撞车）
 SEP_SPLIT = re.compile(r"\s*\|\s*")
-MARK_RE = re.compile(r"\s*\u22ef\s*(\d+)\s*ms\s*\u22ef\s*")   # `⋯320ms⋯` 停顿标注
-PAUSE_MARK_MS = 250.0          # 仅标注净停顿 ≥ 此值的边界（与骨架子句阈值同源）
+MARK_RE = re.compile(r"\s*\u22ef\s*(\d+)\s*ms\s*\u22ef\s*")   # 旧清单的停顿标注（仅兼容剥离）
 FORBID = "/"                   # 禁止字符（原句本身含有时按数量放行）
 S_LINE = re.compile(r"^\s*S(\d+)\s+(.*\S)\s*$")
+# 组形式（合译组）：行首可以是 `S44+S45`——**派发粒度 = 回填消费粒度（S 组）**，
+# 否则 agent 看不到完整语义单元（实测极端情形：`S47  input power.` 只剩两词，无从标注）。
+S_GROUP_LINE = re.compile(r"^\s*S(\d+(?:\s*\+\s*S?\d+)*)\s+(.*\S)\s*$")
 TRIM = set(".,;:!?\u2014\u2013\"')]")
 DEFAULT_DIRNAME = "candidates"
 REQUEST_SUB = "_request"
 REPLY_SUB = "reply"
 REPORT_NAME = "_check_report.md"
+Z_KEY_RE = re.compile(r"Z(\d+)")
+S_KEY_RE = re.compile(r"S(\d+)")
+CHUNK_NO_RE = re.compile(r"chunk_(\d+)")
 
 
 def split_punct(tok):
@@ -103,7 +110,7 @@ def split_punct(tok):
 
 
 def strip_mark(s):
-    """剥离清单里的停顿标注（`⋯320ms⋯`）——校验前必须做，否则会被判成“改词”"""
+    """剥离清单里**旧格式**的停顿标注（`⋯320ms⋯`）——兼容历史作答；新清单已不含该标注"""
     return MARK_RE.sub(" ", s)
 
 
@@ -312,19 +319,18 @@ def render_text(slice_toks):
 
 
 def render_marked(slice_toks, marks, first_word):
-    """带停顿标注的清单文本：`happens ⋯320ms⋯ when`
+    """按词序列拼回文本：`happens when`（标点紧贴前词、词间单空格）
 
-    `slice_toks` 可以是词 dict（骨架词）或**字符串**（E0 定稿文本按空白切）；
-    `marks` 的键是**相对本句**的词号（0-based，表示该词之后），
-    `first_word` = 本句首词的全局词号（字符串模式下传 0，marks 键用相对词号）。
+    ⚠️ **不再插停顿标注**（曾输出 `happens ⋯320ms⋯ when`）：标注位置脚本本就有语音证据
+    （惩罚 0 或 20，必然可选），提示它等于让 agent 做无用功；而候选点的设计定位是**补
+    标点与停顿之外的盲区**。标在清单里只会把 agent 的注意力引向已覆盖位置。
+
+    `slice_toks` 可以是词 dict（骨架词）或字符串（E0 定稿文本按空白切）。
     """
     out = ""
-    for j, t in enumerate(slice_toks):
+    for t in slice_toks:
         piece = (t["stem"] + t["punct"]) if isinstance(t, dict) else t
         out = piece if not out else out + " " + piece
-        g = first_word + j
-        if g in marks:
-            out += " \u22ef%dms\u22ef" % int(round(marks[g]))
     return out
 
 
@@ -365,56 +371,164 @@ def validate_line(body, orig_text):
 
 
 def load_reply(path):
-    """读 agent 作答 → [(S号, 正文行)]（按行；跳过空行与 `#` 注释）"""
+    """读 agent 作答 → `[(组号元组 或 None, 正文行)]`（跳过空行与 `#` 注释）
+
+    行首可以是单 S（`S44`）或合译组（`S44+S45`）——与派发清单同形。
+    """
     rows = []
     with open(path, encoding="utf-8-sig") as fh:
         for ln in fh:
             ln = ln.rstrip("\n")
             if not ln.strip() or ln.lstrip().startswith("#"):
                 continue
-            m = S_LINE.match(ln)
+            m = S_GROUP_LINE.match(ln)
             if not m:
                 rows.append((None, ln))
                 continue
-            rows.append((int(m.group(1)), m.group(2)))
+            rows.append((parse_snos(m.group(1)), m.group(2)))
     return rows
 
 
 def validate_chunk(rows, texts, expect=None):
-    """校验整块作答 → (通过项 [(sno, cuts)], 报告行 [(sno, 问题)], 统计)
+    """校验整块作答 → (通过项 [((组号...), cuts)], 报告行 [(组号, 问题)], 统计)
 
-    `texts` = 长句文本列表（**E0 定稿**，agent 对着它抄）；`expect` = 该块应出现的 S 号集合。
+    `texts` = 长句文本列表（**E0 定稿**，agent 对着它抄）；`expect` = 该块应出现的**组**集合。
+    ⚠️ **按组合并校验**：合译组的作答文本必须等于组内各 S 文本的拼接（回填也是按组切分）。
     """
     ok, bad, seen, extra = [], [], {}, []
-    for sno, body in rows:
-        if sno is None:
-            bad.append((None, "行首不是 `S<n>` 格式：%s" % body[:50]))
+    for snos, body in rows:
+        if snos is None:
+            bad.append((None, "行首不是 `S<n>`（或 `S<n>+S<m>`）格式：%s" % body[:50]))
             continue
-        if sno < 1 or sno > len(texts):
-            bad.append((sno, "S 号越界（本视频长句数 %d）" % len(texts)))
+        if any(s < 1 or s > len(texts) for s in snos):
+            bad.append((snos, "S 号越界（本视频长句数 %d）" % len(texts)))
             continue
-        seen[sno] = seen.get(sno, 0) + 1
-        if seen[sno] > 1:
-            bad.append((sno, "S 号重复出现（第 %d 次）" % seen[sno]))
+        seen[snos] = seen.get(snos, 0) + 1
+        if seen[snos] > 1:
+            bad.append((snos, "行重复出现（第 %d 次）" % seen[snos]))
             continue
-        errs, cuts = validate_line(body, texts[sno - 1])
+        joined = " ".join(texts[s - 1] for s in snos)
+        errs, cuts = validate_line(body, joined)
         if errs:
-            bad.append((sno, "；".join(errs)))
+            bad.append((snos, "；".join(errs)))
         else:
-            ok.append((sno, cuts))
+            ok.append((snos, cuts))
     if expect:
         extra = sorted(set(seen) - set(expect))
-        for sno in extra:
-            bad.append((sno, "该 S 号不在本批清单内（块归属错误或串行）"))
-        for sno in sorted(set(expect) - set(seen)):
-            bad.append((sno, "清单内的 S 号缺失作答（跳句 / 漏抄）"))
+        for snos in extra:
+            bad.append((snos, "该组不在本批清单内（块归属错误或串行）"))
+        for snos in sorted(set(expect) - set(seen)):
+            bad.append((snos, "清单内的组缺失作答（跳句 / 漏抄）"))
     return ok, bad, {"rows": len(rows), "extra": len(extra)}
 
 
 # ---------------------------------------------------------------- 三模式
 
-def do_emit(args, sents, toks, bounds, loc, cand_dir, e0_texts):
-    """导出派发清单 `<dir>/_request/chunk_<k>.md`"""
+def parse_snos(prefix):
+    """`"S44+S45"` / `"S44"` → `(44, 45)`（元组，供集合比较与展示）"""
+    return tuple(int(x) for x in re.findall(r"\d+", prefix or ""))
+
+
+def snos_label(snos):
+    """`(44, 45)` → `"S44+S45"`（与 `align/` 的书写同形）"""
+    return "+".join("S%d" % s for s in snos)
+
+
+def load_s_groups(align_dir):
+    """`align/` → `{块号: [(组首, (成员...)), ...]}`（块内顺序）。
+
+    组 = 一个 `Z` 行里的 S 集合（`Z10 = S10+S11` → 成员 `(10, 11)`）。
+    **为何按组派发**：回填按 S 组聚簇切分（整组共享一段中文），故切点需求与候选标注
+    都是**整组**的；逐 S 派发会让 agent 看不到完整语义单元，且**跨 S 交界处的切点无人标**。
+
+    ⚠️ 一个 S 只应属一个组（跨组重复 = align 异常）→ 取首个出现、忽略重复。
+    """
+    out = {}
+    if not (align_dir and os.path.isdir(align_dir)):
+        return out
+    for fn in sorted(os.listdir(align_dir)):
+        if not fn.endswith(".txt"):
+            continue
+        mc = CHUNK_NO_RE.search(fn)
+        k = int(mc.group(1)) if mc else 0
+        groups, seen = out.setdefault(k, []), set()
+        with open(os.path.join(align_dir, fn), encoding="utf-8-sig") as fh:
+            for ln in fh:
+                if "=" not in ln:
+                    continue
+                ss = sorted({int(x) for x in S_KEY_RE.findall(ln.split("=", 1)[1])})
+                ss = [s for s in ss if s not in seen]
+                if not ss:
+                    continue
+                seen.update(ss)
+                groups.append((min(ss), tuple(ss)))
+    return out
+
+
+def load_zh_splits(r02_dir, align_dir, hard_max=HARD_MAX):
+    """中文译文分了几段：`{S号: (需切处数, 合译首句号)}`。
+
+    为何需要：候选点清单**只有英文**，agent 无从判断该长句要切多细；而回填只能按候选切
+    ——候选不足时只能整片吞下，最终字幕中英比例失衡（实测中文 9 宽而英文片 40.6 宽）。
+    有了这个数，agent 知道“这句至少得切几处” → 在标点/停顿之外多给候选。
+
+    口径：中文段数 N = `ceil(中文宽 / hard_max)`（分母取上限，故为**下界**）；
+    提示值 = **N**（不是 N-1）——多要一处候选作裕量：真实需求是 N-1 个切点，
+    但片数对得上而**边界错配**的情形仍需额外候选位（实测：中文首段边界落在英文
+    无证据处 → DP 退到最近的标点 → 前片超宽）。多切不罚，少切则失衡。
+
+    ⚠️ **粒度 = 合译组，不是单个 S**：`Z10 = S10+S11` 意味着两个长句合译成同一段中文
+    （回填也按 S 组聚簇处理）→ 切点需求是**整组**的，不能给组内每句都标一遍。
+    组内首句记数量，其余记合译首句号。
+
+    ⚠️ **Z 号是块内局部编号**（chunk_001 与 chunk_002 都有 Z1）——必须按块处理；
+    ✅ **S 号是全局编号** → 结果可跨块直接合并。
+    """
+    from srt_reflow_presplit import split_zh
+    from scripts.srt_reflow_core.punct import build_profile
+    prof = build_profile("zh")
+    out = {}
+    if not (r02_dir and align_dir and os.path.isdir(r02_dir) and os.path.isdir(align_dir)):
+        return out
+    for fn in sorted(os.listdir(r02_dir)):
+        if not fn.endswith(".txt"):
+            continue
+        with open(os.path.join(r02_dir, fn), encoding="utf-8-sig") as fh:
+            zh = fh.read()
+        zs = [z for z in split_zh(zh.strip(), prof) if z.strip()]
+        # 该块的 `Z<n> = S<m>`（Z 号为块内序号，与 split_zh 顺序一致）
+        amap, apath = {}, os.path.join(align_dir, fn)
+        if os.path.isfile(apath):
+            with open(apath, encoding="utf-8-sig") as fh:
+                for ln in fh:
+                    if "=" not in ln:
+                        continue
+                    left, right = ln.split("=", 1)
+                    ss = [int(x) for x in S_KEY_RE.findall(right)]
+                    for zi in (int(x) for x in Z_KEY_RE.findall(left)):
+                        if ss:
+                            amap[zi] = ss
+        for zi, ztext in enumerate(zs, 1):
+            ss = amap.get(zi)
+            if not ss:
+                continue
+            n_seg = max(1, int(math.ceil(text_width(ztext) / hard_max)))
+            need = n_seg
+            first = min(ss)
+            out[first] = (max(out.get(first, (0, None))[0], need), None)
+            for sno in ss:
+                if sno != first:
+                    out[sno] = (0, first)
+    return out
+
+
+def do_emit(args, sents, toks, bounds, loc, cand_dir, e0_texts, splits=None, sgroups=None):
+    """导出派发清单 `<dir>/_request/chunk_<k>.md`
+
+    **派发粒度 = 合译组（回填的消费粒度）**：`Z10 = S10+S11` 的两个长句共享一段中文，
+    回填按组聚簇切分 → 清单也按组一行（行首 `S10+S11`），agent 才能看到完整语义单元、
+    也才能标出**跨 S 交界处**的切点（逐 S 派发时那里无人负责）。
+    """
     if args.chunks and args.srt:
         ranges = chunk_ranges(args.chunks, args.srt)
         if not ranges:
@@ -429,44 +543,57 @@ def do_emit(args, sents, toks, bounds, loc, cand_dir, e0_texts):
 
     os.makedirs(os.path.join(cand_dir, REQUEST_SUB), exist_ok=True)
     os.makedirs(os.path.join(cand_dir, REPLY_SUB), exist_ok=True)      # 供 subagent 直接写入
-    lines, total_mark, total_sent = [], 0, 0
+    lines, total_mark, total_sent, warns = [], 0, 0, []
     for k in sorted(groups):
         if args.chunk and k != args.chunk:
             continue
-        rows, n_mark = [], 0
-        for si, a, b in groups[k]:
-            sub = toks[a:b]
-            e0t = e0_texts.get(si)
-            if e0t:
-                # E0 定稿文本：显示它；停顿标注需把**原词号**映射到 E0 词位置
-                _mapping, inv = map_e0_to_orig(e0t, sub)
-                mine = {}
-                for g in range(a, b - 1):
-                    if bounds.get(g, 0.0) >= PAUSE_MARK_MS:
-                        j = inv.get(g - a)
-                        if j is not None:
-                            mine[j] = bounds[g]
-                rows.append("S%d  %s" % (si, render_marked(e0t.split(), mine, 0)))
+        per = groups[k]                      # [(si, a, b)] 块内长句（按 S 号升序）
+        inblk = {si: (a, b) for si, a, b in per}
+        # 本块内可用的合译组：组首一定取**本块首成员**（防组跨块时首句不在本块）
+        si2grp = {}
+        for _first, mem in (sgroups or {}).get(k, []):
+            here = [s for s in mem if s in inblk]
+            if not here:
+                continue
+            if len(here) != len(mem):
+                warns.append("块 %d：组 %s 跨块（本块仅 %s）" % (
+                    k, snos_label(mem), snos_label(tuple(here))))
+            for s in here:
+                si2grp[s] = (here[0], tuple(here))
+        rows = []
+        for si, a, b in per:
+            grp = si2grp.get(si)
+            if grp and grp[0] != si:
+                continue                     # 组内非首句 → 由首句那一行输出
+            snos = grp[1] if grp else (si,)
+            a0 = inblk[snos[0]][0]
+            b0 = inblk[snos[-1]][1]
+            nd, _g = (splits or {}).get(snos[0], (None, None))
+            need_tag = "[至少切 %d 处] " % nd if nd else ""
+            gtext = " ".join(e0_texts.get(s) or sents[s - 1].get("text", "") for s in snos)
+            if any(s in e0_texts for s in snos):
+                rows.append("%s  %s%s" % (snos_label(snos), need_tag, gtext))
             else:
-                mine = {g: bounds[g] for g in range(a, b - 1)
-                        if bounds.get(g, 0.0) >= PAUSE_MARK_MS}
-                rows.append("S%d  %s" % (si, render_marked(sub, mine, a)))
-            n_mark += len(mine)
-        nword = sum(b - a for _si, a, b in groups[k])
+                rows.append("%s  %s%s" % (snos_label(snos), need_tag,
+                                          render_marked(toks[a0:b0], None, a0)))
+        nword = sum(b - a for _si, a, b in per)
         body = ["# chunk_%03d" % k, "",
                 "> 在语义单元边界插入 ` | `（前后各一空格）。已有标点处**不必**标注。",
                 "> 候选**宁多勿少**；不得增删改任何词、不得写 `/` 与时间戳。",
-                "> `\u22ef<ms>\u22ef` = 该词边界处实测净停顿（仅 ≥250ms 标注；仅供参考，**不是判据**）。",
+                "> `[至少切 N 处]` = 该句中文译文分成了 N 段，英文就至少要在其中切 N 处"
+                "（否则整段挤在一行，中英比例失衡）；**多切不罚**（有裕量时脚本挑更贴合的）。",
+                "> 行首写 `S10+S11` 的 = 这两句译成了同一段中文（合译），**在整行范围内标**。",
                 "> 长句 %d / 词 %d" % (len(rows), nword), ""]
         body += rows
         path = os.path.join(cand_dir, REQUEST_SUB, "chunk_%03d.md" % k)
         with open(path, "w", encoding="utf-8", newline="\n") as fh:
             fh.write("\n".join(body) + "\n")
-        lines.append("chunk_%03d：长句 %d / 词 %d / 停顿标注 %d" % (k, len(rows), nword, n_mark))
-        total_mark += n_mark
+        lines.append("chunk_%03d：组 %d / 词 %d" % (k, len(rows), nword))
         total_sent += len(rows)
 
-    print("vocalign 候选点清单：块 %d / 长句 %d / 停顿标注 %d" % (len(lines), total_sent, total_mark))
+    print("vocalign 候选点清单：块 %d / 组 %d" % (len(lines), total_sent))
+    for w in warns:
+        print("⚠️ %s" % w)
     if args.expand:
         for ln in lines:
             print("   " + ln)
@@ -489,13 +616,13 @@ def _chunk_listing(cand_dir, only=None):
     return ks, rep, req
 
 
-def _expected_snos(cand_dir, k):
-    """清单里的 S 号集合（用于检缺失 / 检串块）"""
+def _expected_groups(cand_dir, k):
+    """清单里的**组**集合（用于检缺失 / 检串块）"""
     path = os.path.join(cand_dir, REQUEST_SUB, "chunk_%03d.md" % k)
     if not os.path.isfile(path):
         return None
     with open(path, encoding="utf-8-sig") as fh:
-        return {int(m.group(1)) for ln in fh for m in [S_LINE.match(ln)] if m}
+        return {parse_snos(m.group(1)) for ln in fh for m in [S_GROUP_LINE.match(ln)] if m}
 
 
 def build_texts(sents, e0_texts):
@@ -524,7 +651,7 @@ def do_check(args, sents, texts, cand_dir):
     for k in ks:
         path = os.path.join(cand_dir, REPLY_SUB, "chunk_%03d.txt" % k)
         rows = load_reply(path)
-        ok, bad, st = validate_chunk(rows, texts, _expected_snos(cand_dir, k))
+        ok, bad, st = validate_chunk(rows, texts, _expected_groups(cand_dir, k))
         n_rows += st["rows"]
         n_bad += len(bad)
         n_cut += sum(len(c) for _s, c in ok)
@@ -535,7 +662,7 @@ def do_check(args, sents, texts, cand_dir):
             rep_lines.append("### chunk_%03d 失败明细" % k)
             rep_lines.append("")
             for sno, why in bad:
-                rep_lines.append("- `%s`：%s" % ("S%d" % sno if sno else "（行）", why))
+                rep_lines.append("- `%s`：%s" % (snos_label(sno) if sno else "（无组号）", why))
             rep_lines.append("")
 
     body = ["# vocalign 候选点校验报告", "",
@@ -564,13 +691,15 @@ def do_norm(args, sents, texts, toks, loc, cand_dir):
     all_bad, total, n_drop = [], 0, 0
     for k in ks:
         rows = load_reply(os.path.join(cand_dir, REPLY_SUB, "chunk_%03d.txt" % k))
-        ok, bad, _st = validate_chunk(rows, texts, _expected_snos(cand_dir, k))
+        ok, bad, _st = validate_chunk(rows, texts, _expected_groups(cand_dir, k))
         all_bad += [("chunk_%03d" % k, sno, why) for sno, why in bad]
-        out = ["# chunk_%03d\t长句 %d / 有候选 %d / 候选点 %d"
+        out = ["# chunk_%03d\t组 %d / 有候选 %d / 候选点 %d"
                % (k, len(rows), len(ok), sum(len(c) for _s, c in ok))]
-        for sno, cuts in ok:
-            a, b = loc[sno - 1]
-            mapping, _inv = map_e0_to_orig(texts[sno - 1], toks[a:b])
+        for snos, cuts in ok:
+            a = loc[snos[0] - 1][0]
+            b = loc[snos[-1] - 1][1]
+            gtext = " ".join(texts[s - 1] for s in snos)
+            mapping, _inv = map_e0_to_orig(gtext, toks[a:b])
             glob = []
             for c in cuts:
                 kk = c - 1                        # E0 第 c 个词（0-based）
@@ -578,7 +707,7 @@ def do_norm(args, sents, texts, toks, loc, cand_dir):
                     glob.append(a + mapping[kk])  # → 原词号
                 else:
                     n_drop += 1                   # 切点落在 E0 新增词上（无原词锚）→ 丢弃
-            out.append("%s\t%s\t%s" % ("S%d" % sno,
+            out.append("%s\t%s\t%s" % (snos_label(snos),
                                        ",".join(str(g) for g in glob),
                                        ",".join(str(c) for c in cuts)))
             total += len(glob)
@@ -593,7 +722,7 @@ def do_norm(args, sents, texts, toks, loc, cand_dir):
         print("⚠️ 跳过失败行 %d 条（该 S 号无候选 → 回填将回退纯语音权重）" % len(all_bad))
         if args.expand:
             for k, sno, why in all_bad[:30]:
-                print("   %s %s：%s" % (k, "S%d" % sno if sno else "（行）", why))
+                print("   %s %s：%s" % (k, snos_label(sno) if sno else "（无组号）", why))
     return 1 if all_bad else 0
 
 
@@ -605,9 +734,13 @@ def main():
     ap.add_argument("--words", required=True, help="vocalign 工作目录（含 words.json）或该文件")
     ap.add_argument("--dir", default=None, help="候选点根目录（默认 <skeleton 目录>/candidates）")
     ap.add_argument("--chunks", default=None, help="分块目录（emit 用；不给则全部长句为一块）")
-    ap.add_argument("--srt", default=None, help="01_subtitle_asr_fixed.srt（emit 用；解析块时间范围）")
+    ap.add_argument("--srt", default=None, help="SRT 载体（emit 用；解析块时间范围）")
     ap.add_argument("--e0", default=None,
                     help="E0 目录（读 long_lines.srt 的**定稿文本**；默认 <skeleton 目录>/e0）")
+    ap.add_argument("--r02", default=None,
+                    help="中文译文目录（emit 用；算「至少切 N 处」；默认 <skeleton 目录>/r02_results）")
+    ap.add_argument("--align", default=None,
+                    help="对齐目录（emit 用；Z→S 映射；默认 <skeleton 目录>/align）")
     ap.add_argument("--chunk", type=int, default=None, help="仅处理该块号")
     ap.add_argument("--expand", action="store_true", help="展开打印明细")
     args = ap.parse_args()
@@ -645,7 +778,19 @@ def main():
         print("⚠️ 未找到 E0 定稿（%s）→ 回退骨架原文；若已跑 E0，请传 --e0" % e0_dir)
 
     if args.action == "emit":
-        return do_emit(args, sents, toks, bounds, loc, cand_dir, e0_texts)
+        wdir = os.path.dirname(os.path.abspath(sk_path))
+        align_dir = args.align or os.path.join(wdir, "align")
+        splits = load_zh_splits(args.r02 or os.path.join(wdir, "r02_results"), align_dir)
+        sgroups = load_s_groups(align_dir)
+        if splits:
+            n_need = sum(1 for v in splits.values() if v[0] > 0)
+            print("中文切点需求：%d 句标出" % n_need)
+        else:
+            print("ℹ️ 未读到中文译文 / 对齐（--r02 / --align）→ 清单不标「至少切 N 处」")
+        if sgroups:
+            n_multi = sum(1 for gs in sgroups.values() for _f, mem in gs if len(mem) > 1)
+            print("合译组：%d 组（跨句）" % n_multi)
+        return do_emit(args, sents, toks, bounds, loc, cand_dir, e0_texts, splits, sgroups)
     if args.action == "check":
         return do_check(args, sents, texts, cand_dir)
     return do_norm(args, sents, texts, toks, loc, cand_dir)

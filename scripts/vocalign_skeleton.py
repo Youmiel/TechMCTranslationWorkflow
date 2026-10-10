@@ -60,6 +60,8 @@ HOLE_WARN_RATIO = 0.10    # 未对齐词占比超此值即告警
 TERM = ".?!"                                        # 句末标点
 CLAUSE = ",;:\u2014\u2013"                          # 子句标点
 TRIM = set(".,;:!?\u2014\u2013\"')]")               # 词尾可剥离标点
+# 句首小写判据：跳过引号/括号前缀后取首字母
+FIRST_LETTER_RE = re.compile(r"[\"'(\[\u201c\u300c\u300e]*([A-Za-z])")
 
 SRT_TIME = re.compile(
     r"(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})"
@@ -304,6 +306,47 @@ def build(toks, bounds):
     return sentences
 
 
+def _ends_term(text):
+    t = text.rstrip()
+    return bool(t) and t[-1] in TERM
+
+
+def _starts_lower(text):
+    """首字母为小写（跳过引号 / 括号前缀）。"""
+    m = FIRST_LETTER_RE.match(text.strip())
+    return bool(m) and m.group(1).islower()
+
+
+def stitch_sentences(sentences):
+    """碎片归位：前句末尾无句末标点 **且** 后句首字母小写 → 合并为一个长句。
+
+    为什么需要：whisper 是**段级**输出（按静音窗口切段），段边界**不保证与句界一致**——
+    段边界落在句中时，本脚本会把它当句界 → 长句被切碎（`… the comparison` | `feature.`）。
+
+    判据复用 reflow2 的**源切分缺陷**同款（前句末尾无句末标点 + 后句首字母小写）：
+    英文句首必大写，故“后句小写”是强证据；两条件同时成立才合并，不会误合
+    “合法无标点结尾 + 后句大写”的真句界。
+
+    返回 (合并后长句, 合并明细)。
+    """
+    out, log = [], []
+    for s in sentences:
+        if out and not _ends_term(out[-1]["text"]) and _starts_lower(s["text"]):
+            prev = out.pop()
+            log.append({"end": prev["end"], "left": prev["text"][-60:], "right": s["text"][:60]})
+            out.append({
+                "start": prev["start"], "end": s["end"],
+                "nclauses": prev["nclauses"] + s["nclauses"],
+                "nwords": prev["nwords"] + s["nwords"],
+                "text": prev["text"] + " " + s["text"],
+                "clauses": prev["clauses"] + s["clauses"],
+                "stitched": True,
+            })
+        else:
+            out.append(dict(s))
+    return out, log
+
+
 # ---------------------------------------------------------------- 主流程
 
 def main():
@@ -316,6 +359,8 @@ def main():
     ap.add_argument("--clause-ms", type=float, default=CLAUSE_MS, help="净停顿 ≥ 此值 → 子句界（默认 250）")
     ap.add_argument("--clause-upgrade-ms", type=float, default=CLAUSE_UPGRADE_MS,
                     help="逗号后净停顿 ≥ 此值 → 升级为句界（0 = 不升级）")
+    ap.add_argument("--no-stitch", action="store_true",
+                    help="关闭碎片归位（默认开：前句末尾无句末标点 + 后句首字母小写 → 合并）")
     ap.add_argument("--expand", action="store_true", help="展开打印低置信边界清单")
     args = ap.parse_args()
 
@@ -335,6 +380,10 @@ def main():
     bounds = compute_bounds(toks, args.baseline_ms, args.sent_ms, args.clause_ms,
                             args.clause_upgrade_ms)
     sentences = build(toks, bounds)
+    n_raw_sentences = len(sentences)
+    stitch_log = []
+    if not args.no_stitch:
+        sentences, stitch_log = stitch_sentences(sentences)
 
     clause_words = [c["nwords"] for s in sentences for c in s["clauses"]]
     why_count = {}
@@ -352,6 +401,9 @@ def main():
         "align": stats,
         "n_words": n_word,
         "n_sentences": len(sentences),
+        "n_sentences_raw": n_raw_sentences,
+        "n_stitched": len(stitch_log),
+        "stitches": stitch_log,
         "n_clauses": len(clause_words),
         "boundary_sources": why_count,
         "clause_words": dist(clause_words),
@@ -387,11 +439,22 @@ def main():
               encoding="utf-8", newline="\n") as fh:
         fh.write("\n".join(srt_lines) + "\n")
 
+    with open(os.path.join(args.out, "stitches.txt"), "w",
+              encoding="utf-8", newline="\n") as fh:
+        fh.write("# 碎片归位明细（前句末尾无句末标点 + 后句首字母小写 → 合并）\n")
+        fh.write("# 长句 %d → %d（合并 %d 处）\n\n" % (
+            n_raw_sentences, len(sentences), len(stitch_log)))
+        for i, r in enumerate(stitch_log, 1):
+            fh.write("%d. %s\n   left：…%s\n   right：%s…\n" % (i, hms(r["end"]), r["left"], r["right"]))
+        if not stitch_log:
+            fh.write("（无）——源段边界均落在句界\n")
+
     with open(os.path.join(args.out, "skeleton.txt"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("# vocalign 骨架（长句 → 子句 → 词）\n")
         fh.write("# 参数：baseline=%.0fms 句界=%.0fms 子句界=%.0fms 升级=%.0fms\n" % (
             args.baseline_ms, args.sent_ms, args.clause_ms, args.clause_upgrade_ms))
-        fh.write("# 规模：长句 %d / 子句 %d / 词 %d\n" % (len(sentences), len(clause_words), n_word))
+        fh.write("# 规模：长句 %d / 子句 %d / 词 %d（碎片归位 %d 处）\n" % (
+            len(sentences), len(clause_words), n_word, len(stitch_log)))
         fh.write("# 边界来源：%s\n\n" % json.dumps(why_count, ensure_ascii=False))
         for si, s in enumerate(sentences, 1):
             fh.write("S%d  %s → %s  (%d 子句 / %d 词)\n" % (

@@ -93,13 +93,15 @@
 1. **导出清单（脚本）**：
    ```powershell
    python scripts\vocalign_candidates.py emit --skeleton "<W>\vocalign" --words "<W>\vocalign" `
-       --e0 "<W>\vocalign\e0" --chunks "<W>\vocalign\chunks" --srt "<W>\vocalign\e0\long_lines.srt"
+       --e0 "<W>\vocalign\e0" --chunks "<W>\vocalign\chunks" --srt "<W>\vocalign\e0\long_lines.srt" `
+       --r02 "<W>\vocalign\r02_results" --align "<W>\vocalign\align"
    ```
    - **必须传 `--e0`**：清单显示**定稿文本**（否则仲裁修正不进清单，` | ` 位置与实际文本错位）
-   - 产出 `candidates/_request/chunk_<k>.md`（长句 + 净停顿标注；**不给**脚本自己的切分结果，避免引导微调而非重判）
+   - **必须传 `--r02` + `--align`**：算 `[至少切 N 处]`（N = 中文段数，**含一处裕量**）——不传则清单不标，agent 无从判断该句要切多细
+   - 产出 `candidates/_request/chunk_<k>.md`（长句 + `[至少切 N 处]`；**不给**停顿位置与脚本自己的切分结果，避免引导微调而非重判）
 2. **标注（逐块派 subagent）**：渲染命令 `python scripts\render_subagent_prompt.py task-candidates --skill vocalign --video "<W>" [--chunk <k> | --all]`
    - 派发引用 prompt（见 [subagent-dispatch#派发引用-prompt](../subagent-dispatch/SKILL.md#派发引用-prompt)）
-   - 产物：`candidates/reply/chunk_<k>.txt`（`S<n>` + 原句，在语义边界插 ` | `）
+   - 产物：`candidates/reply/chunk_<k>.txt`（**照抄清单行首**（`S<n>` 或合译组 `S<n>+S<m>`）+ 原句，在语义边界插 ` | `）
    - 分隔符固定 ` | `（前后各一空格）；**禁用 `/`**（Minecraft 命令大量使用）；**候选宁多勿少**（候选集非最终切点）；已有标点处不必标注
 3. **作答校验（脚本）**：`python scripts\vocalign_candidates.py check --skeleton "<W>\vocalign" --words "<W>\vocalign" --e0 "<W>\vocalign\e0"`
 4. **词号归一（脚本）**：`python scripts\vocalign_candidates.py norm --skeleton "<W>\vocalign" --words "<W>\vocalign" --e0 "<W>\vocalign\e0"`
@@ -132,6 +134,7 @@
        --e0 "<W>\vocalign\e0" --chunks "<W>\vocalign\chunks" `
        --candidates "<W>\vocalign\candidates" -o "<W>\vocalign" --expand
    ```
+   - 报“超宽英文片”时用 `--fix-splits "<W>\vocalign\_fix_splits.tsv"` 定点修复（见下）
    - **处理方式（脚本内一次性完成，主代理零读取、不参与时间分配）**：
      - **中文分段**：按句末标点切 Z 句，超硬限（27）的用断点强度代价 DP 拆子段——**只拆不合**（不跨句合并）
      - **英文切分**：全词边界候选 + **惩罚阶梯**选点（标点与长停顿 0，短停顿 20，候选点 60，无证据 200），片宽贴合中文段宽占比
@@ -145,8 +148,33 @@
 1. **回填校验**：退出码 0 = 无片数 / 拼接 / 时间倒挂错误（退出码 1 时看 `r04_alerts.md` 的“校验失败”节）
 2. **切点验收（看 `r04_alerts.md` 的切点来源统计）**：
    - `none`（无证据切点）应尽量少——它们正是候选点环节的目标消除对象
+   - `lowconf`（**假空隙位置**）应为 0 或已剔除：有长停顿但附近有对齐可疑词 → 空隙来自音素对齐失败，不作语音证据
+     - 不剔除时它们会被当**零惩罚强切点** → 空隙落在段间，播放时字幕消失 1s+（超出空隙填充阈值）
+     - 若报出位置很多（多于个位数）→ 查 `words.json` 的 `n_unaligned` 是否异常（回阶段〇处置转写可疑段）
    - 与候选点环节未启用时对比：**无证据切点数下降**、标点结尾率不下降、切在词中率恒为 0
    - ⚠️ **不可用“停顿证据率”作验收判据**：候选点的价值正在**无语音证据处**，该率必然下降
-3. **人工审核（阶段五）**：`align/` 的语义对应 + `r04_bilingual.srt` 阅读节奏 + `r04_alerts.md` 的无证据切点
+   - 交付前抽查：`r04_bilingual.srt` 中**无句末标点的 ≥1s 段间空隙**应接近 0（有句末标点的 ≥1s 空隙是长句间真停顿，正常保留）
+3. **超宽片门禁：必须停下等裁决**
+   - **探测**（回填自动）：`r04_alerts.md` 超宽节（判据：英宽 > 硬限 且英/中宽比 ≥ 2）+ `vocalign/_fix_splits.draft.md`（待裁决草稿）
+   - **整理**（回填自动）：草稿按成因分两类，并对甲类**模拟重跑该 S 组**，给出片内每个切点的新片宽与推荐
+     - **甲 切点错位**：该 S 组中文已分 ≥2 段，英文片位足够，只是 DP 把切点放偏 → 可定点修复
+     - **乙 片数不足**：该 S 组中文只 1 段，回填直接令英文 1 片（**不跑切分 DP**），定点修复与补候选点**均无效**
+   - **上报 + 停下**：把超宽节与草稿报用户，**停下等裁决**；不得静默跳过
+   - **裁决落地**（甲类）：把草稿里“抄进 tsv 的行”抄入 `vocalign/_fix_splits.tsv`，带 `--fix-splits` 重跑回填，再回本步复核（幂等，直到无超宽片或用户判定不修）
+     - 锚 = S 号加相邻两词，需在该 S 范围内唯一命中；合译组写 `S94+S95`；未命中会列入 `r04_alerts.md`（不静默）
+     - 草稿标“仍不达标”= 该片内切点已穷举 → 回候选点环节补候选，或接受
+     - 成批出现（多于个位数）→ 直接回候选点环节重跑
+   - **乙类处置**：回中文译文侧在句内补一处标点使其分 2 段，或接受
+   - **超宽中文段**（中宽 > 硬限）= 中文侧问题 → 回中文译文侧收窄措辞或补句内标点
+4. **人工审核（阶段五）**：`align/` 的语义对应 + `r04_bilingual.srt` 阅读节奏 + `r04_alerts.md` 的无证据切点
 
 > **为何不需要“跨块句”机制**：块边界必然落在骨架长句边界（`cue ≡ S`），故不存在被切开的句子——对照 reflow2 需“衔接归位”正因其块按 cue 数等分、常落在句中。
+
+### 输出后处理
+
+1. **空隙填充**：`python scripts\srt_fill_gaps.py "<W>\vocalign\r04_bilingual.srt" --report "<W>\vocalign\fill_report.md"`
+   - 相邻段间隙 < 1s 时把前段 `end` 延到后段 `start`（首尾相接）——消除播放时“前条消失、后条未出现”的闪烁
+   - 间隙 ≥ 1s 的保留（真实停顿 / 剪辑跳转，覆盖会吃掉静默语义）
+   - 输入用**双语稿**（与 `r04_draft.srt` 时间戳一致）；产出默认 `<名>.filled.srt`（**不覆盖原稿**，可对照）
+   - ⚠️ 这是**主动偏离语音实测时间**的唯一例外（多出静默段）——故独立成脚本、默认不原地覆盖；首段不填（无前段）、末段不填（无后段）
+   - 报告含逐处填充明细；`--in-place` 原地覆盖（谨慎，原稿将丢失）

@@ -12,7 +12,7 @@ description: 红石技术视频字幕工作流——音频强制对齐取得词�
 ### 输入
 
 - **音频或视频文件**（`_Release/` 或 `_input/` 同名；mp4/mkv 可直接解码）——唯一的时轴来源
-- `<工作目录>/01_subtitle_asr_fixed.srt`（可选）——有则参与文本交叉比对仲裁，无则跳过
+- 油管**原始自动字幕**（可选，如 `<工作目录>/01_subtitle_asr.srt`）——仅作文本交叉比对的参照，**未做 ASR 修复、未补标点**；有则参与仲裁与注释检测，无则跳过
 
 > ⚠️ 无音频 = 无法执行，回退 reflow2（见「特有规则」的缺口门禁）。
 
@@ -27,7 +27,9 @@ description: 红石技术视频字幕工作流——音频强制对齐取得词�
 | 产物 | 生成者 | 说明 |
 |---|---|---|
 | `words.json` / `segments.srt` | `vocalign_collect.py` | 词级时轴（未对齐词保留占位，时间 null）/ 段级转写 |
-| `skeleton.json` / `skeleton.txt` / `boundaries.txt` | `vocalign_skeleton.py` | 三层骨架（长句 / 子句 / 词）与判据明细 |
+| `segments_patched.srt` / `patch_report.md` / `patch_decisions.tsv` | `vocalign_collect.py`（`--patch-pad` 启用时） | **可疑点重识别拼接稿**（可疑点 ±N 秒单独重识别后与全片稿拼接，消前文污染幻觉）/ 逐窗口**差异清单**与自检 / 人工**裁决表**（回退指定窗口） |
+| `segments.suspect.md` | `vocalign_collect.py` | 转写可疑段（重复幻觉 / n-gram 循环 / 语速异常）——**只报不改**，交 agent 或人工决策 |
+| `skeleton.json` / `skeleton.txt` / `boundaries.txt` / `stitches.txt` | `vocalign_skeleton.py` | 三层骨架（长句 / 子句 / 词）、判据明细、**碎片归位明细**（源段边界落在句中的合并记录） |
 | `long_lines.srt` | `vocalign_skeleton.py` | 长句 SRT 载体（初版，供分块） |
 | `e0/long_lines.md` / `long_lines.srt` | `vocalign_text.py apply` | 定稿文本与其 SRT 载体 |
 | `e0/en_timeline/chunk_<k>.txt` | `vocalign_text.py apply` | S 长句与实测时间（供对齐） |
@@ -37,8 +39,11 @@ description: 红石技术视频字幕工作流——音频强制对齐取得词�
 | `r01_normalized/chunk_<k>.txt` | `srt_reflow_normalize.py` | 块内 cue 合并成整段 |
 | `r02_results/chunk_<k>.txt` | 翻译子 agent | 整段中文译文 |
 | `zh_sentences/chunk_<k>.txt` · `align/chunk_<k>.txt` | `srt_reflow2_zsent.py` / 对齐子 agent | Z 句列表 / `Z<n> = S<m>` |
-| `candidates/_request/` `reply/` `chunk_<k>.tsv` | `vocalign_candidates.py` / 候选点子 agent | 候选点清单 / 作答 / 全局词号 |
-| `r04_draft.srt` / `r04_bilingual.srt` / `r04_alerts.md` | `vocalign_backfill.py` | 交付稿与告警 |
+| `candidates/_request/` `reply/` `chunk_<k>.tsv` | `vocalign_candidates.py` / 候选点子 agent | 候选点清单 / 作答 / 全局词号（**按合译组派发**：合译的多个长句共用一行 `S10+S11`） |
+| `r04_draft.srt` / `r04_bilingual.srt` / `r04_alerts.md` | `vocalign_backfill.py` | 交付稿与告警（含超宽片清单） |
+| `<名>.filled.srt` | `srt_fill_gaps.py` | **空隙填充**后的交付稿（相邻段间隙 < 1s 时前段 end 延到后段 start，消闪烁） |
+| `vocalign/_fix_splits.tsv`（可选） | 人工 / agent 写 | **定点修复**切点（处置超宽英文片：`<S号>\t<左词> \| <右词>`） |
+| `vocalign/_fix_splits.draft.md` | `vocalign_backfill.py` | **超宽片定点修复待裁决草稿**（成因分类 + 片内切点模拟效果与推荐；裁决后抄进 `_fix_splits.tsv`） |
 
 断点恢复（取最完整产物为恢复点）：
 
@@ -73,6 +78,7 @@ description: 红石技术视频字幕工作流——音频强制对齐取得词�
 - **未对齐词占位是数据契约**：`words.json` 中时间 null 的词是空洞标记，删除会让骨架在空洞处产生伪边界
 - **低置信边界需复核**：无标点加短停顿的边界真伪混杂，脚本只标注不降级，须人工或 LLM 裁决
 - **中文段数由中文阅读节奏定**：不可用英文子句数强制决定中文段数
+- **观感例外（唯一）**：交付前跑 `srt_fill_gaps.py` —— 相邻段间隙 < 1s 时把前段 `end` 延到后段 `start`（消闪烁）。这**主动偏离语音实测时间**（多出的是静默段），故独立成脚本、默认不原地覆盖，且只填小于阈值的间隙（≥ 阈值的间隙是真实停顿/剪辑，保留）
 - **定稿后必须重跑分块**：分块分两次（清单分批用初版载体、正式分块用定稿载体），第二次不可省
 
 ### 与 reflow2 的取舍
@@ -100,8 +106,9 @@ description: 红石技术视频字幕工作流——音频强制对齐取得词�
 1. **加载集判定**：`python scripts/glossary_load_plan.py "<W>\vocalign\e0\long_lines.srt"`
    - 输入 `vocalign/e0/long_lines.srt`（定稿载体）
    - 扫全片命中已收录术语 → 出常驻表与候选表（按命中数阈值）；实际常驻表用 `--list-resident` 查
-2. **门禁**：候选表逐表判定保留 / 剔除，`--record` 记录裁决（写门禁日志）
-   - 阈值含义与记录格式见 [redstone-preprocess#阶段一加载集判定与准备](../redstone-preprocess/SKILL.md#阶段一加载集判定与准备)
+   - 两产物随载体落 `e0/`（脚本按输入目录定位，`--out` 只改报告路径）：`glossary_load_plan.md`（报告）、`glossary_gate_log.md`（门禁日志）
+2. **门禁：必须停下等裁决**：把报告报用户确认，**停下等用户判定**（剔除非必要表），裁决后跑 `--record "<剔除的表>"`（候选全保留亦需 `--record`）
+   - 门禁日志为追加式（探测范围 → 用户决策，供调阈值）；**不得静默跳过门禁**；阈值含义与记录格式见 [redstone-preprocess#阶段一加载集判定与准备](../redstone-preprocess/SKILL.md#阶段一加载集判定与准备)
 
 ### 阶段二：术语扫描与知识补齐
 
@@ -114,8 +121,8 @@ description: 红石技术视频字幕工作流——音频强制对齐取得词�
        --chunks-dir "<W>\_term_chunks" --scan "<W>\scan_terms.txt" --glossary .cache/glossary/general.csv
    ```
    - 产物：`_term_results/chunk_<k>.txt`
-4. **集中补齐与确认**：先 L3 查证、再人工确认，最后写 `02_terms.md`（翻译的术语依据）
-   - 流程见 [redstone-preprocess#阶段二术语扫描与知识补齐](../redstone-preprocess/SKILL.md#阶段二术语扫描与知识补齐)
+4. **集中补齐与门禁：必须停下等裁决**：L3 查证后报用户确认待查 / 待定术语，**停下等用户裁决**，再写 `02_terms.md`（翻译的术语依据）
+   - **不得静默跳过门禁**；流程见 [redstone-preprocess#阶段二术语扫描与知识补齐](../redstone-preprocess/SKILL.md#阶段二术语扫描与知识补齐)
    - 术语首次时间戳精度为**长句级**（`S` 号，非 cue 级）
    - **不启用 `asr_trigger.py scan`**：其映射表按旧文本源的误听形态积累，用于音频转写文本时误报率高；误听修正由定稿的文本仲裁承担
 5. **术语核对**（翻译后执行，需译文对照）：见 [phase3.md](phase3.md#翻译) 校验段

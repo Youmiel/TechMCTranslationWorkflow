@@ -32,10 +32,13 @@ sys.stdout.reconfigure(encoding="utf-8")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from shared.srt_common import (  # noqa: E402
-    CJK_SPEED, HARD_MAX, JUMP_GAP_MS, LONG_GAP_MS, MAX_LINE, MIN_FRAG_MS, SNAP_MS,
+    CJK_SPEED, GAP_FILL_MS, HARD_MAX, JUMP_GAP_MS, LONG_GAP_MS, MAX_LINE, MIN_FRAG_MS, SNAP_MS,
     SOFT_MAX, SOFT_MIN, ULTRA_SHORT_MS,
     PUNCT_ROLE_CHARS, TERMINATOR_ROLE,
 )
+# 工作流脚本内常量（非 shared）；import 无副作用、无重活
+from vocalign_backfill import LOWCONF_SCORE, LOWCONF_WINDOW, OVER_WIDE_RATIO  # noqa: E402
+from vocalign_collect import PATCH_PAD_S  # noqa: E402
 
 # 扫描范围（旧模块名 / 死占位符检查用）；_work 为一次性产物、不参与
 SCAN_DIRS = (".github", "docs", "scripts", ".vscode")
@@ -132,6 +135,21 @@ VALUE_CHECKS = (
     # 空隙 / 剪辑跳转（LONG_GAP_MS / JUMP_GAP_MS）
     (".github/skills/redstone-conventions/SKILL.md",
      r"长停顿 >(\d+)s / 剪辑跳转 >(\d+)s", (LONG_GAP_MS // 1000, JUMP_GAP_MS // 1000), "空隙阈值"),
+    # 段间小空隙填充（GAP_FILL_MS；观感例外，vocalign 独有）
+    (".github/skills/vocalign/SKILL.md",
+     r"相邻段间隙 < (\d+)s 时把前段", (GAP_FILL_MS // 1000,), "空隙填充阈值"),
+    # 超宽英文片比例判据（OVER_WIDE_RATIO）
+    (".github/skills/vocalign/phase3.md",
+     r"英/中宽比 ≥ (\d+)", (OVER_WIDE_RATIO,), "超宽片判据"),
+    # 可疑点重识别半径（PATCH_PAD_S）
+    (".github/skills/vocalign/phase0.md",
+     r"默认即 ±(\d+)s", (PATCH_PAD_S,), "重识别半径"),
+    ("docs/PRODUCT_FORMATS_VOCALIGN.md",
+     r"英/中宽比 ≥ (\d+)（正常片约", (OVER_WIDE_RATIO,), "超宽片判据"),
+    # 假空隙判据（LOWCONF_WINDOW / LOWCONF_SCORE；回填降级阈值）
+    ("docs/PRODUCT_FORMATS_VOCALIGN.md",
+     r"边界前后各 (\d+) 词内有 `score` < (\d+\.\d+)",
+     (LOWCONF_WINDOW, LOWCONF_SCORE), "假空隙判据"),
     (".github/skills/reflow-redstone/semantic-reflow.md",
      r"长停顿 >(\d+)s / 剪辑跳转 >(\d+)s", (LONG_GAP_MS // 1000, JUMP_GAP_MS // 1000), "空隙阈值"),
     (".github/skills/reflow-redstone/semantic-reflow.md",

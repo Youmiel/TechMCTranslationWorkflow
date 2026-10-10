@@ -38,12 +38,12 @@
    只借用 SRT 的字段结构换取“现有脚本零改动 + cue 号 ≡ S 号（映射恒等）”。
 
 用法（命令根 = Project_Main/）
-    python scripts/vocalign_text.py emit  --skeleton <work>/vocalign --srt <work>/01_subtitle_asr_fixed.srt \\
-        --e0 <work>/vocalign/e0 [--chunks <work>/vocalign/chunks]
+    python scripts/vocalign_text.py emit  --skeleton <work>/vocalign --e0 <work>/vocalign/e0 \\
+        --srt <work>/01_subtitle_asr.srt [--chunks <work>/vocalign/chunks]
     python scripts/vocalign_text.py check --skeleton <work>/vocalign --e0 <work>/vocalign/e0
     python scripts/vocalign_text.py apply --skeleton <work>/vocalign --e0 <work>/vocalign/e0
 
-    `--srt` 可选（缺省 = 全新视频，跳过仲裁与注释检测，流程照常）。
+    `--srt` 可选（油管原始自动字幕；缺省 = 全新视频，跳过仲裁与注释检测，流程照常）。
 
 退出码：0 = 成功；1 = 有失败项（作答校验失败 / 仲裁未决）。
 """
@@ -76,6 +76,13 @@ SPEECH_RATIO = 0.8          # whisper 该时段词数 < 字幕词数 × 此值 �
 # ---- 定稿超长句告警（该断未断的信号；阈值同 reflow2 的补标点质量校验）----
 LONG_COMMA_MAX = 10         # 单句逗号数上限
 LONG_CHAR_MAX = 600         # 单句字符数上限
+
+# ---- 仲裁标点守恒校验（A 段）----
+# 为何必须校：仲裁只该改**词**，不该动**句读**。实测 A28（S48）选 01 的 `comparison` 时
+# 把 whisper 侧的逗号一并丢掉（`signal load,` → `signal comparison`），而该逗号对应中文
+# 的顿号“信号比较**、**容器填充度检测” → 列表语义丢失。**允许多标点**（实测 S3 的
+# `punct+replace` 就在补逗号），只抓“少”。
+PUNCT_CHARS = ",.;:?!\u2014\u2013"
 
 TS = re.compile(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})\s*-->\s*(\d{2}):(\d{2}):(\d{2}),(\d{3})")
 SENT_END = ".?!"
@@ -621,12 +628,34 @@ def expected_keys(e0_dir, k):
     return out
 
 
+def load_items(e0_dir):
+    """读 `_items.json`（emit 产的机器可读锚点；清单 md 只给人看）"""
+    path = os.path.join(e0_dir, "_items.json")
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (ValueError, OSError):
+        return {}
+
+
+def lost_punct(old, new):
+    """`new` 相对 `old` **丢掉**的句读标点（多重集差；多出来的不管）"""
+    pool = [c for c in old if c in PUNCT_CHARS]
+    for c in new:
+        if c in PUNCT_CHARS and c in pool:
+            pool.remove(c)
+    return pool
+
+
 def do_check(args, sents, e0_dir):
     ks = sorted({k for k in (int(m.group(1)) for fn in os.listdir(os.path.join(e0_dir, "_request"))
                              for m in [re.fullmatch(r"chunk_(\d{3})\.md", fn)] if m)})
     if args.chunk:
         ks = [k for k in ks if k == args.chunk]
     bad, n_rows = [], 0
+    items = load_items(e0_dir)
     for k in ks:
         want = expected_keys(e0_dir, k)
         got = load_reply(os.path.join(e0_dir, "reply", "chunk_%03d.txt" % k))
@@ -638,6 +667,17 @@ def do_check(args, sents, e0_dir):
                 continue
             if sec == "A" and v not in ("whisper", "01") and not v.strip():
                 bad.append("chunk_%03d %s：空仲裁结果" % (k, key))
+            if sec == "A" and v.strip():
+                # **基准 = whisper 侧**（骨架原文出自它，见 `_changes.tsv` 的“骨架原文”列）。
+                # 选 01 或写自定文本时若丢了 whisper 侧的标点 → 报（该标点可能是回填的切点证据）。
+                it = items.get(key) or {}
+                old = it.get("main") or ""
+                new = {"whisper": it.get("main"), "01": it.get("surf")}.get(v, v) or ""
+                miss = lost_punct(old, new)
+                if miss:
+                    bad.append("chunk_%03d %s（S%d）：仲裁丢了标点 `%s` —— whisper `%s` → 作答 `%s`"
+                               "（如词应取 01 侧而标点应保 whisper 侧，写自定文本）"
+                               % (k, key, sno, "".join(miss), old, new))
             if sec == "B" and v not in (",", ".", "?", "!", ";", ":", "无"):
                 bad.append("chunk_%03d %s：应填标点或 `无`，实为 `%s`" % (k, key, v))
             if sec == "C" and v not in ("保留", "删"):
@@ -795,7 +835,7 @@ def main():
     ap.add_argument("action", choices=("emit", "check", "apply"))
     ap.add_argument("--skeleton", required=True, help="vocalign 工作目录（含 skeleton.json）或该文件")
     ap.add_argument("--e0", default=None, help="E0 输出目录（默认 <skeleton 目录>/e0）")
-    ap.add_argument("--srt", default=None, help="01_subtitle_asr_fixed.srt（可选；缺省 = 跳过仲裁/注释）")
+    ap.add_argument("--srt", default=None, help="油管原始自动字幕（可选；缺省 = 跳过仲裁/注释）")
     ap.add_argument("--words", default=None, help="words.json（默认 = 同目录；注释检测用）")
     ap.add_argument("--chunks", default=None,
                     help="分块目录（清单与 en_timeline 按块导出；默认自动探测 <vocalign 目录>/chunks）")

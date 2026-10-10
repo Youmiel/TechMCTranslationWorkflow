@@ -42,6 +42,8 @@ CJK_SPEED = 5.0               # 中文阅读速度（字/秒）；0 = 禁用阅�
 #   权威说明：「segment-subtitles#阅读时长」节
 ULTRA_SHORT_MS = 300          # 极短单元告警阈值（回填告警分类用，与上者同值不同义）
 LONG_UNIT_MS = 15000          # 超长单元基准阈值：实际阈值 = max(此值, 2 × 时长中位）
+GAP_FILL_MS = 1000            # 段间小空隙填充上限：间隙 < 此值 → 前段 end 延到后段 start
+#   权威说明：`.github/skills/vocalign/SKILL.md` 的“特有规则”节（观感优先的例外）；工具 = `srt_fill_gaps.py`
 
 BRACKET_RE = re.compile(r"\[[^\]]*\]")   # 方括号非语音标记（[Music]/[Applause] 等）
 TS_RE = re.compile(r"(\d{2}):(\d{2}):(\d{2}),(\d{3})")
