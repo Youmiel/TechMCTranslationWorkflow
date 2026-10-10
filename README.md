@@ -40,8 +40,10 @@ python scripts/setup_editors.py
 - `reflow-redstone`: 语义回填重排 v1
 - `translate-redstone`: 逐句翻译
 - `maintain-knowledge`: 维护知识库与术语
+
 <br>
--  [`humanizer-zh`](./skills/humanizer-zh): 去除翻译腔 / AI 味（可选）
+
+- [`humanizer-zh`](./skills/humanizer-zh): 去除翻译腔 / AI 味（可选）
 
 ## 翻译视频字幕
 
